@@ -1,0 +1,24 @@
+# Core
+torch>=2.0.0
+torchvision>=0.15.0
+opencv-python>=4.8.0
+opencv-contrib-python>=4.8.0
+Pillow>=10.0.0
+numpy>=1.24.0
+mediapipe>=0.10.0
+rembg>=2.0.50
+onnxruntime>=1.15.0
+
+# Face restoration & super-resolution (cài bằng setup_models.py hoặc thủ công):
+#   pip install git+https://github.com/sczhou/CodeFormer.git
+#   pip install git+https://github.com/xinntao/Real-ESRGAN.git
+#   pip install facexlib
+
+# Utilities
+tqdm>=4.65.0
+requests>=2.31.0
+gdown>=4.7.0
+scipy>=1.10.0
+
+# UI
+customtkinter>=5.2.0
