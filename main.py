@@ -67,7 +67,7 @@ def _detect_runtime():
 
 try:
     RUNTIME_REPORT = _detect_runtime()
-    from main_ui_v2 import PhotoMasterApp
+    from main_ui import PhotoMasterApp
     import customtkinter as ctk
 except SystemExit:
     raise

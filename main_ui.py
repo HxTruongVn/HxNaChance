@@ -21,7 +21,7 @@ from PIL import Image as PILImage
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
 
-from photo_engine_v2 import PhotoMasterEngineV2, SPEC_PRESETS, PhotoSpec
+from photo_engine import PhotoMasterEngineV2, SPEC_PRESETS, PhotoSpec
 from print_layout import (
     build_layout_canvas, save_layout, LAYOUT_PRESETS,
     DEFAULT_LAYOUT_CONFIG, load_sidecar
