@@ -1,4 +1,4 @@
-# Photo Master Pro v2 — AI Edition
+# Photo Master Pro — AI Edition
 
 Hệ thống xử lý ảnh thẻ chuyên nghiệp với pipeline **Deep Learning** hoàn chỉnh.
 
@@ -32,18 +32,6 @@ App có thể chạy ở 2 chế độ tuỳ máy có đủ tài nguyên/model h
 xem [⚡ Chạy KHÔNG cần weights (Lite Mode)](#-chạy-không-cần-weights-lite-mode)
 bên dưới. Kiến trúc nội bộ (RuntimeManager → Engine → UI) được mô tả
 chi tiết tại [ARCHITECTURE.md](./ARCHITECTURE.md).
-
-## 🆕 So với bản cũ
-
-| Chức năng cũ | Thay thế bằng | Lý do |
-|-------------|---------------|-------|
-| Auto WB + CLAHE + Gamma | **CodeFormer** (face restore) | Hiểu cấu trúc khuôn mặt, không phá màu nền |
-| Bilateral Filter skin smooth | **BiSeNet Face Parsing** + Guided Filter | Chỉ smooth vùng da, không tràn tóc/mắt |
-| Unsharp Mask sharpen | **Real-ESRGAN** (x2 deblur) | Reconstruct detail tự nhiên, không halos |
-| Eye enhance hardcode ROI | **Face Parsing mask** mắt | Chính xác từng bờ mi, không cháy highlight |
-| Teeth whiten hardcode | **Face Parsing mask** răng | Tránh môi, chỉ tẩy vùng răng thật |
-| rembg u2net | **rembg isnet-general-use** | Viền tóc mịn hơn, ít artifacts |
-| Xoay align sai hướng | **Đã fix `-angle`** | Cân bằng mắt đúng chiều |
 
 ## 🚀 Cài đặt nhanh
 
