@@ -29,138 +29,136 @@ def _ensure_rgb(image_bgr: np.ndarray) -> np.ndarray:
 # ------------------------------------------------------------------
 # 1. BISENET FACE PARSING (self-contained, lazy torch import)
 # ------------------------------------------------------------------
+#
+# FIX: các class mạng nơ-ron trước đây (BiSeNet, ConvBNReLU,
+# AttentionRefinementModule, FeatureFusionModule, SegmentationHead)
+# KHÔNG kế thừa torch.nn.Module. Hậu quả: `net.load_state_dict(...)`,
+# `net.to(device)` và gọi trực tiếp `net(tensor)` đều raise lỗi
+# (AttributeError/TypeError), bị nuốt bởi try/except bên dưới nên
+# FaceParsingProcessor luôn im lặng rơi về available=False.
+#
+# Định nghĩa "class X(nn.Module)" ở top-level bắt buộc phải import
+# torch ngay khi file này được import — phá vỡ mục tiêu lazy-load
+# ("Không import nặng ở top-level") ghi ở đầu file. Nên các class
+# được đưa vào bên trong hàm factory _build_bisenet(), chỉ được định
+# nghĩa (và torch chỉ được import) khi hàm này thực sự được gọi.
 
-class BiSeNet:
-    """BiSeNet với ResNet-18 backbone, 19 classes face parsing.
-    Import torch bên trong để tránh crash nếu chưa cài."""
-    NUM_CLASSES = 19
+def _build_bisenet():
+    """Tạo một instance BiSeNet (torch.nn.Module) đúng chuẩn.
+    Chỉ import torch tại đây, giữ nguyên tinh thần lazy-load."""
+    import torch.nn as nn
+    import torch.nn.functional as F
+    import torchvision.models as models
 
-    def __init__(self):
-        import torch
-        import torch.nn as nn
-        import torchvision.models as models
+    class ConvBNReLU(nn.Module):
+        def __init__(self, in_ch, out_ch, kernel=3, stride=1, padding=1):
+            super().__init__()
+            self.conv = nn.Conv2d(in_ch, out_ch, kernel, stride, padding, bias=False)
+            self.bn = nn.BatchNorm2d(out_ch)
+            self.relu = nn.ReLU(inplace=True)
 
-        super().__init__()
-        resnet = models.resnet18(weights=None)
-        self.layer0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)
-        self.layer1 = resnet.layer1
-        self.layer2 = resnet.layer2
-        self.layer3 = resnet.layer3
-        self.layer4 = resnet.layer4
+        def forward(self, x):
+            return self.relu(self.bn(self.conv(x)))
 
-        self.arm32 = AttentionRefinementModule(512, 128)
-        self.arm16 = AttentionRefinementModule(256, 128)
-        self.conv_head32 = ConvBNReLU(128, 128, 3, 1, 1)
-        self.conv_head16 = ConvBNReLU(128, 128, 3, 1, 1)
-        self.conv_avg = ConvBNReLU(512, 128, 1, 1, 0)
+    class AttentionRefinementModule(nn.Module):
+        def __init__(self, in_ch, out_ch):
+            super().__init__()
+            self.conv = ConvBNReLU(in_ch, out_ch, 3, 1, 1)
+            self.attention = nn.Sequential(
+                nn.AdaptiveAvgPool2d(1),
+                nn.Conv2d(out_ch, out_ch, 1, bias=False),
+                nn.BatchNorm2d(out_ch),
+                nn.Sigmoid(),
+            )
 
-        self.ffm = FeatureFusionModule(256, 256)
-        self.seg_head = SegmentationHead(256, self.NUM_CLASSES, up_factor=8)
-        self.aux_head16 = SegmentationHead(128, self.NUM_CLASSES, up_factor=16)
-        self.aux_head32 = SegmentationHead(128, self.NUM_CLASSES, up_factor=32)
+        def forward(self, x):
+            feat = self.conv(x)
+            att = self.attention(feat)
+            return feat * att
 
-    def forward(self, x):
-        import torch.nn.functional as F
-        h, w = x.size()[2:]
-        feat0 = self.layer0(x)
-        feat_sp = self.layer1(feat0)
-        feat16 = self.layer2(feat_sp)
-        feat32 = self.layer3(feat16)
-        feat64 = self.layer4(feat32)
+    class FeatureFusionModule(nn.Module):
+        def __init__(self, in_ch, out_ch):
+            super().__init__()
+            self.conv = ConvBNReLU(in_ch, out_ch, 1, 1, 0)
+            self.attention = nn.Sequential(
+                nn.AdaptiveAvgPool2d(1),
+                nn.Conv2d(out_ch, out_ch, 1, bias=False),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(out_ch, out_ch, 1, bias=False),
+                nn.Sigmoid(),
+            )
 
-        arm32 = self.arm32(feat64)
-        arm32_up = F.interpolate(arm32, size=feat32.size()[2:], mode="bilinear", align_corners=True)
-        arm32_up = self.conv_head32(arm32_up)
+        def forward(self, fsp, fcp):
+            import torch
+            feat = torch.cat([fsp, fcp], dim=1)
+            feat = self.conv(feat)
+            att = self.attention(feat)
+            return feat + feat * att
 
-        arm16 = self.arm16(feat32)
-        arm16 = arm16 + arm32_up
-        arm16_up = F.interpolate(arm16, size=feat_sp.size()[2:], mode="bilinear", align_corners=True)
-        arm16_up = self.conv_head16(arm16_up)
+    class SegmentationHead(nn.Module):
+        def __init__(self, in_ch, out_ch, up_factor=8):
+            super().__init__()
+            self.conv = ConvBNReLU(in_ch, in_ch // 2, 3, 1, 1)
+            self.drop = nn.Dropout(0.1)
+            self.out = nn.Conv2d(in_ch // 2, out_ch, 1)
+            self.up = nn.Upsample(scale_factor=up_factor, mode="bilinear", align_corners=True)
 
-        avg = F.adaptive_avg_pool2d(feat64, 1)
-        avg = self.conv_avg(avg)
-        avg_up = F.interpolate(avg, size=feat_sp.size()[2:], mode="bilinear", align_corners=True)
+        def forward(self, x):
+            return self.up(self.out(self.drop(self.conv(x))))
 
-        feat_cp = arm16_up + avg_up
-        feat_fuse = self.ffm(feat_sp, feat_cp)
+    class BiSeNet(nn.Module):
+        """BiSeNet với ResNet-18 backbone, 19 classes face parsing."""
+        NUM_CLASSES = 19
 
-        out = self.seg_head(feat_fuse)
-        out = F.interpolate(out, size=(h, w), mode="bilinear", align_corners=True)
-        return out
+        def __init__(self):
+            super().__init__()
+            resnet = models.resnet18(weights=None)
+            self.layer0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)
+            self.layer1 = resnet.layer1
+            self.layer2 = resnet.layer2
+            self.layer3 = resnet.layer3
+            self.layer4 = resnet.layer4
 
+            self.arm32 = AttentionRefinementModule(512, 128)
+            self.arm16 = AttentionRefinementModule(256, 128)
+            self.conv_head32 = ConvBNReLU(128, 128, 3, 1, 1)
+            self.conv_head16 = ConvBNReLU(128, 128, 3, 1, 1)
+            self.conv_avg = ConvBNReLU(512, 128, 1, 1, 0)
 
-class ConvBNReLU:
-    def __init__(self, in_ch, out_ch, kernel=3, stride=1, padding=1):
-        import torch.nn as nn
-        self.conv = nn.Conv2d(in_ch, out_ch, kernel, stride, padding, bias=False)
-        self.bn = nn.BatchNorm2d(out_ch)
-        self.relu = nn.ReLU(inplace=True)
-    def __call__(self, x):
-        return self.relu(self.bn(self.conv(x)))
-    def to(self, device):
-        self.conv = self.conv.to(device)
-        self.bn = self.bn.to(device)
-        return self
+            self.ffm = FeatureFusionModule(256, 256)
+            self.seg_head = SegmentationHead(256, self.NUM_CLASSES, up_factor=8)
+            self.aux_head16 = SegmentationHead(128, self.NUM_CLASSES, up_factor=16)
+            self.aux_head32 = SegmentationHead(128, self.NUM_CLASSES, up_factor=32)
 
+        def forward(self, x):
+            h, w = x.size()[2:]
+            feat0 = self.layer0(x)
+            feat_sp = self.layer1(feat0)
+            feat16 = self.layer2(feat_sp)
+            feat32 = self.layer3(feat16)
+            feat64 = self.layer4(feat32)
 
-class AttentionRefinementModule:
-    def __init__(self, in_ch, out_ch):
-        import torch.nn as nn
-        self.conv = ConvBNReLU(in_ch, out_ch, 3, 1, 1)
-        self.attention = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(out_ch, out_ch, 1, bias=False),
-            nn.BatchNorm2d(out_ch),
-            nn.Sigmoid(),
-        )
-    def __call__(self, x):
-        feat = self.conv(x)
-        att = self.attention(feat)
-        return feat * att
-    def to(self, device):
-        self.conv = self.conv.to(device)
-        self.attention = self.attention.to(device)
-        return self
+            arm32 = self.arm32(feat64)
+            arm32_up = F.interpolate(arm32, size=feat32.size()[2:], mode="bilinear", align_corners=True)
+            arm32_up = self.conv_head32(arm32_up)
 
+            arm16 = self.arm16(feat32)
+            arm16 = arm16 + arm32_up
+            arm16_up = F.interpolate(arm16, size=feat_sp.size()[2:], mode="bilinear", align_corners=True)
+            arm16_up = self.conv_head16(arm16_up)
 
-class FeatureFusionModule:
-    def __init__(self, in_ch, out_ch):
-        import torch.nn as nn
-        self.conv = ConvBNReLU(in_ch, out_ch, 1, 1, 0)
-        self.attention = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(out_ch, out_ch, 1, bias=False),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_ch, out_ch, 1, bias=False),
-            nn.Sigmoid(),
-        )
-    def __call__(self, fsp, fcp):
-        import torch
-        feat = torch.cat([fsp, fcp], dim=1)
-        feat = self.conv(feat)
-        att = self.attention(feat)
-        return feat + feat * att
-    def to(self, device):
-        self.conv = self.conv.to(device)
-        self.attention = self.attention.to(device)
-        return self
+            avg = F.adaptive_avg_pool2d(feat64, 1)
+            avg = self.conv_avg(avg)
+            avg_up = F.interpolate(avg, size=feat_sp.size()[2:], mode="bilinear", align_corners=True)
 
+            feat_cp = arm16_up + avg_up
+            feat_fuse = self.ffm(feat_sp, feat_cp)
 
-class SegmentationHead:
-    def __init__(self, in_ch, out_ch, up_factor=8):
-        import torch.nn as nn
-        self.conv = ConvBNReLU(in_ch, in_ch // 2, 3, 1, 1)
-        self.drop = nn.Dropout(0.1)
-        self.out = nn.Conv2d(in_ch // 2, out_ch, 1)
-        self.up = nn.Upsample(scale_factor=up_factor, mode="bilinear", align_corners=True)
-    def __call__(self, x):
-        return self.up(self.out(self.drop(self.conv(x))))
-    def to(self, device):
-        self.conv = self.conv.to(device)
-        self.drop = self.drop.to(device)
-        self.out = self.out.to(device)
-        self.up = self.up.to(device)
-        return self
+            out = self.seg_head(feat_fuse)
+            out = F.interpolate(out, size=(h, w), mode="bilinear", align_corners=True)
+            return out
+
+    return BiSeNet()
 
 
 # ------------------------------------------------------------------
@@ -194,10 +192,11 @@ class FaceParsingProcessor:
             return
 
         try:
-            self.net = BiSeNet()
+            self.net = _build_bisenet()
             state = torch.load(weights_path, map_location=device, weights_only=False)
             self.net.load_state_dict(state)
             self.net.to(device)
+            self.net.eval()  # tắt BatchNorm/Dropout training-mode khi suy luận
             self.available = True
             print(f"[FaceParsing] Loaded.")
         except Exception as e:
