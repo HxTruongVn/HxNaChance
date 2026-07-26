@@ -20,9 +20,13 @@ Hệ thống xử lý ảnh thẻ chuyên nghiệp với pipeline **Deep Learnin
 
 ```bash
 python debug.py
+# hoặc: python runtime_manager.py
 ```
 
 Script này kiểm tra tất cả dependencies và weights, báo ✓/✗ rõ ràng.
+`main.py` cũng tự chạy bước này mỗi lần khởi động, trước khi mở UI.
+Xem chi tiết kiến trúc (RuntimeManager → Engine → UI) tại
+[ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ### Bước 1: Cài dependencies
 

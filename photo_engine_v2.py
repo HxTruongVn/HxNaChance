@@ -6,12 +6,15 @@ Không import nặng ở top-level. Chỉ load model khi cần.
 import os
 import math
 import numpy as np
-from typing import Tuple, Optional, List, Dict
+from typing import Tuple, Optional, List, Dict, TYPE_CHECKING
 from dataclasses import dataclass
 from pathlib import Path
 
 # Chỉ import nhẹ ở top-level
 import cv2
+
+if TYPE_CHECKING:
+    from runtime_manager import RuntimeReport
 
 # ------------------------------------------------------------------
 # 0. UTILS
@@ -707,13 +710,22 @@ SPEC_PRESETS = {
 class PhotoMasterEngineV2:
     """Engine chính — lazy load model, graceful fallback."""
 
-    def __init__(self, weights_dir: str = "weights"):
-        self.device = "cpu"
-        try:
-            import torch
-            self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        except ImportError:
-            pass
+    def __init__(self, weights_dir: str = "weights", runtime_report: "Optional[RuntimeReport]" = None):
+        self.runtime_report = runtime_report
+
+        if runtime_report is not None:
+            # Device đã được RuntimeManager xác định 1 lần lúc khởi động —
+            # Engine không tự dò lại nữa.
+            self.device = runtime_report.device
+        else:
+            # Dùng độc lập (vd. test, script) không qua RuntimeManager:
+            # vẫn tự dò như trước để không phá vỡ tương thích ngược.
+            self.device = "cpu"
+            try:
+                import torch
+                self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            except ImportError:
+                pass
 
         print(f"[EngineV2] Device: {self.device}")
         wdir = Path(weights_dir)
@@ -727,7 +739,9 @@ class PhotoMasterEngineV2:
         self.bg_processor = BackgroundProcessor(model_name="isnet-general-use")
         self.transformer = PhotoTransformer()
 
-        # Báo cáo trạng thái
+        # Báo cáo trạng thái (mỗi processor tự xác nhận .available sau khi
+        # thử load thật — đây là nguồn sự thật để process() quyết định bật/tắt
+        # từng bước; RuntimeReport ở trên chỉ là dự đoán trước khi load).
         print(f"[EngineV2] FaceParser: {'✓' if self.face_parser.available else '✗'}")
         print(f"[EngineV2] CodeFormer: {'✓' if self.codeformer.available else '✗'}")
         print(f"[EngineV2] RealESRGAN: {'✓' if self.upscaler.available else '✗'}")

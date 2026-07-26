@@ -2,84 +2,42 @@
 """
 Debug script — kiểm tra môi trường trước khi chạy main.py
 Chạy: python debug.py
+
+File này giờ chỉ là một lớp vỏ mỏng gọi RuntimeManager — cùng logic
+dò môi trường mà main.py dùng khi khởi động thật, nên kết quả ở đây
+luôn khớp với những gì app sẽ thấy lúc chạy (trước kia debug.py có
+logic dò riêng, dễ lệch với engine thực tế theo thời gian).
 """
 
 import sys
 import os
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    from runtime_manager import RuntimeManager
+except Exception as e:
+    print("LỖI: không import được runtime_manager.py")
+    print(f"  {e}")
+    sys.exit(1)
+
 print("=" * 60)
 print("Photo Master Pro v2 — Environment Check")
 print("=" * 60)
 
-# Python version
-print(f"\n🐍 Python: {sys.version}")
+manager = RuntimeManager(weights_dir="weights")
+manager.ensure_weights_dir()
+report = manager.detect()
 
-# Check core deps
-deps = [
-    ("numpy", "numpy"),
-    ("cv2 (opencv-python)", "cv2"),
-    ("PIL (Pillow)", "PIL"),
-    ("customtkinter", "customtkinter"),
-    ("mediapipe", "mediapipe"),
-    ("rembg", "rembg"),
-    ("torch", "torch"),
-    ("torchvision", "torchvision"),
-]
-
-print("\n📦 Core Dependencies:")
-for name, module in deps:
-    try:
-        __import__(module)
-        print(f"  ✓ {name}")
-    except ImportError:
-        print(f"  ✗ {name} — CHƯA CÀI")
-
-# Check optional AI deps
-print("\n🤖 AI Dependencies:")
-ai_deps = [
-    ("codeformer", "codeformer"),
-    ("realesrgan", "realesrgan"),
-    ("facexlib", "facexlib"),
-    ("basicsr", "basicsr"),
-]
-for name, module in ai_deps:
-    try:
-        __import__(module)
-        print(f"  ✓ {name}")
-    except ImportError:
-        print(f"  ✗ {name} — chưa cài (có thể chạy Lite Mode)")
-
-# Check weights
-print("\n📁 Weights (./weights/):")
-wdir = os.path.join(os.path.dirname(__file__), "weights")
-if not os.path.exists(wdir):
-    print(f"  ✗ Thư mục weights/ không tồn tại")
-else:
-    weights = {
-        "codeformer.pth": "CodeFormer",
-        "RealESRGAN_x2plus.pth": "Real-ESRGAN",
-        "79999_iter.pth": "BiSeNet Face Parsing",
-        "isnet-general-use.onnx": "rembg isnet",
-    }
-    for fname, desc in weights.items():
-        fpath = os.path.join(wdir, fname)
-        if os.path.exists(fpath):
-            size_mb = os.path.getsize(fpath) / 1024 / 1024
-            print(f"  ✓ {fname} ({size_mb:.1f} MB) — {desc}")
-        else:
-            print(f"  ✗ {fname} — THIẾU — {desc}")
-
-# Check GPU
-print("\n🎮 GPU:")
-try:
-    import torch
-    if torch.cuda.is_available():
-        print(f"  ✓ CUDA available: {torch.cuda.get_device_name(0)}")
-    else:
-        print(f"  ✗ CUDA không available — sẽ chạy CPU")
-except:
-    print(f"  ✗ torch chưa cài — không kiểm tra được GPU")
+print(report.summary_text())
 
 print("\n" + "=" * 60)
-print("Nếu thấy ✗ ở mục nào, hãy cài đặt/cập nhật trước khi chạy main.py")
+if not report.can_run_lite:
+    print("Thiếu package bắt buộc — cài: pip install -r requirements.txt")
+elif not report.can_run_full_ai:
+    print("Chạy được ở Lite Mode. Để bật Full AI, tải model qua:")
+    print("  python setup_models.py")
+    print("  hoặc: python download_weights_hf.py")
+else:
+    print("Sẵn sàng chạy Full AI — chạy: python main.py")
 print("=" * 60)

@@ -36,7 +36,7 @@ class PhotoMasterApp(ctk.CTk):
         'success': '#238636', 'warning': '#d29922', 'danger': '#da3633', 'info': '#1f6feb'
     }
 
-    def __init__(self):
+    def __init__(self, runtime_report=None):
         super().__init__()
         self.title("PHOTO MASTER PRO v2 — AI Edition")
         self.overrideredirect(True)
@@ -51,10 +51,13 @@ class PhotoMasterApp(ctk.CTk):
         self.last_results = []
         self.last_layout = None
         self.preview_window = None
+        # runtime_report: do main.py dò 1 lần qua RuntimeManager rồi truyền
+        # xuống — None nếu app được chạy độc lập (không qua main.py).
+        self.runtime_report = runtime_report
         # Khởi tạo engine với bắt lỗi — UI vẫn mở được dù engine lỗi
         self.engine = None
         try:
-            self.engine = PhotoMasterEngineV2(weights_dir="weights")
+            self.engine = PhotoMasterEngineV2(weights_dir="weights", runtime_report=runtime_report)
         except Exception as e:
             import traceback
             print("=" * 60)
@@ -974,7 +977,12 @@ class PhotoMasterApp(ctk.CTk):
 
 
 if __name__ == "__main__":
+    # Chạy trực tiếp file này (không qua main.py) vẫn hoạt động — tự dò
+    # môi trường qua RuntimeManager trước khi mở UI. Cách chạy khuyến nghị
+    # vẫn là `python main.py` vì nó in báo cáo môi trường ra console trước.
+    from runtime_manager import RuntimeManager
+    _report = RuntimeManager(weights_dir="weights").detect()
     ctk.set_appearance_mode("dark")
     ctk.set_default_color_theme("dark-blue")
-    app = PhotoMasterApp()
+    app = PhotoMasterApp(runtime_report=_report)
     app.mainloop()

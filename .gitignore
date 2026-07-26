@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+weights/
+.photo_master_pro_v2_ai.json
