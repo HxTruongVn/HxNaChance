@@ -26,6 +26,16 @@ def _ensure_rgb(image_bgr: np.ndarray) -> np.ndarray:
     return image_bgr
 
 
+def _imread_unicode(path: str) -> np.ndarray:
+    """Đọc ảnh an toàn với đường dẫn Unicode (dấu tiếng Việt, khoảng trắng)."""
+    try:
+        buf = np.fromfile(path, dtype=np.uint8)
+        img = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+        return img
+    except Exception:
+        return None
+
+
 # ------------------------------------------------------------------
 # 1. BISENET FACE PARSING (self-contained, lazy torch import)
 # ------------------------------------------------------------------
@@ -841,9 +851,9 @@ class PhotoMasterEngineV2:
             'validation_errors': [], 'quality_report': {}, 'save_path': None
         }
 
-        image = cv2.imread(image_path)
+        image = _imread_unicode(image_path)
         if image is None:
-            result['validation_errors'].append("Không đọc được ảnh")
+            result['validation_errors'].append("Không đọc được ảnh (kiểm tra đường dẫn hoặc tên file có dấu)")
             return result
 
         image = _ensure_rgb(image)
