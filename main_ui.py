@@ -28,6 +28,37 @@ from print_layout import (
 )
 
 
+def _imwrite_unicode(path: str, image: np.ndarray, params=None) -> bool:
+    """Ghi ảnh an toàn với đường dẫn Unicode (dấu tiếng Việt, khoảng trắng)."""
+    try:
+        ext = os.path.splitext(path)[1].lower()
+        if ext in ('.jpg', '.jpeg'):
+            flag, buf = cv2.imencode('.jpg', image, params or [])
+        elif ext == '.png':
+            flag, buf = cv2.imencode('.png', image, params or [])
+        else:
+            flag, buf = cv2.imencode('.jpg', image, params or [])
+        if flag:
+            buf.tofile(path)
+            return True
+        return False
+    except Exception:
+        return False
+
+
+def _open_folder(path: str):
+    """Mở thư mục trong File Explorer / Finder."""
+    try:
+        if platform.system() == "Windows":
+            os.startfile(path)
+        elif platform.system() == "Darwin":
+            subprocess.Popen(["open", path])
+        else:
+            subprocess.Popen(["xdg-open", path])
+    except Exception:
+        pass
+
+
 class PhotoMasterApp(ctk.CTk):
     COLORS = {
         'bg_dark': '#0d1117', 'bg_card': '#161b22', 'bg_hover': '#21262d',
@@ -679,9 +710,11 @@ class PhotoMasterApp(ctk.CTk):
                             filename = f"{now.day:02d}-{now.hour}h{now.minute}m{now.second}s-{base_name}.jpg"
                             save_path = os.path.join(folder, filename)
 
-                            cv2.imwrite(save_path, result['image'], [cv2.IMWRITE_JPEG_QUALITY, quality])
-                            result['save_path'] = save_path
-                            self.last_results.append(result['image'])
+                            if _imwrite_unicode(save_path, result['image'], [cv2.IMWRITE_JPEG_QUALITY, quality]):
+                                result['save_path'] = save_path
+                                self.last_results.append(result['image'])
+                            else:
+                                result['validation_errors'].append(f"Không lưu được ảnh: {save_path}")
 
                         results.append((path, result))
                     except Exception as e:
@@ -703,6 +736,30 @@ class PhotoMasterApp(ctk.CTk):
         else:
             self.status.configure(text=f"✓ {success} | ✗ {failed}", text_color=self.COLORS['warning'])
 
+        # Thu thập chi tiết lỗi & đường dẫn đã lưu
+        error_details = []
+        saved_paths = []
+        for path, r in results:
+            if not r.get('success'):
+                errs = r.get('validation_errors', [])
+                err_msg = "; ".join(errs) if errs else "Lỗi không xác định"
+                fname = os.path.basename(path) if path else "?"
+                error_details.append(f"• {fname}: {err_msg}")
+            elif r.get('save_path'):
+                saved_paths.append(r['save_path'])
+
+        if error_details:
+            msg = "Một số ảnh xử lý thất bại:\n\n" + "\n".join(error_details[:5])
+            if len(error_details) > 5:
+                msg += f"\n...và {len(error_details)-5} ảnh khác."
+            messagebox.showerror("Lỗi xử lý", msg)
+
+        if saved_paths:
+            folder = os.path.dirname(saved_paths[-1])
+            msg = f"Đã lưu {len(saved_paths)} ảnh vào:\n{folder}"
+            if messagebox.askyesno("Hoàn thành", msg + "\n\nBạn có muốn mở thư mục không?"):
+                _open_folder(folder)
+
         if self.chk_preview.get() and self.last_results:
             self.last_result = self.last_results[-1]
             self.btn_preview.pack(pady=5, padx=10, fill="x")
@@ -720,7 +777,7 @@ class PhotoMasterApp(ctk.CTk):
         # FIX: Luôn lưu ảnh mới nhất vào temp, không giữ ảnh cũ vô hạn
         now = datetime.now()
         tmp = os.path.join(tempfile.gettempdir(), f"pmp_layout_src_{now.timestamp()}.png")
-        cv2.imwrite(tmp, self.last_result)
+        _imwrite_unicode(tmp, self.last_result)
         self.layout_src_path = tmp
         self.lbl_layout_src.configure(text=f"Ảnh đã xử lý: {os.path.basename(tmp)}")
 
