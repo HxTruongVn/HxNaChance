@@ -10,8 +10,8 @@ Hướng dẫn cấu trúc thư mục, module organization để maintain consis
 photo-master-pro/
 │
 ├── main.py                       # Entry point (1-2 imports, call main function)
-├── main_ui_v2.py                 # UI application class
-├── photo_engine_v2.py            # Core processing engine & classes
+├── main_ui.py                 # UI application class
+├── photo_engine.py            # Core processing engine & classes
 ├── runtime_manager.py            # Runtime detection & setup
 ├── print_layout.py               # Layout rendering
 │
@@ -285,8 +285,8 @@ from photo_engine.utils import PhotoSpec
 
 ```
 main.py
-├── main_ui_v2.py (PhotoMasterApp)
-│   └── photo_engine_v2.py (PhotoMasterEngineV2)
+├── main_ui.py (PhotoMasterApp)
+│   └── photo_engine.py (PhotoMasterEngineV2)
 │       ├── runtime_manager.py (RuntimeManager)
 │       └── print_layout.py (LayoutSimulator, LayoutRenderer)
 ├── runtime_manager.py
