@@ -2,6 +2,37 @@
 
 Hệ thống xử lý ảnh thẻ chuyên nghiệp với pipeline **Deep Learning** hoàn chỉnh.
 
+## 📌 Hệ thống này dùng để làm gì?
+
+**Photo Master Pro** là ứng dụng desktop (Windows) dành cho **tiệm ảnh /
+studio chụp ảnh thẻ**, tự động hoá toàn bộ quy trình từ ảnh chân dung gốc
+đến file ảnh thẻ đạt chuẩn, sẵn sàng in:
+
+1. **Nhận ảnh gốc** (ảnh chụp khách hàng, có thể hơi mờ/thiếu sáng/lệch góc)
+2. **Xử lý AI**: phục hồi/làm nét khuôn mặt, làm mịn da, sáng mắt, trắng
+   răng — chỉ đúng vùng cần, không làm hỏng các chi tiết khác
+3. **Căn chỉnh theo chuẩn ảnh thẻ**: tự nhận diện mắt/mũi/cằm, xoay và
+   scale ảnh cho đúng tỷ lệ đầu/mắt theo từng loại giấy tờ (CMND, hộ
+   chiếu, visa từng nước...)
+4. **Tách nền & đổi nền màu** theo yêu cầu (trắng/xanh/đỏ/tuỳ chỉnh)
+5. **Kiểm tra chuẩn tự động**: báo lỗi nếu đầu quá to/nhỏ, mắt nhắm, ảnh
+   nghiêng, mắt quá gần nhau... trước khi giao cho khách
+6. **Xếp ảnh vào khổ in** (4x6, 3x4, 2x3...) theo nhiều công thức bố cục,
+   tối ưu số lượng ảnh trên một tờ giấy in
+
+**Đối tượng dùng:** nhân viên/chủ tiệm ảnh cần xử lý hàng loạt ảnh thẻ
+nhanh, không cần biết Photoshop; cũng có thể chạy như một pipeline độc
+lập (không cần Photoshop) trên máy có hoặc không có GPU.
+
+**Input:** ảnh chân dung (jpg/png/bmp/tiff), một ảnh hoặc cả thư mục.
+**Output:** ảnh thẻ đã xử lý (đúng kích thước/DPI theo chuẩn đã chọn) +
+tuỳ chọn file khổ in đã xếp sẵn nhiều ảnh, sẵn sàng gửi máy in.
+
+App có thể chạy ở 2 chế độ tuỳ máy có đủ tài nguyên/model hay không —
+xem [⚡ Chạy KHÔNG cần weights (Lite Mode)](#-chạy-không-cần-weights-lite-mode)
+bên dưới. Kiến trúc nội bộ (RuntimeManager → Engine → UI) được mô tả
+chi tiết tại [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 ## 🆕 So với bản cũ
 
 | Chức năng cũ | Thay thế bằng | Lý do |
@@ -164,3 +195,13 @@ pip install opencv-contrib-python
 - Real-ESRGAN weights: BSD-3
 - BiSeNet weights: Academic/Research
 - isnet weights: MIT (rembg)
+
+> ⚠️ **Lưu ý khi dùng thương mại:** BiSeNet weights (`79999_iter.pth`,
+> dùng cho làm mịn da/sáng mắt/trắng răng) đang ở diện cấp phép
+> **Academic/Research** — không rõ ràng được phép dùng cho mục đích
+> kinh doanh (thu tiền dịch vụ chụp ảnh thẻ). Nếu dùng app này để kinh
+> doanh, nên kiểm tra kỹ nguồn gốc chính xác của file weights đang
+> dùng, hoặc cân nhắc thay bằng model face-parsing khác có license
+> thương mại rõ ràng hơn. Việc này không ảnh hưởng các tính năng khác
+> (face align, tách nền, restore, upscale) — chỉ riêng 3 tính năng
+> dùng face-parsing mask.
