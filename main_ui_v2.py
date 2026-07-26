@@ -85,7 +85,11 @@ class PhotoMasterApp(ctk.CTk):
     def _on_close(self):
         try:
             self._save_config()
-            self.engine.release()
+        except Exception:
+            pass
+        try:
+            if self.engine is not None:
+                self.engine.release()
         except Exception:
             pass
         self.destroy()
@@ -944,15 +948,19 @@ class PhotoMasterApp(ctk.CTk):
                         "count": int(v["count"].get()) if v["chk"].get() else 0,
                         "formula": self.entry_custom_formula.get() if key == "custom" else LAYOUT_PRESETS[key]["formula"]
                     }
+            def _entry_value(key):
+                var = getattr(self, "layout_cfg_vars", {}).get(key)
+                return var.get() if var is not None else None
+
             lc = {
-                "vungInW": self._safe_float(getattr(self, "layout_cfg_vars", {}).get("vungInW", {}).get(), 15.0),
-                "vungInH": self._safe_float(getattr(self, "layout_cfg_vars", {}).get("vungInH", {}).get(), 10.0),
-                "marginLeft": self._safe_float(getattr(self, "layout_cfg_vars", {}).get("marginLeft", {}).get(), 0.5),
-                "marginRight": self._safe_float(getattr(self, "layout_cfg_vars", {}).get("marginRight", {}).get(), 0.5),
-                "marginTop": self._safe_float(getattr(self, "layout_cfg_vars", {}).get("marginTop", {}).get(), 0.5),
-                "marginBottom": self._safe_float(getattr(self, "layout_cfg_vars", {}).get("marginBottom", {}).get(), 0.5),
-                "gapY": self._safe_float(getattr(self, "layout_cfg_vars", {}).get("gapY", {}).get(), 0.3),
-                "res": self._safe_int(getattr(self, "layout_cfg_vars", {}).get("res", {}).get(), 300),
+                "vungInW": self._safe_float(_entry_value("vungInW"), 15.0),
+                "vungInH": self._safe_float(_entry_value("vungInH"), 10.0),
+                "marginLeft": self._safe_float(_entry_value("marginLeft"), 0.5),
+                "marginRight": self._safe_float(_entry_value("marginRight"), 0.5),
+                "marginTop": self._safe_float(_entry_value("marginTop"), 0.5),
+                "marginBottom": self._safe_float(_entry_value("marginBottom"), 0.5),
+                "gapY": self._safe_float(_entry_value("gapY"), 0.3),
+                "res": self._safe_int(_entry_value("res"), 300),
                 "cafMode": {"Fit": 0, "Square": 1, "Hybrid": 2, "Extract": 3}.get(getattr(self, "caf_mode", None).get(), 0) if hasattr(self, "caf_mode") else 0,
                 "chkStroke": getattr(self, "chk_layout_stroke", None).get() if hasattr(self, "chk_layout_stroke") else False,
                 "strokeW": self._safe_float(getattr(self, "entry_stroke_w", None).get(), 2.0) if hasattr(self, "entry_stroke_w") else 2.0,

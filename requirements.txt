@@ -1,7 +1,9 @@
 # Core
 torch>=2.0.0
 torchvision>=0.15.0
-opencv-python>=4.8.0
+# opencv-contrib-python includes everything in opencv-python (core) plus
+# extra modules like ximgproc (used for guided filter). Installing both
+# packages together can conflict since they provide the same cv2 module.
 opencv-contrib-python>=4.8.0
 Pillow>=10.0.0
 numpy>=1.24.0
