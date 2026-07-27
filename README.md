@@ -81,6 +81,28 @@ Tải xong đặt vào thư mục `weights/`.
 python main.py
 ```
 
+## 🌐 Chạy dưới dạng API (tuỳ chọn)
+
+Ngoài desktop app, engine còn dùng được qua REST API — cùng pipeline,
+cùng cơ chế tự thử lại (agent Cấp 1, xem `photo_agent.py`), khác mỗi
+lớp giao diện.
+
+```bash
+pip install -r api/requirements.txt
+uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+- `GET /health` — trạng thái model/GPU/tính năng khả dụng
+- `POST /process` — upload ảnh, trả PNG hoặc JSON base64
+
+Chạy bằng Docker (build từ thư mục gốc repo):
+```bash
+docker build -f api/Dockerfile -t photo-master-api .
+docker run --gpus all -p 8000:8000 -v $(pwd)/weights:/app/weights photo-master-api
+```
+
+Test nhanh: `python api/test_api.py` (server phải đang chạy).
+
 ## ⚡ Chạy KHÔNG cần weights (Lite Mode)
 
 Nếu bạn không muốn tải ~680MB weights, engine vẫn chạy được — các chức năng AI tự động tắt, chỉ giữ lại:
