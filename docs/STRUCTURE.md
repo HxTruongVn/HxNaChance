@@ -19,10 +19,7 @@ photo-master-pro/
 │
 ├── debug.py                      # Debug utilities
 ├── requirements.txt              # Dependencies (core)
-├── requirements-core.txt         # Dependencies (không gồm torch/AI packages)
-├── requirements-torch-cpu.txt    # torch CPU-only (dùng với --cpu-only)
-├── requirements-ai.txt           # facexlib/CodeFormer/Real-ESRGAN
-├── requirements-full.txt         # Gộp core + torch-cpu + ai
+├── requirements-cpu.txt           # torch CPU-only, dùng với --cpu-only (cài TRƯỚC requirements.txt)
 │
 ├── README.md                     # Usage guide (giữ ở root - GitHub render làm trang chủ repo)
 └── docs/                         # Tài liệu nội bộ — xem docs/STRUCTURE.md (file này)

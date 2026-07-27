@@ -1,7 +1,7 @@
 # Ép cài đúng bản torch CPU-only từ index chính thức của PyTorch — tránh
 # máy không có GPU vẫn tải nhầm wheel bundle CUDA runtime (nặng hơn nhiều,
-# không cần thiết nếu chỉ chạy CPU). Nếu máy CÓ GPU và muốn dùng CUDA,
-# dùng requirements.txt (mặc định) thay vì file này.
+# không cần thiết nếu chỉ chạy CPU). Dùng qua: python setup_models.py --cpu-only
+# Nếu máy CÓ GPU và muốn dùng CUDA, không cần file này (dùng requirements.txt mặc định).
 --index-url https://download.pytorch.org/whl/cpu
 torch>=2.0.0
 torchvision>=0.15.0

@@ -112,24 +112,31 @@ def run_cmd(cmd, desc=""):
 
 
 def install_requirements(cpu_only: bool = False):
-    """Mặc định dùng requirements.txt (torch lấy theo index mặc định —
-    nếu máy có GPU + đã cài CUDA driver, pip có thể ưu tiên bản có CUDA).
+    """Mặc định: chỉ cài requirements.txt (torch lấy theo index mặc định
+    của pip — nếu máy có GPU + đã cài CUDA driver, có thể ưu tiên bản
+    có CUDA tuỳ cấu hình pip).
 
-    Với --cpu-only: dùng requirements-full.txt (gộp requirements-core.txt
-    + requirements-torch-cpu.txt + requirements-ai.txt) — ép cài đúng bản
-    torch CPU-only từ index chính thức, tránh máy yếu/không GPU tải nhầm
-    wheel bundle CUDA runtime (nặng hơn nhiều, không cần thiết)."""
-    if cpu_only:
-        req_file = PROJECT_ROOT / "requirements-full.txt"
-        if not req_file.exists():
-            print("Không thấy requirements-full.txt, dùng requirements.txt thường.")
-            req_file = PROJECT_ROOT / "requirements.txt"
-    else:
-        req_file = PROJECT_ROOT / "requirements.txt"
-
+    Với --cpu-only: cài requirements-cpu.txt TRƯỚC (ép version cụ thể +
+    --index-url CPU-only cho torch/torchvision), rồi mới cài
+    requirements.txt SAU. pip sẽ thấy torch/torchvision đã thoả điều
+    kiện version trong requirements.txt và TỰ BỎ QUA — không tải lại
+    (đã kiểm chứng: 'Requirement already satisfied' khi version đã đủ).
+    Nhờ vậy không cần duy trì 1 file '-full' liệt kê lại core+ai lần
+    2 chỉ để thêm dòng torch CPU vào trước — tránh lặp danh sách package
+    ở 2 nơi như trước đây."""
+    req_file = PROJECT_ROOT / "requirements.txt"
     if not req_file.exists():
         print(f"Không thấy {req_file.name}, bỏ qua bước này.")
         return
+
+    if cpu_only:
+        cpu_file = PROJECT_ROOT / "requirements-cpu.txt"
+        if cpu_file.exists():
+            run_cmd(f'"{sys.executable}" -m pip install -r "{cpu_file}"',
+                    "Đang cài torch CPU-only (requirements-cpu.txt)...")
+        else:
+            print("Không thấy requirements-cpu.txt, bỏ qua ép CPU-only.")
+
     run_cmd(f'"{sys.executable}" -m pip install -r "{req_file}"',
             f"Đang cài {req_file.name}...")
     _ensure_numpy_below_2()
