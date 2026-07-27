@@ -1,5 +1,5 @@
 """
-Photo Master Pro v2 - Print Layout Engine
+Photo Master Pro- Print Layout Engine
 Dựa trên logic xếp ảnh thẻ của xepanhthe_standalone.py
 Công thức layout: parser + simulator + renderer
 """

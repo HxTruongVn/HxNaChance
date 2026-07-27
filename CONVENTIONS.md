@@ -22,8 +22,8 @@ Hướng dẫn chuẩn hóa tên file, hàm, biến, class trong repo Photo Mast
 ### Ví dụ hiện tại (✓ đúng)
 ```
 main.py                          # Entry point
-main_ui_v2.py                    # UI, version 2
-photo_engine_v2.py               # Processing engine, version 2
+main_ui.py                       # UI, version 2
+photo_engine.py                  # Processing engine, version 2
 runtime_manager.py               # Runtime detection & management
 setup_models.py                  # Model downloading & setup
 download_weights_hf.py           # Weights download from Hugging Face
@@ -60,7 +60,7 @@ class FaceParsingProcessor:     # Xử lý face parsing
 class CodeFormerRestorer:       # Phục hồi khuôn mặt
 class RealESRGANUpscaler:       # Upscale ảnh
 class BackgroundProcessor:      # Xử lý nền
-class PhotoMasterEngineV2:      # Engine chính, v2
+class PhotoMasterEngine:      # Engine chính, v2
 class PhotoMasterApp:           # Ứng dụng UI chính
 class PhotoSpec:                # Spec/config cho ảnh
 class FaceAnalyzer:             # Phân tích khuôn mặt
@@ -245,7 +245,7 @@ UPPER_CASE_WITH_UNDERSCORES
 
 ### Ví dụ
 ```python
-# In photo_engine_v2.py
+# In photo_engine.py
 NUM_FACE_PARSING_CLASSES = 19
 DEFAULT_FACE_SIZE = 512
 GUIDE_FILTER_RADIUS = 21
@@ -374,8 +374,8 @@ photo-master-pro/
 ```
 .
 ├── main.py
-├── main_ui_v2.py
-├── photo_engine_v2.py
+├── main_ui.py
+├── photo_engine.py
 ├── runtime_manager.py
 ├── print_layout.py
 └── [setup & download scripts]
