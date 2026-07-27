@@ -18,13 +18,18 @@ photo-master-pro/
 ├── setup_models.py               # File cài đặt DUY NHẤT: venv + pip install + tải weights
 │
 ├── debug.py                      # Debug utilities
-├── requirements.txt              # Dependencies
+├── requirements.txt              # Dependencies (core)
+├── requirements-core.txt         # Dependencies (không gồm torch/AI packages)
+├── requirements-torch-cpu.txt    # torch CPU-only (dùng với --cpu-only)
+├── requirements-ai.txt           # facexlib/CodeFormer/Real-ESRGAN
+├── requirements-full.txt         # Gộp core + torch-cpu + ai
 │
-├── ARCHITECTURE.md               # System design
-├── README.md                     # Usage guide
-├── CONVENTIONS.md                # ✨ NEW: Naming conventions
-├── CODE_REVIEW_CHECKLIST.md      # ✨ NEW: Review guidelines
-└── STRUCTURE.md                  # ✨ NEW: This file
+├── README.md                     # Usage guide (giữ ở root - GitHub render làm trang chủ repo)
+└── docs/                         # Tài liệu nội bộ — xem docs/STRUCTURE.md (file này)
+    ├── ARCHITECTURE.md           # System design
+    ├── CONVENTIONS.md            # Naming conventions
+    ├── CODE_REVIEW_CHECKLIST.md  # Review guidelines
+    └── STRUCTURE.md              # File này
 ```
 
 ---

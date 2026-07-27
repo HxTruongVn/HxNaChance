@@ -12,7 +12,7 @@ Describe the changes and the motivation for this PR.
 
 ## ✅ Checklist
 
-- [ ] Follows naming conventions (see [CONVENTIONS.md](../CONVENTIONS.md))
+- [ ] Follows naming conventions (see [CONVENTIONS.md](../docs/CONVENTIONS.md))
 - [ ] Type hints added for new functions
 - [ ] Docstrings added for public API
 - [ ] No dead code or debug print statements

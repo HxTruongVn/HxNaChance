@@ -31,7 +31,7 @@ tuỳ chọn file khổ in đã xếp sẵn nhiều ảnh, sẵn sàng gửi má
 App có thể chạy ở 2 chế độ tuỳ máy có đủ tài nguyên/model hay không —
 xem [⚡ Chạy KHÔNG cần weights (Lite Mode)](#-chạy-không-cần-weights-lite-mode)
 bên dưới. Kiến trúc nội bộ (RuntimeManager → Engine → UI) được mô tả
-chi tiết tại [ARCHITECTURE.md](./ARCHITECTURE.md).
+chi tiết tại [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 ## 🚀 Cài đặt nhanh
 
@@ -45,7 +45,7 @@ python debug.py
 Script này kiểm tra tất cả dependencies và weights, báo ✓/✗ rõ ràng.
 `main.py` cũng tự chạy bước này mỗi lần khởi động, trước khi mở UI.
 Xem chi tiết kiến trúc (RuntimeManager → Engine → UI) tại
-[ARCHITECTURE.md](./ARCHITECTURE.md).
+[ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 ### Bước 1: Cài đặt + tải weights
 
