@@ -23,8 +23,8 @@ import sys
 import subprocess
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).parent
-VENV_DIR = PROJECT_ROOT / ".venv"
+from venv_bootstrap import PROJECT_ROOT, VENV_DIR, in_venv, ensure_venv_and_reexec
+
 WEIGHTS_DIR = PROJECT_ROOT / "weights"
 WEIGHTS_DIR.mkdir(exist_ok=True)
 
@@ -53,52 +53,6 @@ MODELS = {
         "size_mb": 180,
     },
 }
-
-
-# ------------------------------------------------------------------
-# VIRTUALENV
-# ------------------------------------------------------------------
-
-def _in_venv() -> bool:
-    return sys.prefix != getattr(sys, "base_prefix", sys.prefix)
-
-
-def _venv_python() -> Path:
-    if os.name == "nt":
-        return VENV_DIR / "Scripts" / "python.exe"
-    return VENV_DIR / "bin" / "python"
-
-
-def ensure_venv_and_reexec():
-    """Nếu CHƯA chạy trong virtualenv: tự tạo .venv/ rồi chạy lại đúng
-    script này bằng python bên trong .venv đó (os.execv thay thế hẳn
-    tiến trình hiện tại, không phải subprocess con).
-
-    Lý do cần bước này: cài thẳng vào Python hệ thống dễ gặp lỗi quyền
-    (Linux/macOS không có sudo) hoặc — trên máy có nhiều bản Python —
-    cài nhầm vào Python khác với Python sẽ chạy main.py sau này.
-    """
-    if _in_venv():
-        return
-
-    if not VENV_DIR.exists():
-        print(f"Chưa có virtualenv - tạo mới tại {VENV_DIR} ...")
-        result = subprocess.run([sys.executable, "-m", "venv", str(VENV_DIR)])
-        if result.returncode != 0:
-            print("Không tạo được virtualenv - tiếp tục cài vào Python hiện tại.")
-            return
-
-    venv_py = _venv_python()
-    if not venv_py.exists():
-        print("Không tìm thấy python trong virtualenv vừa tạo - tiếp tục cài vào Python hiện tại.")
-        return
-
-    print(f"Chạy lại setup bằng virtualenv: {venv_py}")
-    if os.name == "nt":
-        print(f"   (lần sau nhớ activate: {VENV_DIR}\\Scripts\\activate)")
-    else:
-        print(f"   (lần sau nhớ activate: source {VENV_DIR}/bin/activate)")
-    os.execv(str(venv_py), [str(venv_py), str(Path(__file__).resolve()), *sys.argv[1:]])
 
 
 # ------------------------------------------------------------------
@@ -358,7 +312,7 @@ def setup_weights(cpu_only: bool = False):
     print("Photo Master Pro v2 - Model Setup")
     print("=" * 60)
     print(f"Python đang dùng: {sys.executable}")
-    print(f"Trong virtualenv: {'Có' if _in_venv() else 'Không'}")
+    print(f"Trong virtualenv: {'Có' if in_venv() else 'Không'}")
     if cpu_only:
         print("Chế độ: CPU-only (torch tải từ index CPU chính thức)")
     elif platform.system() == "Windows":
@@ -382,7 +336,7 @@ def setup_weights(cpu_only: bool = False):
         print(f"⚠ Setup xong nhưng còn {len(failed)} weight chưa tải được — xem link thủ công ở trên.")
     else:
         print("Setup hoàn tất! Chạy: python main.py")
-    if _in_venv():
+    if in_venv():
         print(f"   (nhớ activate virtualenv trước mỗi lần chạy: {VENV_DIR})")
     print("=" * 60)
     if failed:
@@ -395,5 +349,5 @@ if __name__ == "__main__":
                          help="Cài bản torch CPU-only (dùng cho máy yếu / không có GPU)")
     args, _unknown = parser.parse_known_args()
 
-    ensure_venv_and_reexec()
+    ensure_venv_and_reexec(__file__)
     setup_weights(cpu_only=args.cpu_only)

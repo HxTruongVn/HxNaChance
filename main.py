@@ -30,6 +30,14 @@ import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# FIX: main.py trước đây hoàn toàn không biết .venv/ tồn tại — nếu
+# người dùng chạy setup_models.py (tạo + cài vào .venv/) rồi sau đó
+# chạy `python main.py` mà quên activate, app chạy bằng Python hệ
+# thống, thiếu sạch package vừa cài. Tự chuyển vào .venv/ nếu đã có,
+# TRƯỚC khi import bất kỳ package nào cần cài (customtkinter, torch...).
+from venv_bootstrap import reexec_into_venv_if_exists
+reexec_into_venv_if_exists(__file__)
+
 try:
     from runtime_manager import RuntimeManager
 except Exception:

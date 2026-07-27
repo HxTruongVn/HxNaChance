@@ -214,6 +214,11 @@ class RuntimeManager:
 
 
 if __name__ == "__main__":
+    # Cùng lý do với main.py: tự chuyển vào .venv/ nếu đã có, tránh
+    # chạy nhầm bằng Python hệ thống khi người dùng quên activate.
+    from venv_bootstrap import reexec_into_venv_if_exists
+    reexec_into_venv_if_exists(__file__)
+
     report = RuntimeManager().detect()
     print("=" * 60)
     print("Photo Master Pro v2 — Runtime Report")
