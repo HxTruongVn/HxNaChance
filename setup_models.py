@@ -17,6 +17,8 @@ Chạy: python setup_models.py
 
 import argparse
 import os
+import platform
+import re
 import sys
 import subprocess
 from pathlib import Path
@@ -112,18 +114,24 @@ def run_cmd(cmd, desc=""):
 
 
 def install_requirements(cpu_only: bool = False):
-    """Mặc định: chỉ cài requirements.txt (torch lấy theo index mặc định
-    của pip — nếu máy có GPU + đã cài CUDA driver, có thể ưu tiên bản
-    có CUDA tuỳ cấu hình pip).
+    """Mặc định: chỉ cài requirements.txt — NHƯNG trên Windows/macOS, đây
+    là chỗ dễ gây hiểu lầm nhất của toàn bộ setup: PyPI (index mặc định
+    của pip) chỉ host bản torch CPU-only cho 2 platform này — bản có
+    CUDA CHỈ có trên index riêng của PyTorch (download.pytorch.org/whl/
+    cuXXX). Trên Linux thì PyPI mặc định đã là bản có CUDA nên không
+    sao — nhưng trên Windows, dù máy có GPU CUDA 12 thật, chạy đúng
+    `pip install -r requirements.txt` (không chỉ định index) VẪN cài
+    bản CPU-only, không phải do máy thiếu gì.
+
+    Nên: trên Windows/macOS, nếu KHÔNG chọn --cpu-only, tự dò GPU qua
+    nvidia-smi và cài đúng bản torch CUDA từ index PyTorch TRƯỚC khi cài
+    requirements.txt (torch trong requirements.txt đã thoả version nên
+    pip tự bỏ qua, không tải đè lại bằng bản CPU — đã kiểm chứng hành vi
+    này ở commit trước).
 
     Với --cpu-only: cài requirements-cpu.txt TRƯỚC (ép version cụ thể +
     --index-url CPU-only cho torch/torchvision), rồi mới cài
-    requirements.txt SAU. pip sẽ thấy torch/torchvision đã thoả điều
-    kiện version trong requirements.txt và TỰ BỎ QUA — không tải lại
-    (đã kiểm chứng: 'Requirement already satisfied' khi version đã đủ).
-    Nhờ vậy không cần duy trì 1 file '-full' liệt kê lại core+ai lần
-    2 chỉ để thêm dòng torch CPU vào trước — tránh lặp danh sách package
-    ở 2 nơi như trước đây."""
+    requirements.txt SAU."""
     req_file = PROJECT_ROOT / "requirements.txt"
     if not req_file.exists():
         print(f"Không thấy {req_file.name}, bỏ qua bước này.")
@@ -136,10 +144,69 @@ def install_requirements(cpu_only: bool = False):
                     "Đang cài torch CPU-only (requirements-cpu.txt)...")
         else:
             print("Không thấy requirements-cpu.txt, bỏ qua ép CPU-only.")
+    else:
+        _install_cuda_torch_if_windows_or_mac()
 
     run_cmd(f'"{sys.executable}" -m pip install -r "{req_file}"',
             f"Đang cài {req_file.name}...")
     _ensure_numpy_below_2()
+
+
+def _detect_nvidia_cuda_version() -> str:
+    """Chạy nvidia-smi, đọc dòng 'CUDA Version: XX.Y' — trả về chuỗi
+    version hoặc '' nếu không có GPU NVIDIA / không tìm thấy nvidia-smi."""
+    try:
+        out = subprocess.run(
+            ["nvidia-smi"], capture_output=True, text=True, timeout=10
+        )
+        if out.returncode != 0:
+            return ""
+        m = re.search(r"CUDA Version:\s*([\d.]+)", out.stdout)
+        return m.group(1) if m else ""
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return ""
+
+
+def _pick_torch_cuda_index(cuda_version: str) -> str:
+    """Map version CUDA driver báo cáo (VD: '12.4') sang tag index wheel
+    PyTorch gần nhất mà KHÔNG vượt quá (driver mới luôn chạy được runtime
+    CUDA cũ hơn hoặc bằng, không chạy được runtime MỚI hơn — nên chọn
+    "≤" là lựa chọn an toàn nhất)."""
+    try:
+        major, minor = (int(x) for x in cuda_version.split(".")[:2])
+    except (ValueError, AttributeError):
+        return "cu121"  # fallback an toàn, hỗ trợ rộng
+
+    version_num = major * 10 + minor
+    # Bảng ánh xạ: (ngưỡng tối thiểu CUDA driver, tag index) - sắp giảm dần
+    table = [(128, "cu128"), (126, "cu126"), (124, "cu124"),
+             (121, "cu121"), (118, "cu118")]
+    for threshold, tag in table:
+        if version_num >= threshold:
+            return tag
+    return "cu118"  # driver quá cũ, thử bản CUDA thấp nhất còn hỗ trợ
+
+
+def _install_cuda_torch_if_windows_or_mac():
+    """Chỉ cần can thiệp trên Windows — PyPI mặc định trên Windows là
+    CPU-only. macOS không có driver NVIDIA/CUDA (Apple Silicon dùng MPS,
+    không qua nvidia-smi) nên không áp dụng index CUDA ở đây. Linux bỏ
+    qua vì PyPI mặc định ở đó đã là bản có CUDA."""
+    if platform.system() != "Windows":
+        return
+
+    cuda_version = _detect_nvidia_cuda_version()
+    if not cuda_version:
+        print("Không phát hiện GPU NVIDIA (nvidia-smi không chạy được) — cài torch CPU bình thường.")
+        return
+
+    tag = _pick_torch_cuda_index(cuda_version)
+    print(f"Phát hiện GPU NVIDIA, driver hỗ trợ CUDA {cuda_version} — cài torch bản {tag}...")
+    run_cmd(
+        f'"{sys.executable}" -m pip install torch torchvision '
+        f'--index-url https://download.pytorch.org/whl/{tag}',
+        f"Đang cài torch ({tag}) từ index PyTorch..."
+    )
 
 
 def _ensure_numpy_below_2():
@@ -294,6 +361,9 @@ def setup_weights(cpu_only: bool = False):
     print(f"Trong virtualenv: {'Có' if _in_venv() else 'Không'}")
     if cpu_only:
         print("Chế độ: CPU-only (torch tải từ index CPU chính thức)")
+    elif platform.system() == "Windows":
+        print("Windows: sẽ tự dò GPU NVIDIA (nvidia-smi) để cài đúng bản torch CUDA —")
+        print("PyPI mặc định trên Windows chỉ có bản CPU-only, kể cả máy có GPU thật.")
 
     install_requirements(cpu_only=cpu_only)
     install_github_deps()

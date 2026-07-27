@@ -57,6 +57,14 @@ Script này tự tạo virtualenv, cài dependencies (`requirements.txt`), và
 tải weights — thử Hugging Face trước, GitHub sau, Google Drive (gdown)
 làm phương án cuối, hỗ trợ resume nếu tải bị đứt giữa chừng.
 
+**Trên Windows có GPU NVIDIA:** script tự chạy `nvidia-smi` để phát hiện
+CUDA driver và cài đúng bản `torch` có CUDA tương ứng. Lý do cần bước
+này: PyPI (index mặc định của `pip install torch`) trên Windows/macOS
+**chỉ có bản CPU-only** — bản có CUDA chỉ nằm ở index riêng của
+PyTorch. Máy có GPU CUDA 12 thật nhưng cài theo cách thông thường vẫn
+sẽ chạy CPU nếu không cài đúng index này (trên Linux thì không sao,
+PyPI mặc định ở đó đã là bản có CUDA).
+
 **Máy yếu / không có GPU:** dùng cờ `--cpu-only` để ép cài đúng bản
 torch CPU-only (tránh tải nhầm wheel bundle CUDA runtime, nặng hơn
 nhiều và không cần thiết nếu không có GPU):
