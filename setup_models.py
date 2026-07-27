@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
 """
 Photo Master Pro v2 — Model Setup Script
-Tự động tạo virtualenv (nếu chưa có), cài dependencies và tải weights về
-thư mục ./weights/
+File CÀI ĐẶT DUY NHẤT của dự án: tự tạo virtualenv, cài dependencies,
+và tải toàn bộ weights AI về ./weights/ — có mirror Hugging Face +
+GitHub + Google Drive (gdown), tự chuyển nguồn nếu nguồn đầu lỗi, hỗ
+trợ resume khi tải bị đứt giữa chừng.
+
+(Trước đây phần tải weights nằm rải rác ở 4 file khác nhau:
+setup_models.py, download_manual.sh, download_manual.bat,
+download_weights_hf.py — cùng khai báo lại URL của đúng 4 file model,
+dễ lệch dữ liệu khi 1 link đổi mà quên sửa hết. Đã gộp về đúng 1 file
+này; 3 file kia đã xoá.)
+
 Chạy: python setup_models.py
 """
 
 import os
 import sys
 import subprocess
-import urllib.request
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent
@@ -17,26 +25,36 @@ VENV_DIR = PROJECT_ROOT / ".venv"
 WEIGHTS_DIR = PROJECT_ROOT / "weights"
 WEIGHTS_DIR.mkdir(exist_ok=True)
 
+# Nguồn DUY NHẤT khai báo weights cần tải. Mỗi model thử lần lượt các
+# nguồn theo thứ tự "hf" -> "gh" -> (gdown nếu "gdown" là True).
 MODELS = {
     "codeformer.pth": {
-        "url": "https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth",
+        "hf": "https://huggingface.co/sczhou/CodeFormer/resolve/main/codeformer.pth",
+        "gh": "https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth",
         "size_mb": 380,
     },
     "RealESRGAN_x2plus.pth": {
-        "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth",
+        "hf": "https://huggingface.co/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x2plus.pth",
+        "gh": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth",
         "size_mb": 70,
     },
     "79999_iter.pth": {
-        "url": "https://drive.google.com/uc?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812",
+        "hf": "https://huggingface.co/spaces/ysharma/FaceParsing/resolve/main/79999_iter.pth",
+        "gh": "https://drive.google.com/uc?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812",
         "gdown": True,
         "size_mb": 50,
     },
     "isnet-general-use.onnx": {
-        "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx",
+        "hf": "https://huggingface.co/OzzyGT/REMBG/resolve/main/isnet-general-use.onnx",
+        "gh": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx",
         "size_mb": 180,
     },
 }
 
+
+# ------------------------------------------------------------------
+# VIRTUALENV
+# ------------------------------------------------------------------
 
 def _in_venv() -> bool:
     return sys.prefix != getattr(sys, "base_prefix", sys.prefix)
@@ -80,6 +98,10 @@ def ensure_venv_and_reexec():
     os.execv(str(venv_py), [str(venv_py), str(Path(__file__).resolve()), *sys.argv[1:]])
 
 
+# ------------------------------------------------------------------
+# PIP INSTALL (requirements.txt + facexlib/CodeFormer/Real-ESRGAN)
+# ------------------------------------------------------------------
+
 def run_cmd(cmd, desc=""):
     print(f"\n> {desc or cmd}")
     result = subprocess.run(cmd, shell=True)
@@ -114,29 +136,114 @@ def install_github_deps():
             run_cmd(f'"{sys.executable}" -m pip install {pip_name}', f"Đang cài {name}...")
 
 
-def download_file(url, dest, use_gdown=False):
-    dest = Path(dest)
+# ------------------------------------------------------------------
+# TẢI WEIGHTS: thử Hugging Face trước, GitHub sau, gdown (Google
+# Drive) làm phương án cuối. Hỗ trợ resume nếu tải bị đứt giữa chừng.
+# ------------------------------------------------------------------
+
+def _download_with_progress(url: str, dest: Path) -> tuple:
+    import urllib.request
+    try:
+        from tqdm import tqdm
+    except ImportError:
+        run_cmd(f'"{sys.executable}" -m pip install tqdm', "Cài tqdm...")
+        from tqdm import tqdm
+
+    headers = {}
+    mode = "wb"
+    downloaded = 0
     if dest.exists():
-        print(f"  Đã có: {dest.name}")
+        downloaded = dest.stat().st_size
+        headers["Range"] = f"bytes={downloaded}-"
+        mode = "ab"
+
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        response = urllib.request.urlopen(req, timeout=60)
+    except Exception as e:
+        return False, str(e)
+
+    total = int(response.headers.get("Content-Length", 0)) + downloaded
+    block = 8192
+    with open(dest, mode) as f, tqdm(
+        total=total, initial=downloaded, unit="B", unit_scale=True,
+        desc=dest.name, ncols=70
+    ) as bar:
+        while True:
+            chunk = response.read(block)
+            if not chunk:
+                break
+            f.write(chunk)
+            bar.update(len(chunk))
+    return True, ""
+
+
+def download_weight(name: str, info: dict) -> bool:
+    dest = WEIGHTS_DIR / name
+    if dest.exists() and dest.stat().st_size > 1_000_000:
+        print(f"✓ {name} đã có ({dest.stat().st_size // 1024 // 1024} MB)")
         return True
 
-    print(f"  Tải: {dest.name} ...")
-    try:
-        if use_gdown:
+    for source in ("hf", "gh"):
+        url = info.get(source)
+        if not url or (source == "gh" and info.get("gdown")):
+            # Nếu model này cần gdown thì link "gh" thực chất là link
+            # Google Drive (uc?id=...), không tải bằng urllib thường được.
+            continue
+        print(f"\n↓ Đang tải {name} từ {source.upper()}...")
+        ok, err = _download_with_progress(url, dest)
+        if ok:
+            print(f"✓ {name} tải xong.")
+            return True
+        print(f"✗ Lỗi từ {source}: {err}")
+        if dest.exists():
+            dest.unlink()
+
+    if info.get("gdown"):
+        print(f"\n↓ Thử tải {name} bằng gdown (Google Drive)...")
+        try:
             try:
                 import gdown
             except ImportError:
                 run_cmd(f'"{sys.executable}" -m pip install gdown', "Cài gdown...")
                 import gdown
-            gdown.download(url, str(dest), quiet=False, fuzzy=True)
-        else:
-            urllib.request.urlretrieve(url, str(dest))
-        print(f"  Hoàn tất: {dest.name}")
-        return True
-    except Exception as e:
-        print(f"  Lỗi tải {dest.name}: {e}")
-        return False
+            gdown.download(info["gh"], str(dest), quiet=False, fuzzy=True)
+            if dest.exists() and dest.stat().st_size > 1_000_000:
+                print(f"✓ {name} tải xong (gdown).")
+                return True
+        except Exception as e:
+            print(f"✗ gdown cũng lỗi: {e}")
 
+    return False
+
+
+def print_manual_links(failed_names):
+    print("\n" + "=" * 60)
+    print("KHÔNG THỂ TẢI TỰ ĐỘNG. Bạn hãy tải thủ công từ các link sau:")
+    print("=" * 60)
+    for name in failed_names:
+        info = MODELS[name]
+        print(f"\n{name} (~{info['size_mb']} MB)")
+        if "hf" in info and not info.get("gdown"):
+            print(f"   HF:  {info['hf']}")
+        print(f"   GH/Drive: {info['gh']}")
+        print(f"   -> Lưu vào: weights/{name}")
+
+
+def download_all_weights():
+    print("\nTải weights về ./weights/ ...")
+    failed = []
+    for name, info in MODELS.items():
+        if not download_weight(name, info):
+            failed.append(name)
+    if failed:
+        print_manual_links(failed)
+    return failed
+
+
+# ------------------------------------------------------------------
+# MAIN
+# ------------------------------------------------------------------
 
 def setup_weights():
     print("=" * 60)
@@ -147,15 +254,7 @@ def setup_weights():
 
     install_requirements()
     install_github_deps()
-
-    print("\nTải weights về ./weights/ ...")
-    for fname, info in MODELS.items():
-        dest = WEIGHTS_DIR / fname
-        ok = download_file(info["url"], dest, use_gdown=info.get("gdown", False))
-        if not ok:
-            print(f"\nKhông thể tải {fname}. Bạn có thể tải thủ công từ:")
-            print(f"   {info['url']}")
-            print(f"   -> Lưu vào: {dest}\n")
+    failed = download_all_weights()
 
     print("\nKiểm tra rembg models...")
     try:
@@ -166,10 +265,15 @@ def setup_weights():
         print(f"rembg: {e}")
 
     print("\n" + "=" * 60)
-    print("Setup hoàn tất! Chạy: python main.py")
+    if failed:
+        print(f"⚠ Setup xong nhưng còn {len(failed)} weight chưa tải được — xem link thủ công ở trên.")
+    else:
+        print("Setup hoàn tất! Chạy: python main.py")
     if _in_venv():
         print(f"   (nhớ activate virtualenv trước mỗi lần chạy: {VENV_DIR})")
     print("=" * 60)
+    if failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

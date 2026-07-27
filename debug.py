@@ -37,7 +37,6 @@ if not report.can_run_lite:
 elif not report.can_run_full_ai:
     print("Chạy được ở Lite Mode. Để bật Full AI, tải model qua:")
     print("  python setup_models.py")
-    print("  hoặc: python download_weights_hf.py")
 else:
     print("Sẵn sàng chạy Full AI — chạy: python main.py")
 print("=" * 60)

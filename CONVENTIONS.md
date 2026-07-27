@@ -25,8 +25,7 @@ main.py                          # Entry point
 main_ui.py                       # UI, version 2
 photo_engine.py                  # Processing engine, version 2
 runtime_manager.py               # Runtime detection & management
-setup_models.py                  # Model downloading & setup
-download_weights_hf.py           # Weights download from Hugging Face
+setup_models.py                  # Model downloading & setup (venv, pip, weights)
 print_layout.py                  # Print layout rendering
 requirements.txt                 # Dependencies
 ```

@@ -55,29 +55,15 @@ pip install -r requirements.txt
 
 ### Bước 2: Tải weights
 
-**Cách A — Tự động (GitHub + gdown):**
 ```bash
 python setup_models.py
 ```
 
-**Cách B — Từ Hugging Face (ổn định, resume được):**
-```bash
-python download_weights_hf.py
-```
+Script này tự tạo virtualenv, cài dependencies, và tải weights — thử
+Hugging Face trước, GitHub sau, Google Drive (gdown) làm phương án cuối,
+hỗ trợ resume nếu tải bị đứt giữa chừng.
 
-**Cách C — Thủ công:**
-
-Linux/Mac:
-```bash
-bash download_manual.sh
-```
-
-Windows:
-```cmd
-download_manual.bat
-```
-
-**Hoặc tải từng file bằng trình duyệt:**
+**Hoặc tải từng file bằng trình duyệt (nếu máy không chạy được script):**
 
 | File | Link | Size |
 |------|------|------|

@@ -15,9 +15,7 @@ photo-master-pro/
 ├── runtime_manager.py            # Runtime detection & setup
 ├── print_layout.py               # Layout rendering
 │
-├── setup_models.py               # Download weights & setup
-├── download_weights_hf.py        # Hugging Face downloader
-├── download_manual.bat/sh         # Manual download scripts
+├── setup_models.py               # File cài đặt DUY NHẤT: venv + pip install + tải weights
 │
 ├── debug.py                      # Debug utilities
 ├── requirements.txt              # Dependencies
@@ -81,13 +79,7 @@ photo-master-pro/
 ├── runtime_setup/               # Setup & installation
 │   ├── __init__.py
 │   ├── manager.py               # RuntimeManager
-│   ├── setup.py                 # setup_models()
-│   └── downloaders/
-│       ├── __init__.py
-│       ├── hf_downloader.py     # Hugging Face downloader
-│       └── scripts/
-│           ├── download_manual.bat
-│           └── download_manual.sh
+│   └── setup.py                 # setup_models() - venv + pip + tải weights (1 file duy nhất)
 │
 ├── main.py                      # Entry point
 ├── debug.py                     # Debug utilities
@@ -290,7 +282,7 @@ main.py
 │       ├── runtime_manager.py (RuntimeManager)
 │       └── print_layout.py (LayoutSimulator, LayoutRenderer)
 ├── runtime_manager.py
-└── setup_models.py / download_weights_hf.py
+└── setup_models.py
 ```
 
 ---

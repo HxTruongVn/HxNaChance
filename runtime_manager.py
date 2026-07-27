@@ -22,8 +22,8 @@ không tự dò môi trường nữa.
       UI hiển thị tính năng nào bật/tắt được, không cần thử-rồi-mới-biết
 
 Sau khi models đã có trong weights/, toàn bộ pipeline chạy OFFLINE —
-RuntimeManager không tự tải model (đó là việc của setup_models.py /
-download_weights_hf.py), nó chỉ BÁO CÁO model nào đang thiếu.
+RuntimeManager không tự tải model (đó là việc của setup_models.py),
+nó chỉ BÁO CÁO model nào đang thiếu.
 """
 
 from __future__ import annotations

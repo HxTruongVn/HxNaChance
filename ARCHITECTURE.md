@@ -91,7 +91,7 @@ test, ngoài phạm vi những gì có thể xác minh trong lần sửa này):
 2. **Model weights (~680MB) không nên nhét vào exe.** Nên giữ nguyên
    cách hiện tại: exe (hoặc `main.py` chạy từ source) khởi động, gọi
    `RuntimeManager` phát hiện model thiếu, rồi hướng dẫn/tự động chạy
-   `setup_models.py` hoặc `download_weights_hf.py` để tải vào
+   `setup_models.py` để tải vào
    `models/` (hoặc `weights/`) cục cạnh exe. Sau lần tải đầu, mọi lần
    chạy sau đều offline hoàn toàn — đúng tinh thần "OFFLINE APP" ở
    trên.

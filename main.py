@@ -19,7 +19,6 @@ Pipeline xử lý ảnh: Real-ESRGAN → CodeFormer → BiSeNet Face Parsing →
 
 Setup lần đầu (tải model):
     python setup_models.py
-    # hoặc: python download_weights_hf.py
 
 Kiểm tra môi trường không mở UI:
     python runtime_manager.py
