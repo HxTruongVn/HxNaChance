@@ -53,9 +53,12 @@ Xem chi tiết kiến trúc (RuntimeManager → Engine → UI) tại
 python setup_models.py
 ```
 
-Script này tự tạo virtualenv, cài dependencies (`requirements.txt`), và
-tải weights — thử Hugging Face trước, GitHub sau, Google Drive (gdown)
-làm phương án cuối, hỗ trợ resume nếu tải bị đứt giữa chừng.
+Script sẽ hỏi xác nhận trước khi tạo virtualenv (`.venv/`) — gõ Enter
+hoặc `y` để đồng ý, `n` để bỏ qua và cài thẳng vào Python hiện tại.
+Chạy tự động/không tương tác (script, CI): thêm `-y`/`--yes` để bỏ qua
+hỏi. Sau đó tự cài dependencies (`requirements.txt`) và tải weights —
+thử Hugging Face trước, GitHub sau, Google Drive (gdown) làm phương án
+cuối, hỗ trợ resume nếu tải bị đứt giữa chừng.
 
 **Trên Windows có GPU NVIDIA:** script tự chạy `nvidia-smi` để phát hiện
 CUDA driver và cài đúng bản `torch` có CUDA tương ứng. Lý do cần bước

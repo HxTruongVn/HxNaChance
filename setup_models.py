@@ -347,7 +347,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Photo Master Pro v2 - Model Setup")
     parser.add_argument("--cpu-only", action="store_true",
                          help="Cài bản torch CPU-only (dùng cho máy yếu / không có GPU)")
+    parser.add_argument("-y", "--yes", action="store_true",
+                         help="Bỏ qua hỏi xác nhận tạo virtualenv (dùng khi chạy tự động/script)")
     args, _unknown = parser.parse_known_args()
 
-    ensure_venv_and_reexec(__file__)
+    ensure_venv_and_reexec(__file__, auto_yes=args.yes)
     setup_weights(cpu_only=args.cpu_only)
