@@ -6,7 +6,7 @@ torchvision>=0.15.0
 # packages together can conflict since they provide the same cv2 module.
 opencv-contrib-python>=4.8.0
 Pillow>=10.0.0
-numpy>=1.24.0
+numpy>=1.24.0,<2.0.0
 mediapipe>=0.10.0,<0.10.15
 rembg>=2.0.50
 onnxruntime>=1.15.0

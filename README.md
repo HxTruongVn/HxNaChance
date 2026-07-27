@@ -47,21 +47,22 @@ Script này kiểm tra tất cả dependencies và weights, báo ✓/✗ rõ rà
 Xem chi tiết kiến trúc (RuntimeManager → Engine → UI) tại
 [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-### Bước 1: Cài dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### Bước 2: Tải weights
+### Bước 1: Cài đặt + tải weights
 
 ```bash
 python setup_models.py
 ```
 
-Script này tự tạo virtualenv, cài dependencies, và tải weights — thử
-Hugging Face trước, GitHub sau, Google Drive (gdown) làm phương án cuối,
-hỗ trợ resume nếu tải bị đứt giữa chừng.
+Script này tự tạo virtualenv, cài dependencies (`requirements.txt`), và
+tải weights — thử Hugging Face trước, GitHub sau, Google Drive (gdown)
+làm phương án cuối, hỗ trợ resume nếu tải bị đứt giữa chừng.
+
+**Máy yếu / không có GPU:** dùng cờ `--cpu-only` để ép cài đúng bản
+torch CPU-only (tránh tải nhầm wheel bundle CUDA runtime, nặng hơn
+nhiều và không cần thiết nếu không có GPU):
+```bash
+python setup_models.py --cpu-only
+```
 
 **Hoặc tải từng file bằng trình duyệt (nếu máy không chạy được script):**
 
@@ -74,7 +75,7 @@ hỗ trợ resume nếu tải bị đứt giữa chừng.
 
 Tải xong đặt vào thư mục `weights/`.
 
-### Bước 3: Chạy
+### Bước 2: Chạy
 
 ```bash
 python main.py

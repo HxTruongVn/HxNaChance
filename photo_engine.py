@@ -12,6 +12,7 @@ from pathlib import Path
 
 # Chỉ import nhẹ ở top-level
 import cv2
+import gc
 
 if TYPE_CHECKING:
     from runtime_manager import RuntimeReport
@@ -838,6 +839,23 @@ class PhotoMasterEngineV2:
                 pass
 
         print(f"[EngineV2] Device: {self.device}")
+
+        # CPU tuning: giới hạn số thread để không chiếm hết CPU yếu (2-4
+        # nhân) — mặc định torch/opencv tự dùng hết số nhân sẵn có, trên
+        # máy yếu điều này làm UI bị đơ trong lúc xử lý.
+        if self.device == "cpu":
+            cv2.setNumThreads(2)
+            try:
+                import torch
+                torch.set_num_threads(2)
+                torch.set_num_interop_threads(1)
+                print("[EngineV2] CPU tuning: cv2=2 threads, torch=2 threads, interop=1")
+            except (ImportError, RuntimeError):
+                # RuntimeError: torch.set_num_interop_threads() chỉ gọi được
+                # 1 lần trước khi bất kỳ phép tính song song nào chạy —
+                # bỏ qua nếu đã bị gọi trước đó (không phải lỗi nghiêm trọng).
+                pass
+
         wdir = Path(weights_dir)
 
         def _safe_init(label, factory):
@@ -996,10 +1014,12 @@ class PhotoMasterEngineV2:
 
         result['success'] = True
         result['image'] = final
+        gc.collect()
         return result
 
     def release(self):
-        self.face_analyzer.release()
+        if self.face_analyzer is not None:
+            self.face_analyzer.release()
         try:
             import torch
             if torch.cuda.is_available():

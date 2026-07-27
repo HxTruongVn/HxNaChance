@@ -1,0 +1,5 @@
+# Cài đầy đủ cho máy CPU-only / cấu hình yếu (core + torch CPU-only + AI).
+# Dùng qua: python setup_models.py --cpu-only
+-r requirements-core.txt
+-r requirements-torch-cpu.txt
+-r requirements-ai.txt

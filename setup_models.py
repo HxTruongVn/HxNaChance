@@ -15,6 +15,7 @@ này; 3 file kia đã xoá.)
 Chạy: python setup_models.py
 """
 
+import argparse
 import os
 import sys
 import subprocess
@@ -110,13 +111,46 @@ def run_cmd(cmd, desc=""):
     return result.returncode == 0
 
 
-def install_requirements():
-    req_file = PROJECT_ROOT / "requirements.txt"
+def install_requirements(cpu_only: bool = False):
+    """Mặc định dùng requirements.txt (torch lấy theo index mặc định —
+    nếu máy có GPU + đã cài CUDA driver, pip có thể ưu tiên bản có CUDA).
+
+    Với --cpu-only: dùng requirements-full.txt (gộp requirements-core.txt
+    + requirements-torch-cpu.txt + requirements-ai.txt) — ép cài đúng bản
+    torch CPU-only từ index chính thức, tránh máy yếu/không GPU tải nhầm
+    wheel bundle CUDA runtime (nặng hơn nhiều, không cần thiết)."""
+    if cpu_only:
+        req_file = PROJECT_ROOT / "requirements-full.txt"
+        if not req_file.exists():
+            print("Không thấy requirements-full.txt, dùng requirements.txt thường.")
+            req_file = PROJECT_ROOT / "requirements.txt"
+    else:
+        req_file = PROJECT_ROOT / "requirements.txt"
+
     if not req_file.exists():
-        print("Không thấy requirements.txt, bỏ qua bước này.")
+        print(f"Không thấy {req_file.name}, bỏ qua bước này.")
         return
     run_cmd(f'"{sys.executable}" -m pip install -r "{req_file}"',
-            "Đang cài requirements.txt...")
+            f"Đang cài {req_file.name}...")
+    _ensure_numpy_below_2()
+
+
+def _ensure_numpy_below_2():
+    """NumPy 2.x gây lỗi ABI với torch/torchvision/basicsr đã compile sẵn
+    cho NumPy 1.x (RuntimeError: Numpy is not available — xem
+    photo_engine.py, đã gặp thật trên máy người dùng). requirements.txt
+    đã ghim numpy<2.0.0, nhưng 1 dependency khác trong chuỗi cài có thể
+    âm thầm nâng numpy lên lại — kiểm tra lại sau khi cài xong cho chắc."""
+    try:
+        import numpy as np
+    except ImportError:
+        return
+    major = int(np.__version__.split(".")[0])
+    if major >= 2:
+        print(f"[!] Phát hiện NumPy {np.__version__} (>= 2.0) sau khi cài requirements.")
+        print("    Một dependency khác có thể đã âm thầm nâng version — tự hạ lại...")
+        run_cmd(f'"{sys.executable}" -m pip install --upgrade "numpy<2.0.0"',
+                "Hạ numpy xuống <2.0.0...")
 
 
 def install_github_deps():
@@ -245,14 +279,16 @@ def download_all_weights():
 # MAIN
 # ------------------------------------------------------------------
 
-def setup_weights():
+def setup_weights(cpu_only: bool = False):
     print("=" * 60)
     print("Photo Master Pro v2 - Model Setup")
     print("=" * 60)
     print(f"Python đang dùng: {sys.executable}")
     print(f"Trong virtualenv: {'Có' if _in_venv() else 'Không'}")
+    if cpu_only:
+        print("Chế độ: CPU-only (torch tải từ index CPU chính thức)")
 
-    install_requirements()
+    install_requirements(cpu_only=cpu_only)
     install_github_deps()
     failed = download_all_weights()
 
@@ -277,5 +313,10 @@ def setup_weights():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Photo Master Pro v2 - Model Setup")
+    parser.add_argument("--cpu-only", action="store_true",
+                         help="Cài bản torch CPU-only (dùng cho máy yếu / không có GPU)")
+    args, _unknown = parser.parse_known_args()
+
     ensure_venv_and_reexec()
-    setup_weights()
+    setup_weights(cpu_only=args.cpu_only)

@@ -1,0 +1,5 @@
+# Face restoration & super-resolution — cài SAU torch để tránh lỗi resolve
+# dependency của basicsr (basicsr cần torch đã có sẵn lúc build).
+facexlib
+codeformer-pip
+realesrgan
