@@ -22,6 +22,7 @@ import customtkinter as ctk
 from tkinter import messagebox, filedialog
 
 from photo_engine import PhotoMasterEngineV2, SPEC_PRESETS, PhotoSpec
+from photo_agent import PhotoQAAgent
 from print_layout import (
     build_layout_canvas, save_layout, LAYOUT_PRESETS,
     DEFAULT_LAYOUT_CONFIG, load_sidecar
@@ -29,12 +30,33 @@ from print_layout import (
 
 
 class PhotoMasterApp(ctk.CTk):
-    COLORS = {
-        'bg_dark': '#0d1117', 'bg_card': '#161b22', 'bg_hover': '#21262d',
-        'border': '#30363d', 'text_primary': '#c9d1d9', 'text_secondary': '#8b949e',
-        'accent': '#58a6ff', 'accent_hover': '#79c0ff',
-        'success': '#238636', 'warning': '#d29922', 'danger': '#da3633', 'info': '#1f6feb'
+    # THEMES: nhiều bảng màu để người dùng chọn (mặc định vẫn giữ nguyên
+    # bảng màu cũ để không đổi giao diện của ai đang dùng nếu chưa chọn gì).
+    THEMES = {
+        "Dark Blue (mặc định)": {
+            'bg_dark': '#0d1117', 'bg_card': '#161b22', 'bg_hover': '#21262d',
+            'border': '#30363d', 'text_primary': '#c9d1d9', 'text_secondary': '#8b949e',
+            'accent': '#58a6ff', 'accent_hover': '#79c0ff',
+            'success': '#238636', 'warning': '#d29922', 'danger': '#da3633', 'info': '#1f6feb'
+        },
+        "Dark Green": {
+            'bg_dark': '#0d1117', 'bg_card': '#141d17', 'bg_hover': '#1c2b20',
+            'border': '#2a3d2e', 'text_primary': '#c9d1d9', 'text_secondary': '#8b949e',
+            'accent': '#3fb950', 'accent_hover': '#56d364',
+            'success': '#238636', 'warning': '#d29922', 'danger': '#da3633', 'info': '#3fb950'
+        },
+        "Light": {
+            'bg_dark': '#f6f8fa', 'bg_card': '#ffffff', 'bg_hover': '#eaeef2',
+            'border': '#d0d7de', 'text_primary': '#1f2328', 'text_secondary': '#57606a',
+            'accent': '#0969da', 'accent_hover': '#218bff',
+            'success': '#1a7f37', 'warning': '#9a6700', 'danger': '#cf222e', 'info': '#0969da'
+        },
     }
+    DEFAULT_THEME = "Dark Blue (mặc định)"
+    # Giữ COLORS như một alias trỏ về theme mặc định — code cũ tham chiếu
+    # PhotoMasterApp.COLORS (nếu có) vẫn không vỡ; instance luôn tự set
+    # self.COLORS theo theme đã chọn trong __init__.
+    COLORS = THEMES[DEFAULT_THEME]
 
     def __init__(self, runtime_report=None):
         super().__init__()
@@ -51,27 +73,42 @@ class PhotoMasterApp(ctk.CTk):
         self.last_results = []
         self.last_layout = None
         self.preview_window = None
+        self.config_path = Path.home() / ".photo_master_pro_v2_ai.json"
+
+        # Đọc tên theme đã lưu (nếu có) TRƯỚC khi build UI, để giao diện
+        # mở lên đúng lựa chọn lần trước, không phải luôn chờ đổi sau.
+        self.theme_name = self._load_theme_name()
+        self.COLORS = self.THEMES.get(self.theme_name, self.THEMES[self.DEFAULT_THEME])
         # runtime_report: do main.py dò 1 lần qua RuntimeManager rồi truyền
         # xuống — None nếu app được chạy độc lập (không qua main.py).
         self.runtime_report = runtime_report
         # Khởi tạo engine với bắt lỗi — UI vẫn mở được dù engine lỗi
         self.engine = None
+        self.qa_agent = None
         try:
             self.engine = PhotoMasterEngineV2(weights_dir="weights", runtime_report=runtime_report)
+            # Cấp 1: agent tự thử lại (không LLM) khi ảnh chưa đạt chuẩn —
+            # xem photo_agent.py. Bọc quanh engine đã khởi tạo, không tạo
+            # engine thứ 2.
+            self.qa_agent = PhotoQAAgent(self.engine, max_retries=3)
         except Exception as e:
             import traceback
             print("=" * 60)
             print("LỖI KHỞI TẠO ENGINE:")
             traceback.print_exc()
             print("=" * 60)
+            # FIX: Python tự "del e" khi except block kết thúc (tránh reference
+            # cycle) — lambda bên dưới chạy SAU 500ms qua self.after(), lúc đó
+            # 'e' đã bị xoá khỏi scope, gây NameError. Chuyển sang string ngay
+            # tại đây rồi mới đưa vào lambda.
+            _engine_error_msg = str(e)
             # Vẫn mở UI, báo lỗi sau
-            self.after(500, lambda: messagebox.showwarning(
+            self.after(500, lambda msg=_engine_error_msg: messagebox.showwarning(
                 "Khởi động Lite Mode",
-                f"Không thể khởi tạo AI Engine:\n{e}\n\n"
+                f"Không thể khởi tạo AI Engine:\n{msg}\n\n"
                 "App sẽ chạy ở chế độ Lite (không có AI enhance).\n"
                 "Kiểm tra console để biết chi tiết lỗi."
             ))
-        self.config_path = Path.home() / ".photo_master_pro_v2_ai.json"
         self._drag_x = 0
         self._drag_y = 0
         self._process_timer_id = None  # FIX: lưu timer ID để hủy
@@ -133,6 +170,21 @@ class PhotoMasterApp(ctk.CTk):
             scrollbar_button_color=self.COLORS['border'],
             scrollbar_button_hover_color=self.COLORS['bg_hover']
         )
+
+        theme_row = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        theme_row.pack(fill="x", padx=10, pady=(6, 0))
+        ctk.CTkLabel(theme_row, text="🎨 Giao diện:", font=("Segoe UI", 10),
+                     text_color=self.COLORS['text_secondary']).pack(side="left", padx=(0, 6))
+        self.theme_menu = ctk.CTkOptionMenu(
+            theme_row, values=list(self.THEMES.keys()), width=170, height=24,
+            font=("Segoe UI", 10),
+            fg_color=self.COLORS['bg_hover'], button_color=self.COLORS['accent'],
+            button_hover_color=self.COLORS['accent_hover'], text_color=self.COLORS['text_primary'],
+            dropdown_fg_color=self.COLORS['bg_card'], dropdown_text_color=self.COLORS['text_primary'],
+            command=self._on_theme_change
+        )
+        self.theme_menu.set(self.theme_name)
+        self.theme_menu.pack(side="left")
 
         self.tabview = ctk.CTkTabview(self.main_frame, fg_color=self.COLORS['bg_card'],
                                        segmented_button_fg_color=self.COLORS['bg_hover'],
@@ -668,7 +720,12 @@ class PhotoMasterApp(ctk.CTk):
                         self.after(0, lambda idx=i+1, total=len(files):
                             self.status.configure(text=f"Đang xử lý {idx}/{total}..."))
 
-                        result = self.engine.process(path, spec, bg_color, options)
+                        agent_result = self.qa_agent.process(path, spec, bg_color, options)
+                        result = agent_result.engine_result
+                        # Thêm 2 field mới, không đụng field cũ — code phía
+                        # dưới (result['success']/['image']/...) không đổi.
+                        result['agent_verdict'] = agent_result.verdict
+                        result['agent_attempts'] = len(agent_result.attempts)
 
                         if result['success'] and result['image'] is not None:
                             now = datetime.now()
@@ -696,10 +753,15 @@ class PhotoMasterApp(ctk.CTk):
     def _on_process_done(self, results):
         success = sum(1 for _, r in results if r.get('success'))
         failed = len(results) - success
+        needs_reshoot = sum(1 for _, r in results if r.get('agent_verdict') == 'needs_reshoot')
 
-        if failed == 0:
+        if failed == 0 and needs_reshoot == 0:
             self.status.configure(text=f"✓ Hoàn thành: {success} ảnh", text_color=self.COLORS['success'])
             self.btn_run.configure(text="✅ HOÀN THÀNH", fg_color=self.COLORS['success'])
+        elif needs_reshoot > 0:
+            self.status.configure(
+                text=f"✓ {success} | ⚠ {needs_reshoot} ảnh cần chụp lại",
+                text_color=self.COLORS['warning'])
         else:
             self.status.configure(text=f"✓ {success} | ✗ {failed}", text_color=self.COLORS['warning'])
 
@@ -895,6 +957,30 @@ class PhotoMasterApp(ctk.CTk):
             messagebox.showerror("Lỗi in", f"Không thể in: {e}\nFile tạm: {tmp}")
 
     # ===== CONFIG =====
+    def _load_theme_name(self) -> str:
+        """Đọc mỗi tên theme đã lưu — gọi TRƯỚC khi build UI nên chỉ đọc
+        đúng 1 key, không đụng tới các phần khác của config (đã có
+        _load_config lo sau khi UI dựng xong)."""
+        try:
+            if self.config_path.exists():
+                with open(self.config_path, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                name = cfg.get("theme", self.DEFAULT_THEME)
+                if name in self.THEMES:
+                    return name
+        except Exception:
+            pass
+        return self.DEFAULT_THEME
+
+    def _on_theme_change(self, theme_name: str):
+        self.theme_name = theme_name
+        self._save_config()
+        messagebox.showinfo(
+            "Đổi giao diện",
+            f"Đã lưu giao diện '{theme_name}'.\n"
+            "Khởi động lại app để áp dụng đầy đủ cho toàn bộ giao diện."
+        )
+
     def _load_config(self):
         if self.config_path.exists():
             try:
@@ -971,7 +1057,8 @@ class PhotoMasterApp(ctk.CTk):
                 "presets": presets,
             }
             with open(self.config_path, "w", encoding="utf-8") as f:
-                json.dump({"save_dir": self.save_dir, "layout": lc}, f, ensure_ascii=False)
+                json.dump({"save_dir": self.save_dir, "theme": self.theme_name, "layout": lc},
+                          f, ensure_ascii=False)
         except Exception:
             pass
 
