@@ -358,9 +358,15 @@ class CodeFormerRestorer:
             self.ARCH_REGISTRY = ARCH_REGISTRY
             self.available = True
             print("[CodeFormer] Sẵn sàng (weights đã có).")
-        except ImportError as e:
-            print(f"[CodeFormer] ⚠ Chưa cài CodeFormer: {e}")
-            print("  Chạy: pip install git+https://github.com/sczhou/CodeFormer.git")
+        except Exception as e:
+            # FIX: cùng lý do với RealESRGANUpscaler — codeformer.basicsr
+            # cũng import diffjpeg.py, gọi torch.from_numpy() ở module
+            # scope. Nếu môi trường có xung đột NumPy 1.x/2.x, lỗi ném ra
+            # là RuntimeError chứ không phải ImportError, trước đây sẽ
+            # không bị bắt và làm sập toàn bộ Engine.
+            print(f"[CodeFormer] ⚠ Không dùng được: {e}")
+            print("  Nếu là lỗi liên quan NumPy: thử `pip install \"numpy<2\"`")
+            print("  Hoặc cài lại: pip install git+https://github.com/sczhou/CodeFormer.git")
 
     def enhance(self, image_bgr: np.ndarray, fidelity: float = 0.7) -> np.ndarray:
         if not self.available:
@@ -441,9 +447,17 @@ class RealESRGANUpscaler:
             self.RRDBNet = RRDBNet
             self.available = True
             print("[RealESRGAN] Sẵn sàng (weights đã có).")
-        except ImportError as e:
-            print(f"[RealESRGAN] ⚠ Chưa cài: {e}")
-            print("  Chạy: pip install git+https://github.com/xinntao/Real-ESRGAN.git")
+        except Exception as e:
+            # FIX: trước đây chỉ bắt ImportError. Chuỗi import
+            # realesrgan -> basicsr -> diffjpeg.py gọi torch.from_numpy()
+            # ngay ở module scope — nếu môi trường có xung đột NumPy
+            # 1.x/2.x (torch build cho numpy<2 nhưng máy cài numpy>=2),
+            # lỗi ném ra là RuntimeError("Numpy is not available"), KHÔNG
+            # phải ImportError. Bắt rộng Exception để lỗi này chỉ tắt
+            # tính năng RealESRGAN, không kéo sập toàn bộ Engine.
+            print(f"[RealESRGAN] ⚠ Không dùng được: {e}")
+            print("  Nếu là lỗi liên quan NumPy: thử `pip install \"numpy<2\"`")
+            print("  Hoặc cài lại: pip install git+https://github.com/xinntao/Real-ESRGAN.git")
 
     def upscale(self, image_bgr: np.ndarray, outscale: float = 1.0) -> np.ndarray:
         if not self.available or outscale <= 1.0:
@@ -826,14 +840,51 @@ class PhotoMasterEngineV2:
         print(f"[EngineV2] Device: {self.device}")
         wdir = Path(weights_dir)
 
+        def _safe_init(label, factory):
+            """Mỗi processor tự đứng riêng — nếu 1 cái khởi tạo lỗi
+            (kể cả lỗi chưa lường trước, không chỉ ImportError), chỉ
+            tính năng đó bị tắt, không kéo sập cả PhotoMasterEngineV2.
+            Trước đây 1 lỗi RuntimeError trong RealESRGANUpscaler (xung
+            đột NumPy 1.x/2.x) làm sập toàn bộ Engine dù FaceParser/
+            CodeFormer phía trước đã khởi tạo (hoặc graceful-fail) xong."""
+            try:
+                return factory()
+            except Exception as e:
+                print(f"[EngineV2] ⚠ {label} khởi tạo lỗi — tính năng này sẽ bị tắt: {e}")
+                return None
+
         # Lazy init: chỉ tạo object, không load weights ngay
-        self.face_parser = FaceParsingProcessor(str(wdir / "79999_iter.pth"), device=self.device)
-        self.codeformer = CodeFormerRestorer(str(wdir / "codeformer.pth"), device=self.device)
-        self.upscaler = RealESRGANUpscaler(str(wdir / "RealESRGAN_x2plus.pth"), device=self.device)
-        self.enhancer = SmartEnhancer(self.face_parser if self.face_parser.available else None)
-        self.face_analyzer = FaceAnalyzer()
-        self.bg_processor = BackgroundProcessor(model_name="isnet-general-use")
-        self.transformer = PhotoTransformer()
+        self.face_parser = _safe_init(
+            "FaceParser", lambda: FaceParsingProcessor(str(wdir / "79999_iter.pth"), device=self.device))
+        self.codeformer = _safe_init(
+            "CodeFormer", lambda: CodeFormerRestorer(str(wdir / "codeformer.pth"), device=self.device))
+        self.upscaler = _safe_init(
+            "RealESRGAN", lambda: RealESRGANUpscaler(str(wdir / "RealESRGAN_x2plus.pth"), device=self.device))
+        self.enhancer = _safe_init(
+            "SmartEnhancer",
+            lambda: SmartEnhancer(self.face_parser if (self.face_parser and self.face_parser.available) else None))
+        self.face_analyzer = _safe_init("FaceAnalyzer (MediaPipe)", lambda: FaceAnalyzer())
+        self.bg_processor = _safe_init(
+            "BackgroundProcessor", lambda: BackgroundProcessor(model_name="isnet-general-use"))
+        self.transformer = _safe_init("PhotoTransformer", lambda: PhotoTransformer())
+
+        # face_parser/codeformer/upscaler có thể là None nếu _safe_init bắt
+        # được lỗi ở trên — chuẩn hoá về 1 object "rỗng" có .available=False
+        # để phần code phía dưới (process(), UI) chỉ cần kiểm tra .available,
+        # không phải kiểm tra thêm "is None" ở khắp nơi.
+        class _Unavailable:
+            available = False
+        if self.face_parser is None:
+            self.face_parser = _Unavailable()
+        if self.codeformer is None:
+            self.codeformer = _Unavailable()
+        if self.upscaler is None:
+            self.upscaler = _Unavailable()
+
+        # face_analyzer KHÔNG có khái niệm .available — nó là bắt buộc để
+        # nhận diện khuôn mặt. Nếu MediaPipe lỗi, không còn gì để pipeline
+        # xử lý ảnh cả — process() sẽ tự kiểm tra self.face_analyzer is
+        # None và báo lỗi rõ ràng ngay từ đầu (xem process()).
 
         # Báo cáo trạng thái (mỗi processor tự xác nhận .available sau khi
         # thử load thật — đây là nguồn sự thật để process() quyết định bật/tắt
@@ -850,6 +901,21 @@ class PhotoMasterEngineV2:
             'success': False, 'image': None,
             'validation_errors': [], 'quality_report': {}, 'save_path': None
         }
+
+        # Các thành phần lõi bắt buộc (không có khái niệm .available vì
+        # không có gì để pipeline thay thế nếu thiếu) — nếu _safe_init ở
+        # __init__() bắt lỗi và để None, báo rõ ràng ngay từ đây thay vì
+        # crash mơ hồ bằng AttributeError ở dòng nào đó bên dưới.
+        if self.face_analyzer is None:
+            result['validation_errors'].append(
+                "Không nhận diện được khuôn mặt: MediaPipe khởi tạo lỗi lúc mở app. "
+                "Kiểm tra console lúc khởi động để biết chi tiết.")
+            return result
+        if self.enhancer is None or self.transformer is None:
+            result['validation_errors'].append(
+                "Engine thiếu thành phần xử lý bắt buộc (khởi tạo lỗi lúc mở app). "
+                "Kiểm tra console lúc khởi động để biết chi tiết.")
+            return result
 
         image = _imread_unicode(image_path)
         if image is None:

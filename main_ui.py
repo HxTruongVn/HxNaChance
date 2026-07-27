@@ -146,12 +146,52 @@ class PhotoMasterApp(ctk.CTk):
 
         self._build_title_bar()
         self._build_main_panel()
+        self._lock_unavailable_features()
         if self.is_mini:
             self.main_frame.pack_forget()
             self.geometry("480x42")
         else:
             self.main_frame.pack(fill="both", expand=True, padx=0, pady=0)
         self._load_config()
+
+    def _lock_unavailable_features(self):
+        """Khoá (bỏ chọn + disable) đúng những checkbox mà tính năng tương
+        ứng không khả dụng — do thiếu weights, thiếu package, hoặc lỗi môi
+        trường (VD: xung đột NumPy 1.x/2.x khiến RealESRGAN/CodeFormer
+        không khởi tạo được). App vẫn chạy được các tính năng còn lại
+        thay vì phải rơi hẳn vào "Lite Mode" toàn phần."""
+        if self.engine is None:
+            # Không có engine — không tính năng AI nào trong danh sách
+            # dưới đây dùng được, khoá hết.
+            mapping = [(chk, False, label) for chk, _avail, label in self._feature_mapping(default_false=True)]
+        else:
+            mapping = self._feature_mapping()
+
+        locked = []
+        for chk, available, label in mapping:
+            if not available:
+                chk.deselect()
+                chk.configure(state="disabled")
+                locked.append(label)
+
+        if locked:
+            unique = sorted(set(locked))
+            print(f"[UI] Đã khoá {len(unique)} tính năng chưa sẵn sàng: {', '.join(unique)}")
+
+    def _feature_mapping(self, default_false: bool = False):
+        def avail(processor):
+            if default_false or processor is None:
+                return False
+            return getattr(processor, 'available', processor is not None)
+
+        return [
+            (self.chk_face_restore, avail(getattr(self.engine, 'codeformer', None)), "Face Restore (CodeFormer)"),
+            (self.chk_upscale, avail(getattr(self.engine, 'upscaler', None)), "Upscale (Real-ESRGAN)"),
+            (self.chk_skin, avail(getattr(self.engine, 'face_parser', None)), "Làm mịn da (Face Parsing)"),
+            (self.chk_eye, avail(getattr(self.engine, 'face_parser', None)), "Sáng mắt (Face Parsing)"),
+            (self.chk_teeth, avail(getattr(self.engine, 'face_parser', None)), "Trắng răng (Face Parsing)"),
+            (self.chk_remove_bg, avail(getattr(self.engine, 'bg_processor', None)), "Tách nền (isnet)"),
+        ]
 
     def _on_close(self):
         try:
