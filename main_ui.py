@@ -885,9 +885,15 @@ class PhotoMasterApp(ctk.CTk):
             if messagebox.askyesno("Hoàn thành", msg + "\n\nBạn có muốn mở thư mục không?"):
                 _open_folder(folder)
 
-        if self.chk_preview.get() and self.last_results:
+        # FIX: last_result trước đây chỉ được gán khi tick "Preview", khiến
+        # _send_to_layout ghi ảnh None (lỗi) nếu người dùng không tick
+        # preview trước khi xử lý. Giờ luôn cập nhật last_result khi có
+        # ảnh xử lý thành công; nút xem trước vẫn ẩn/hiện riêng theo
+        # checkbox preview.
+        if self.last_results:
             self.last_result = self.last_results[-1]
-            self.btn_preview.pack(pady=5, padx=10, fill="x")
+            if self.chk_preview.get():
+                self.btn_preview.pack(pady=5, padx=10, fill="x")
 
         # FIX: Hủy timer cũ trước khi đặt timer mới
         if self._process_timer_id is not None:
@@ -898,6 +904,12 @@ class PhotoMasterApp(ctk.CTk):
         if not self.last_results:
             messagebox.showinfo("Thông báo", "Chưa có ảnh nào! Hãy xử lý ảnh trước.")
             return
+
+        # Phòng hờ: nếu vì lý do gì đó last_result chưa đồng bộ với
+        # last_results (ví dụ code khác gán last_results trực tiếp),
+        # luôn lấy ảnh mới nhất từ last_results thay vì tin last_result.
+        if self.last_result is None:
+            self.last_result = self.last_results[-1]
 
         # FIX: Luôn lưu ảnh mới nhất vào temp, không giữ ảnh cũ vô hạn
         now = datetime.now()
