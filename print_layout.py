@@ -56,6 +56,32 @@ def get_margin_val(s: str, key: str) -> float:
     return float(m.group(1)) if m else 0.0
 
 def parse_formula(formula: str) -> Dict:
+    """Parse công thức layout dạng text, ví dụ: "4*6 | C1L3".
+
+    Cú pháp (phân tách bằng ";" hoặc "|", không phân biệt hoa/thường):
+      - "W*H"   : khai báo kích thước (cm) cho 1 loại slot, tự đặt tên
+                  tuần tự C1, C2... theo THỨ TỰ xuất hiện (không phải số
+                  trong tên) — VD "4*6; 3*4" => C1=4x6, C2=3x4.
+      - "C<n>"  : dùng lại kích thước đã khai báo ở C<n>.
+      - "C0"    : mã DÀNH RIÊNG, nghĩa là "giữ nguyên kích thước ảnh gốc,
+                  không resize/ép tỉ lệ" — không cần khai báo "W*H" nào cả.
+                  Kích thước thật được build_layout_canvas điền vào lúc
+                  build (dựa trên ảnh nguồn cụ thể), vì lúc parse công
+                  thức chưa biết ảnh nào sẽ được xếp. Chỉ nên dùng C0 khi
+                  slot đó luôn ứng với 1 ảnh nguồn duy nhất trong 1 lần
+                  build (mọi bản sao dùng cùng công thức là cùng 1 ảnh,
+                  nên không có chuyện 2 kích thước gốc khác nhau bị ép
+                  vào cùng 1 lưới cố định).
+      - "G<0-3>": góc xoay slot: 0/1/2/3 = 0°/90°/180°/270°.
+      - "L<n>"  : số cột lặp lại (mặc định 1).
+      - "S<n>"  : số hàng lặp theo chiều dọc (mặc định 1).
+      - "N"     : đảo chiều rộng/cao khổ giấy cuối (canvas ngang<->dọc).
+      - "L" (không số, đứng riêng ở finalW/finalH) : ép chiều cao cuối = 30.5cm.
+      - "CP<n>" : (crop preset) — hiện chỉ được parse, dùng ở nơi khác.
+      - "ML/MR/MT/MB<số>": margin trái/phải/trên/dưới (cm) cho khổ giấy cuối.
+      - "<W>-<H>" (VD "12.4-30.5"): kích thước vùng in cuối (cm), ghi đè
+        DEFAULT_LAYOUT_CONFIG["vungInW"/"vungInH"].
+    """
     result = {
         "struct": [],
         "extras": {"hasN": False, "hasL": False, "cp": None, 
@@ -114,9 +140,21 @@ def parse_formula(formula: str) -> Dict:
 
     for itm in result["struct"]:
         ref = itm["cRef"]
-        if ref in size_map:
-            itm["w"] = size_map[ref]["w"]
-            itm["h"] = size_map[ref]["h"]
+        # QUY ƯỚC: "C0" là mã dành riêng cho "giữ nguyên kích thước ảnh gốc,
+        # không resize/ép tỉ lệ" — không bao giờ trùng với tên tự sinh từ
+        # size_map (size_map luôn đánh số bắt đầu từ C1 trở đi). Kích thước
+        # thật (w, h) của các slot "auto_size" được build_layout_canvas
+        # điền vào sau, dựa trên kích thước thật của ảnh nguồn — vì lúc
+        # parse công thức, parser chưa biết ảnh nào sẽ được xếp vào.
+        if ref == "C0":
+            itm["auto_size"] = True
+            itm["w"] = None
+            itm["h"] = None
+        else:
+            itm["auto_size"] = False
+            if ref in size_map:
+                itm["w"] = size_map[ref]["w"]
+                itm["h"] = size_map[ref]["h"]
 
     if result["finalW"] and result["finalH"]:
         if result["extras"]["hasN"]:
@@ -197,6 +235,23 @@ class LayoutSimulator:
 
 def cm_to_px(cm: float, res: int) -> float:
     return cm * res / 2.54
+
+def px_to_cm(px: float, res: int) -> float:
+    return px * 2.54 / res
+
+def resolve_auto_sizes(struct: List[Dict], img_w_px: int, img_h_px: int, res: int) -> None:
+    """Điền w/h thật cho các slot 'C0' (auto_size) dựa trên kích thước
+    (pixel) của ảnh nguồn đang được xếp — gọi 1 lần cho mỗi ảnh, trước khi
+    đưa struct vào LayoutSimulator. Sửa in-place vì struct chỉ dùng nội bộ
+    trong 1 lần build."""
+    if img_w_px <= 0 or img_h_px <= 0:
+        return
+    w_cm = px_to_cm(img_w_px, res)
+    h_cm = px_to_cm(img_h_px, res)
+    for itm in struct:
+        if itm.get("auto_size"):
+            itm["w"] = w_cm
+            itm["h"] = h_cm
 
 def edge_extend_pil(img: Image.Image, new_w: int, new_h: int) -> Image.Image:
     w, h = img.size
@@ -461,6 +516,16 @@ def build_layout_canvas(src_path: str, ui_config: Dict,
         if item["count"] > 0 and item["formula"]:
             ct = parse_formula(item["formula"])
             if ct["struct"]:
+                # C0 (auto_size): dùng đúng kích thước ảnh nguồn đang xếp,
+                # không resize/ép tỉ lệ. Phải resolve TRƯỚC khi simulate,
+                # vì simulator cần w/h cụ thể để tính lưới.
+                resolve_auto_sizes(ct["struct"], src_img.width, src_img.height, res)
+                missing = [i["cRef"] for i in ct["struct"] if not i.get("w") or not i.get("h")]
+                if missing:
+                    raise ValueError(
+                        f"Công thức preset '{pkey}' thiếu kích thước cho: {', '.join(missing)}. "
+                        "Mỗi cRef phải có khai báo kích thước (VD: 4*6) hoặc dùng C0 để giữ nguyên ảnh gốc."
+                    )
                 for _ in range(item["count"]):
                     plan = simulator.simulate(ct["struct"], cfg["gapY"], cfg["vungInW"])
                     for o in plan["items"]:
