@@ -1,0 +1,167 @@
+{
+  "13x18": {
+    "name": "13x18",
+    "w": 1500,
+    "h": 2126,
+    "eye_dist_ratio": 0.2,
+    "eye_y_ratio": 0.62,
+    "head_ratio_min": 0.5,
+    "head_ratio_max": 0.7,
+    "dpi": 300,
+    "min_eye_dist_mm": 0.0
+  },
+  "Quân Phục": {
+    "name": "Quân Phục",
+    "w": 1500,
+    "h": 2126,
+    "eye_dist_ratio": 0.18,
+    "eye_y_ratio": 0.62,
+    "head_ratio_min": 0.5,
+    "head_ratio_max": 0.7,
+    "dpi": 300,
+    "min_eye_dist_mm": 0.0
+  },
+  "(4x6) Phổ thông": {
+    "name": "(4x6)",
+    "w": 472,
+    "h": 709,
+    "eye_dist_ratio": 0.2,
+    "eye_y_ratio": 0.62,
+    "head_ratio_min": 0.5,
+    "head_ratio_max": 0.7,
+    "dpi": 300,
+    "min_eye_dist_mm": 0.0
+  },
+  "VN Passport (4x6)": {
+    "name": "VN Passport",
+    "w": 1200,
+    "h": 1800,
+    "eye_dist_ratio": 0.25,
+    "eye_y_ratio": 0.55,
+    "head_ratio_min": 0.55,
+    "head_ratio_max": 0.7,
+    "dpi": 300,
+    "min_eye_dist_mm": 28
+  },
+  "MỸ (5x5)": {
+    "name": "Mỹ",
+    "w": 1200,
+    "h": 1200,
+    "eye_dist_ratio": 0.25,
+    "eye_y_ratio": 0.52,
+    "head_ratio_min": 0.5,
+    "head_ratio_max": 0.69,
+    "dpi": 300,
+    "min_eye_dist_mm": 31
+  },
+  "CHÂU ÂU (3.5x4.5)": {
+    "name": "Châu Âu",
+    "w": 1050,
+    "h": 1350,
+    "eye_dist_ratio": 0.25,
+    "eye_y_ratio": 0.58,
+    "head_ratio_min": 0.5,
+    "head_ratio_max": 0.7,
+    "dpi": 300,
+    "min_eye_dist_mm": 0.0
+  },
+  "China Visa": {
+    "name": "China",
+    "w": 990,
+    "h": 1440,
+    "eye_dist_ratio": 0.25,
+    "eye_y_ratio": 0.6,
+    "head_ratio_min": 0.5,
+    "head_ratio_max": 0.7,
+    "dpi": 300,
+    "min_eye_dist_mm": 0.0
+  },
+  "Korea Visa": {
+    "name": "Korea",
+    "w": 1050,
+    "h": 1350,
+    "eye_dist_ratio": 0.25,
+    "eye_y_ratio": 0.58,
+    "head_ratio_min": 0.5,
+    "head_ratio_max": 0.7,
+    "dpi": 300,
+    "min_eye_dist_mm": 0.0
+  },
+  "Taiwan Visa": {
+    "name": "Taiwan",
+    "w": 1050,
+    "h": 1350,
+    "eye_dist_ratio": 0.25,
+    "eye_y_ratio": 0.62,
+    "head_ratio_min": 0.5,
+    "head_ratio_max": 0.7,
+    "dpi": 300,
+    "min_eye_dist_mm": 0.0
+  },
+  "ẤN ĐỘ Visa (5x5)": {
+    "name": "Ấn Độ",
+    "w": 1500,
+    "h": 1500,
+    "eye_dist_ratio": 0.25,
+    "eye_y_ratio": 0.52,
+    "head_ratio_min": 0.5,
+    "head_ratio_max": 0.7,
+    "dpi": 300,
+    "min_eye_dist_mm": 0.0
+  },
+  "Canada Visa (5x7)": {
+    "name": "Canada",
+    "w": 1500,
+    "h": 2100,
+    "eye_dist_ratio": 0.25,
+    "eye_y_ratio": 0.58,
+    "head_ratio_min": 0.5,
+    "head_ratio_max": 0.7,
+    "dpi": 300,
+    "min_eye_dist_mm": 0.0
+  },
+  "Nhật Bản (4.5x4.5)": {
+    "name": "Nhật Bản",
+    "w": 1350,
+    "h": 1350,
+    "eye_dist_ratio": 0.25,
+    "eye_y_ratio": 0.58,
+    "head_ratio_min": 0.5,
+    "head_ratio_max": 0.7,
+    "dpi": 300,
+    "min_eye_dist_mm": 0.0
+  },
+  "Úc (3.5x4.5)": {
+    "name": "Úc",
+    "w": 1050,
+    "h": 1350,
+    "eye_dist_ratio": 0.25,
+    "eye_y_ratio": 0.58,
+    "head_ratio_min": 0.5,
+    "head_ratio_max": 0.7,
+    "dpi": 300,
+    "min_eye_dist_mm": 0.0
+  },
+  "Singapore (3.5x4.5)": {
+    "name": "Singapore",
+    "w": 1050,
+    "h": 1350,
+    "eye_dist_ratio": 0.25,
+    "eye_y_ratio": 0.58,
+    "head_ratio_min": 0.5,
+    "head_ratio_max": 0.7,
+    "dpi": 300,
+    "min_eye_dist_mm": 0.0
+  },
+  "UK (3.5x4.5)": {
+    "name": "UK",
+    "w": 1050,
+    "h": 1350,
+    "eye_dist_ratio": 0.25,
+    "eye_y_ratio": 0.58,
+    "head_ratio_min": 0.5,
+    "head_ratio_max": 0.7,
+    "dpi": 300,
+    "min_eye_dist_mm": 0.0
+  }
+}

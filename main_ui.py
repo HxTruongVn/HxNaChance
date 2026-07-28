@@ -21,7 +21,7 @@ from PIL import Image as PILImage
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
 
-from photo_engine import PhotoMasterEngineV2, SPEC_PRESETS, PhotoSpec
+from photo_engine import PhotoMasterEngineV2, SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME
 from photo_agent import PhotoQAAgent
 from print_layout import (
     build_layout_canvas, save_layout, LAYOUT_PRESETS,
@@ -706,7 +706,12 @@ class PhotoMasterApp(ctk.CTk):
 
     def _get_spec(self):
         preset_name = self.combo_preset.get()
-        preset = SPEC_PRESETS.get(preset_name, SPEC_PRESETS["13x18 (In ấn)"])
+        # FIX: trước đây fallback cứng "13x18 (In ấn)" - tên preset này
+        # đã bị đổi thành "13x18" (xem SPEC_PRESETS), nên dòng cũ sẽ
+        # KeyError ngay khi preset_name không khớp gì trong dict. Dùng
+        # DEFAULT_PRESET_NAME (đảm bảo luôn tồn tại trong SPEC_PRESETS,
+        # xem photo_engine.py) thay vì gõ tay tên preset ở đây.
+        preset = SPEC_PRESETS.get(preset_name, SPEC_PRESETS[DEFAULT_PRESET_NAME])
         try:
             dpi = int(self.entry_dpi.get())
         except:

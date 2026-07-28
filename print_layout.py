@@ -16,34 +16,35 @@ from PIL import Image, ImageDraw
 # 1. CONFIG
 # ------------------------------------------------------------------
 
-DEFAULT_LAYOUT_CONFIG = {
-    "vungInW": 12.4,
-    "vungInH": 30.5,
-    "res": 300,
-    "gapY": 0.1974,
-    "marginLeft": 0,
-    "marginRight": 0,
-    "marginTop": 0,
-    "marginBottom": 0,
+# Preset TRƯỚC ĐÂY hard-code trực tiếp ở đây — giờ đọc từ
+# presets/layout_presets.json (tách data ra khỏi code). 2 hằng số dưới
+# đây chỉ còn vai trò fallback an toàn nếu file JSON bị thiếu/hỏng.
+_DEFAULT_LAYOUT_CONFIG_FALLBACK = {
+    "vungInW": 12.4, "vungInH": 30.5, "res": 300, "gapY": 0.1974,
+    "marginLeft": 0, "marginRight": 0, "marginTop": 0, "marginBottom": 0,
 }
-
-# Preset công thức layout
-LAYOUT_PRESETS = {
-    "p46D":   {"label": "4x6 3 Dọc",              "formula": "4*6 | C1L3"},
-    "p46":    {"label": "4x6 2 Ngang",            "formula": "4*6 | C1G1; C1G3"},
-    "p46D34": {"label": "4x6 2 Dọc + 3x4 2 Ngang","formula": "4*6; 3*4 | C1L2; C2G3S2"},
-    "p4634D": {"label": "4x6 1 Ngang + 3x4 2 Dọc","formula": "4*6; 3*4 | C1G1; C2L2"},
-    "p3423D": {"label": "3x4 2 Ngang + 2x3 2 Dọc","formula": "3*4; 2*3 | C1G1; C2L2; C1G3"},
-    "p34D":   {"label": "3x4 4 Dọc",              "formula": "3*4 | C1L4"},
-    "p34":    {"label": "3x4 3 Ngang",           "formula": "3*4 | C1G1L2; C1G3"},
-    "p23":    {"label": "2x3 4 Ngang",           "formula": "2*3 | C1G1L2; C1G3L2"},
-    "p23D":   {"label": "2x3 6 Dọc",             "formula": "2*3 | C1L6"},
-    "p35":    {"label": "3x5 2 Ngang",           "formula": "3*5 | C1G1L2; C1G3"},
-    "p35D":   {"label": "3x5 4 Dọc",             "formula": "3*5 | C1L4"},
-    "p25":    {"label": "2.5x3.5 4 Ngang",       "formula": "2.5*3.5 | C1G1L2; C1G3L2"},
-    "p25D":   {"label": "2.5x3.5 6 Dọc",         "formula": "2.5*3.5 | C1L6"},
+_LAYOUT_PRESETS_FALLBACK = {
+    "p46D": {"label": "4x6 3 Dọc", "formula": "4*6 | C1L3"},
     "custom": {"label": "Tùy chỉnh", "formula": ""},
 }
+
+
+def _load_layout_presets():
+    presets_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "presets", "layout_presets.json")
+    try:
+        with open(presets_path, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+        cfg = raw["default_layout_config"]
+        presets = raw["presets"]
+        if not cfg or not presets:
+            raise ValueError("File preset rỗng")
+        return cfg, presets
+    except Exception as e:
+        print(f"[LAYOUT_PRESETS] ⚠ Không đọc được {presets_path} ({e}) — dùng preset mặc định built-in.")
+        return dict(_DEFAULT_LAYOUT_CONFIG_FALLBACK), dict(_LAYOUT_PRESETS_FALLBACK)
+
+
+DEFAULT_LAYOUT_CONFIG, LAYOUT_PRESETS = _load_layout_presets()
 
 
 # ------------------------------------------------------------------

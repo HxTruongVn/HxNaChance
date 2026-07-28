@@ -13,6 +13,7 @@ from pathlib import Path
 # Chỉ import nhẹ ở top-level
 import cv2
 import gc
+import json
 
 if TYPE_CHECKING:
     from runtime_manager import RuntimeReport
@@ -796,23 +797,37 @@ class PhotoSpec:
     min_eye_dist_mm: float = 0.0
 
 
-SPEC_PRESETS = {
+# Preset TRƯỚC ĐÂY hard-code trực tiếp ở đây — giờ đọc từ
+# presets/spec_presets.json (tách data ra khỏi code, đổi/thêm preset
+# không cần sửa photo_engine.py). Dict dưới đây CHỈ còn vai trò fallback
+# an toàn nếu file JSON bị thiếu/hỏng — giữ đúng tinh thần graceful
+# degrade đã dùng xuyên suốt engine này (thiếu 1 phần vẫn chạy được).
+_BUILTIN_SPEC_PRESETS_FALLBACK = {
     "13x18":             PhotoSpec("13x18", 1500, 2126, 0.20, 0.62, 0.50, 0.70),
-    "Quân Phục":         PhotoSpec("Quân Phục", 1500, 2126, 0.18, 0.62, 0.50, 0.70),
-    "(4x6) Phổ thông":   PhotoSpec("(4x6)", 472, 709, 0.20, 0.62, 0.50, 0.70),
     "VN Passport (4x6)": PhotoSpec("VN Passport", 1200, 1800, 0.25, 0.55, 0.55, 0.70, 300, 28),
-    "MỸ (5x5)":          PhotoSpec("Mỹ", 1200, 1200, 0.25, 0.52, 0.50, 0.69, 300, 31),
-    "CHÂU ÂU (3.5x4.5)": PhotoSpec("Châu Âu", 1050, 1350, 0.25, 0.58, 0.50, 0.70),
-    "China Visa":        PhotoSpec("China", 990, 1440, 0.25, 0.60, 0.50, 0.70),
-    "Korea Visa":        PhotoSpec("Korea", 1050, 1350, 0.25, 0.58, 0.50, 0.70),
-    "Taiwan Visa":       PhotoSpec("Taiwan", 1050, 1350, 0.25, 0.62, 0.50, 0.70),
-    "ẤN ĐỘ Visa (5x5)":  PhotoSpec("Ấn Độ", 1500, 1500, 0.25, 0.52, 0.50, 0.70),
-    "Canada Visa (5x7)": PhotoSpec("Canada", 1500, 2100, 0.25, 0.58, 0.50, 0.70),
-    "Nhật Bản (4.5x4.5)":PhotoSpec("Nhật Bản", 1350, 1350, 0.25, 0.58, 0.50, 0.70),
-    "Úc (3.5x4.5)":      PhotoSpec("Úc", 1050, 1350, 0.25, 0.58, 0.50, 0.70),
-    "Singapore (3.5x4.5)":PhotoSpec("Singapore", 1050, 1350, 0.25, 0.58, 0.50, 0.70),
-    "UK (3.5x4.5)":      PhotoSpec("UK", 1050, 1350, 0.25, 0.58, 0.50, 0.70),
 }
+
+
+def _load_spec_presets() -> Dict[str, "PhotoSpec"]:
+    presets_path = Path(__file__).parent / "presets" / "spec_presets.json"
+    try:
+        with open(presets_path, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+        result = {label: PhotoSpec(**fields) for label, fields in raw.items()}
+        if not result:
+            raise ValueError("File preset rỗng")
+        return result
+    except Exception as e:
+        print(f"[SPEC_PRESETS] ⚠ Không đọc được {presets_path} ({e}) — "
+              f"dùng {len(_BUILTIN_SPEC_PRESETS_FALLBACK)} preset mặc định built-in.")
+        return dict(_BUILTIN_SPEC_PRESETS_FALLBACK)
+
+
+SPEC_PRESETS = _load_spec_presets()
+# Tên preset mặc định an toàn — LUÔN tồn tại trong SPEC_PRESETS dù load
+# từ JSON hay fallback, dùng thay cho chuỗi cứng ở nơi khác (main_ui.py)
+# để tránh KeyError khi preset bị đổi tên/xoá sau này.
+DEFAULT_PRESET_NAME = "13x18" if "13x18" in SPEC_PRESETS else next(iter(SPEC_PRESETS))
 
 
 # ------------------------------------------------------------------
