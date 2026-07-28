@@ -447,6 +447,16 @@ def build_layout_canvas(src_path: str, ui_config: Dict,
     renderer = LayoutRenderer(src_img, res)
     simulator = LayoutSimulator()
 
+    # FIX: Kiểm tra xem có preset nào được chọn không
+    has_selected_preset = False
+    for pkey, item in ui_config["presets"].items():
+        if item["count"] > 0 and item["formula"]:
+            has_selected_preset = True
+            break
+    
+    if not has_selected_preset:
+        raise ValueError("Chưa chọn bố cục nào! Hãy tích chọn ít nhất một preset và nhập số lượng.")
+
     for pkey, item in ui_config["presets"].items():
         if item["count"] > 0 and item["formula"]:
             ct = parse_formula(item["formula"])
