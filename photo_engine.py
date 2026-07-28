@@ -607,7 +607,17 @@ class BackgroundProcessor:
                            bg_color: Tuple[int, int, int]) -> np.ndarray:
         if image_rgba.shape[2] == 3:
             return image_rgba
-        bg = np.full((*image_rgba.shape[:2], 3), bg_color, dtype=np.uint8)
+        # FIX: bg_color đến từ main_ui.py / api/engine_wrapper.py luôn ở thứ
+        # tự (R, G, B) (vd. "Xanh" = (39, 114, 208) tương ứng hex #2772D0).
+        # Nhưng buffer ảnh ở đây là BGR/BGRA: remove_background() ở trên
+        # convert output RGBA của rembg bằng COLOR_RGBA2BGRA, và toàn bộ
+        # phần còn lại của pipeline (cv2.imwrite, cv2.imencode, preview
+        # bằng COLOR_BGR2RGB) đều coi ảnh cuối cùng là BGR. Nếu tô canvas
+        # nền thẳng bằng bg_color (R,G,B) thì kênh Đỏ/Xanh dương bị đảo so
+        # với fg (BGR) — "Xanh" ra nền cam/nâu, "Đỏ" ra nền ngả xanh. Đảo
+        # ngược bg_color thành (B, G, R) trước khi tô để khớp với fg.
+        bg_color_bgr = tuple(bg_color[::-1])
+        bg = np.full((*image_rgba.shape[:2], 3), bg_color_bgr, dtype=np.uint8)
         alpha = image_rgba[:, :, 3:4].astype(float) / 255.0
         fg = image_rgba[:, :, :3].astype(float)
         return (fg * alpha + bg.astype(float) * (1 - alpha)).astype(np.uint8)
@@ -983,13 +993,32 @@ class PhotoMasterEngineV2:
         # 1. Upscale (optional)
         if options.get('upscale', False) and self.upscaler.available:
             image = self.upscaler.upscale(image, outscale=2.0)
-            face_data = self.face_analyzer.analyze(image)
+            # FIX: upscale/restore có thể khiến MediaPipe không còn nhận ra
+            # mặt (analyze() trả None). Trước đây face_data bị ghi đè vô
+            # điều kiện, và align_face() ở bước 7 phía dưới không check
+            # None -> crash TypeError giữa chừng pipeline. Giữ lại
+            # face_data cũ (đo trên ảnh trước khi upscale) nếu lần phân
+            # tích lại này thất bại, thay vì làm mất luôn toạ độ mặt.
+            new_face_data = self.face_analyzer.analyze(image)
+            if new_face_data is not None:
+                face_data = new_face_data
+            else:
+                result['validation_errors'].append(
+                    "Không tái nhận diện được khuôn mặt sau khi upscale — "
+                    "dùng lại toạ độ khuôn mặt trước đó.")
 
         # 2. Face Restore (CodeFormer)
         if options.get('face_restore', True) and self.codeformer.available:
             fidelity = options.get('face_restore_fidelity', 0.7)
             image = self.codeformer.enhance(image, fidelity=fidelity)
-            face_data = self.face_analyzer.analyze(image)
+            # FIX: cùng lý do với bước upscale ở trên.
+            new_face_data = self.face_analyzer.analyze(image)
+            if new_face_data is not None:
+                face_data = new_face_data
+            else:
+                result['validation_errors'].append(
+                    "Không tái nhận diện được khuôn mặt sau khi face-restore — "
+                    "dùng lại toạ độ khuôn mặt trước đó.")
 
         # 3. Face Parsing
         parsing_map = None
