@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Photo Master Pro v2 — AI Edition
+Photo Master Pro — AI Edition
 Chạy: python main.py
 
 Kiến trúc:
@@ -56,7 +56,7 @@ def _detect_runtime():
     report = manager.detect()
 
     print("=" * 60)
-    print("Photo Master Pro v2 — Runtime Report")
+    print("Photo Master Pro — Runtime Report")
     print("=" * 60)
     print(report.summary_text())
     print("=" * 60)

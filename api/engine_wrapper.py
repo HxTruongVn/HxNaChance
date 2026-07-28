@@ -1,5 +1,5 @@
 """
-Thread-safe wrapper cho PhotoMasterEngineV2 — dùng trong FastAPI service.
+Thread-safe wrapper cho PhotoMasterEngine — dùng trong FastAPI service.
 Không sửa engine gốc, chỉ bọc ngoài để xử lý:
 - tempfile I/O (engine gốc nhận path string)
 - threading.Lock (serialize inference vì MediaPipe/rembg/PyTorch không thread-safe)
@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # FIX: tên module cũ trước khi đổi tên file (photo_engine_v2.py đã đổi
 # thành photo_engine.py) — import sai tên này sẽ ModuleNotFoundError
 # ngay khi khởi tạo server.
-from photo_engine import PhotoMasterEngineV2, SPEC_PRESETS
+from photo_engine import PhotoMasterEngine, SPEC_PRESETS
 from photo_agent import PhotoQAAgent
 from runtime_manager import RuntimeManager
 
@@ -45,7 +45,7 @@ class ThreadSafeEngine:
         self.report = manager.detect()
 
         # Lazy-load models ngay tại đây (chứ không đợi request đầu tiên)
-        self.engine = PhotoMasterEngineV2(
+        self.engine = PhotoMasterEngine(
             weights_dir=weights_dir,
             runtime_report=self.report
         )

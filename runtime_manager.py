@@ -1,9 +1,9 @@
 """
-Runtime / Environment Manager — Photo Master Pro v2
+Runtime / Environment Manager — Photo Master Pro
 =====================================================
 
 Tầng trung gian giữa (OS / Python / GPU / package / model weights) và
-Engine xử lý ảnh. Trước đây mỗi class trong photo_engine_v2.py
+Engine xử lý ảnh. Trước đây mỗi class trong photo_engine.py
 (FaceParsingProcessor, CodeFormerRestorer, RealESRGANUpscaler...) tự
 `try: import torch`, tự kiểm tra file weights, tự quyết định
 `self.available` — logic bị lặp lại nhiều nơi và không có nơi tổng hợp
@@ -16,7 +16,7 @@ không tự dò môi trường nữa.
     RuntimeManager.detect()
             │
             ▼
-      RuntimeReport  ──▶  PhotoMasterEngineV2(runtime_report=report)
+      RuntimeReport  ──▶  PhotoMasterEngine(runtime_report=report)
             │
             ▼
       UI hiển thị tính năng nào bật/tắt được, không cần thử-rồi-mới-biết
@@ -221,6 +221,6 @@ if __name__ == "__main__":
 
     report = RuntimeManager().detect()
     print("=" * 60)
-    print("Photo Master Pro v2 — Runtime Report")
+    print("Photo Master Pro — Runtime Report")
     print("=" * 60)
     print(report.summary_text())

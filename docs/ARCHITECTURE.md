@@ -1,4 +1,4 @@
-# Kiến trúc Photo Master Pro v2
+# Kiến trúc Photo Master Pro
 
 ```
                 PHOTO MASTER PRO
@@ -39,7 +39,7 @@ main.py
   ├─▶ nếu thiếu package bắt buộc → in lỗi rõ ràng, thoát trước khi mở UI
   │
   └─▶ PhotoMasterApp(runtime_report=report)
-          └─▶ PhotoMasterEngineV2(runtime_report=report)
+          └─▶ PhotoMasterEngine(runtime_report=report)
                   └─▶ đọc report.device, không tự dò lại
                       mỗi processor (CodeFormer/RealESRGAN/BiSeNet) vẫn tự
                       lazy-load model thật khi được gọi lần đầu — report chỉ

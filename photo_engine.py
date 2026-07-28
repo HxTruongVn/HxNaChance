@@ -841,10 +841,10 @@ DEFAULT_PRESET_NAME = "13x18" if "13x18" in SPEC_PRESETS else next(iter(SPEC_PRE
 
 
 # ------------------------------------------------------------------
-# 10. PHOTO MASTER ENGINE V2 (Lazy Load)
+# 10. PHOTO MASTER ENGINE (Lazy Load)
 # ------------------------------------------------------------------
 
-class PhotoMasterEngineV2:
+class PhotoMasterEngine:
     """Engine chính — lazy load model, graceful fallback."""
 
     def __init__(self, weights_dir: str = "weights", runtime_report: "Optional[RuntimeReport]" = None):
@@ -864,7 +864,7 @@ class PhotoMasterEngineV2:
             except ImportError:
                 pass
 
-        print(f"[EngineV2] Device: {self.device}")
+        print(f"[Engine] Device: {self.device}")
 
         # CPU tuning: giới hạn số thread để không chiếm hết CPU yếu (2-4
         # nhân) — mặc định torch/opencv tự dùng hết số nhân sẵn có, trên
@@ -875,7 +875,7 @@ class PhotoMasterEngineV2:
                 import torch
                 torch.set_num_threads(2)
                 torch.set_num_interop_threads(1)
-                print("[EngineV2] CPU tuning: cv2=2 threads, torch=2 threads, interop=1")
+                print("[Engine] CPU tuning: cv2=2 threads, torch=2 threads, interop=1")
             except (ImportError, RuntimeError):
                 # RuntimeError: torch.set_num_interop_threads() chỉ gọi được
                 # 1 lần trước khi bất kỳ phép tính song song nào chạy —
@@ -887,14 +887,14 @@ class PhotoMasterEngineV2:
         def _safe_init(label, factory):
             """Mỗi processor tự đứng riêng — nếu 1 cái khởi tạo lỗi
             (kể cả lỗi chưa lường trước, không chỉ ImportError), chỉ
-            tính năng đó bị tắt, không kéo sập cả PhotoMasterEngineV2.
+            tính năng đó bị tắt, không kéo sập cả PhotoMasterEngine.
             Trước đây 1 lỗi RuntimeError trong RealESRGANUpscaler (xung
             đột NumPy 1.x/2.x) làm sập toàn bộ Engine dù FaceParser/
             CodeFormer phía trước đã khởi tạo (hoặc graceful-fail) xong."""
             try:
                 return factory()
             except Exception as e:
-                print(f"[EngineV2] ⚠ {label} khởi tạo lỗi — tính năng này sẽ bị tắt: {e}")
+                print(f"[Engine] ⚠ {label} khởi tạo lỗi — tính năng này sẽ bị tắt: {e}")
                 return None
 
         # Lazy init: chỉ tạo object, không load weights ngay
@@ -933,11 +933,11 @@ class PhotoMasterEngineV2:
         # Báo cáo trạng thái (mỗi processor tự xác nhận .available sau khi
         # thử load thật — đây là nguồn sự thật để process() quyết định bật/tắt
         # từng bước; RuntimeReport ở trên chỉ là dự đoán trước khi load).
-        print(f"[EngineV2] FaceParser: {'✓' if self.face_parser.available else '✗'}")
-        print(f"[EngineV2] CodeFormer: {'✓' if self.codeformer.available else '✗'}")
-        print(f"[EngineV2] RealESRGAN: {'✓' if self.upscaler.available else '✗'}")
-        print(f"[EngineV2] MediaPipe: ✓")
-        print(f"[EngineV2] rembg: ✓")
+        print(f"[Engine] FaceParser: {'✓' if self.face_parser.available else '✗'}")
+        print(f"[Engine] CodeFormer: {'✓' if self.codeformer.available else '✗'}")
+        print(f"[Engine] RealESRGAN: {'✓' if self.upscaler.available else '✗'}")
+        print(f"[Engine] MediaPipe: ✓")
+        print(f"[Engine] rembg: ✓")
 
     def process(self, image_path: str, spec: PhotoSpec,
                 bg_color: Tuple[int, int, int], options: Dict) -> Dict:

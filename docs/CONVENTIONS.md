@@ -1,6 +1,6 @@
 # 📋 Coding Conventions & Standards
 
-Hướng dẫn chuẩn hóa tên file, hàm, biến, class trong repo Photo Master Pro v2.
+Hướng dẫn chuẩn hóa tên file, hàm, biến, class trong repo Photo Master Pro.
 
 ---
 
@@ -349,7 +349,7 @@ def detect_blur(image: np.ndarray, threshold: float = 100.0) -> Tuple[bool, floa
 photo-master-pro/
 ├── photo_engine/
 │   ├── __init__.py
-│   ├── engine.py              # Main PhotoMasterEngineV2
+│   ├── engine.py              # Main PhotoMasterEngine
 │   ├── processors/
 │   │   ├── face_parser.py     # FaceParsingProcessor
 │   │   ├── face_restorer.py   # CodeFormerRestorer

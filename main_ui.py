@@ -1,5 +1,5 @@
 """
-Photo Master Pro v2 — Main UI (AI Pipeline Edition)
+Photo Master Pro — Main UI (AI Pipeline Edition)
 Tích hợp: CodeFormer + Real-ESRGAN + BiSeNet Face Parsing + isnet RMBG
 """
 
@@ -21,7 +21,7 @@ from PIL import Image as PILImage
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
 
-from photo_engine import PhotoMasterEngineV2, SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME
+from photo_engine import PhotoMasterEngine, SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME
 from photo_agent import PhotoQAAgent
 from print_layout import (
     build_layout_canvas, save_layout, LAYOUT_PRESETS,
@@ -91,7 +91,7 @@ class PhotoMasterApp(ctk.CTk):
 
     def __init__(self, runtime_report=None):
         super().__init__()
-        self.title("PHOTO MASTER PRO v2 — AI Edition")
+        self.title("PHOTO MASTER PRO — AI Edition")
         self.overrideredirect(True)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.geometry("480x780")
@@ -104,7 +104,17 @@ class PhotoMasterApp(ctk.CTk):
         self.last_results = []
         self.last_layout = None
         self.preview_window = None
-        self.config_path = Path.home() / ".photo_master_pro_v2_ai.json"
+        self.config_path = Path.home() / ".photo_master_pro_ai.json"
+        # FIX: đồng bộ tên file config theo tên class (PhotoMasterEngineV2
+        # -> PhotoMasterEngine), bỏ hậu tố "v2" còn sót lại. Di chuyển file
+        # config cũ (nếu có) sang tên mới 1 lần duy nhất, để người dùng cũ
+        # không bị mất theme/cấu hình đã lưu trước đó.
+        old_config_path = Path.home() / ".photo_master_pro_v2_ai.json"
+        if not self.config_path.exists() and old_config_path.exists():
+            try:
+                old_config_path.rename(self.config_path)
+            except OSError:
+                pass
 
         # Đọc tên theme đã lưu (nếu có) TRƯỚC khi build UI, để giao diện
         # mở lên đúng lựa chọn lần trước, không phải luôn chờ đổi sau.
@@ -117,7 +127,7 @@ class PhotoMasterApp(ctk.CTk):
         self.engine = None
         self.qa_agent = None
         try:
-            self.engine = PhotoMasterEngineV2(weights_dir="weights", runtime_report=runtime_report)
+            self.engine = PhotoMasterEngine(weights_dir="weights", runtime_report=runtime_report)
             # Cấp 1: agent tự thử lại (không LLM) khi ảnh chưa đạt chuẩn —
             # xem photo_agent.py. Bọc quanh engine đã khởi tạo, không tạo
             # engine thứ 2.

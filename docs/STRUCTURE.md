@@ -59,7 +59,7 @@ photo-master-pro/
 │
 ├── photo_engine/                 # Core package
 │   ├── __init__.py              # Export public API
-│   ├── engine.py                # PhotoMasterEngineV2 class
+│   ├── engine.py                # PhotoMasterEngine class
 │   │
 │   ├── processors/              # Processing modules
 │   │   ├── __init__.py
@@ -148,13 +148,13 @@ photo-master-pro/
 # photo_engine/__init__.py
 """Photo Master Pro Engine - AI photo processing."""
 
-from .engine import PhotoMasterEngineV2
+from .engine import PhotoMasterEngine
 from .processors.face_parser import FaceParsingProcessor
 from .processors.face_restorer import CodeFormerRestorer
 from .utils.validators import PhotoSpec, FaceAnalyzer
 
 __all__ = [
-    "PhotoMasterEngineV2",
+    "PhotoMasterEngine",
     "FaceParsingProcessor",
     "CodeFormerRestorer",
     "PhotoSpec",
@@ -264,13 +264,13 @@ Khi chuyển từ flat structure sang package structure:
 
 ### Current (Flat structure)
 ```python
-from photo_engine import PhotoMasterEngineV2, FaceParsingProcessor
+from photo_engine import PhotoMasterEngine, FaceParsingProcessor
 from runtime_manager import RuntimeManager
 ```
 
 ### After (Package structure — planned)
 ```python
-from photo_engine import PhotoMasterEngineV2, FaceParsingProcessor
+from photo_engine import PhotoMasterEngine, FaceParsingProcessor
 from photo_engine.runtime import RuntimeManager
 from photo_engine.utils import PhotoSpec
 ```
@@ -281,7 +281,7 @@ from photo_engine.utils import PhotoSpec
 
 | File/Module | Responsibility | Key Classes |
 |------------|---------------|----|
-| `engine.py` | Main orchestrator | `PhotoMasterEngineV2` |
+| `engine.py` | Main orchestrator | `PhotoMasterEngine` |
 | `face_parser.py` | Face semantic parsing | `FaceParsingProcessor` |
 | `face_restorer.py` | Face enhancement | `CodeFormerRestorer` |
 | `bg_processor.py` | Background removal/replacement | `BackgroundProcessor` |
@@ -299,7 +299,7 @@ from photo_engine.utils import PhotoSpec
 ```
 main.py
 ├── main_ui.py (PhotoMasterApp)
-│   ├── photo_engine.py (PhotoMasterEngineV2)
+│   ├── photo_engine.py (PhotoMasterEngine)
 │   ├── photo_agent.py (PhotoQAAgent)
 │   └── print_layout.py (LayoutSimulator, LayoutRenderer)
 ├── runtime_manager.py
@@ -318,7 +318,7 @@ main.py
 from .processors import FaceParsingProcessor
 
 # photo_engine/processors/__init__.py
-from ..engine import PhotoMasterEngineV2  # ❌ CIRCULAR!
+from ..engine import PhotoMasterEngine  # ❌ CIRCULAR!
 ```
 
 **Fix**: Remove circular dependency, reorganize into separate concerns.

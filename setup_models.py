@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Photo Master Pro v2 — Model Setup Script
+Photo Master Pro — Model Setup Script
 File CÀI ĐẶT DUY NHẤT của dự án: tự tạo virtualenv, cài dependencies,
 và tải toàn bộ weights AI về ./weights/ — có mirror Hugging Face +
 GitHub + Google Drive (gdown), tự chuyển nguồn nếu nguồn đầu lỗi, hỗ
@@ -309,7 +309,7 @@ def download_all_weights():
 
 def setup_weights(cpu_only: bool = False):
     print("=" * 60)
-    print("Photo Master Pro v2 - Model Setup")
+    print("Photo Master Pro - Model Setup")
     print("=" * 60)
     print(f"Python đang dùng: {sys.executable}")
     print(f"Trong virtualenv: {'Có' if in_venv() else 'Không'}")
@@ -344,7 +344,7 @@ def setup_weights(cpu_only: bool = False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Photo Master Pro v2 - Model Setup")
+    parser = argparse.ArgumentParser(description="Photo Master Pro - Model Setup")
     parser.add_argument("--cpu-only", action="store_true",
                          help="Cài bản torch CPU-only (dùng cho máy yếu / không có GPU)")
     parser.add_argument("-y", "--yes", action="store_true",

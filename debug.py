@@ -27,7 +27,7 @@ except Exception as e:
     sys.exit(1)
 
 print("=" * 60)
-print("Photo Master Pro v2 — Environment Check")
+print("Photo Master Pro — Environment Check")
 print("=" * 60)
 
 manager = RuntimeManager(weights_dir="weights")
