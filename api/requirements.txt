@@ -1,21 +1,10 @@
-# === FastAPI Core ===
+# FastAPI service — cài từ thư mục gốc repo:
+#   pip install -r api/requirements.txt
+#
+# File này kéo theo toàn bộ dependency AI/desktop (requirements.txt).
+-r requirements.txt
+
 fastapi>=0.110.0
 uvicorn[standard]>=0.29.0
 python-multipart>=0.0.9
 pydantic>=2.6.0
-
-# === Dependencies đã có trong repo gốc (giữ nguyên) ===
-# opencv-python
-# Pillow
-# numpy
-# torch, torchvision
-# mediapipe
-# rembg
-# basicsr, realesrgan
-# codeformer-pip (hoặc codeformer)
-# facexlib
-# gfpgan
-# onnxruntime (cho rembg)
-# protobuf
-# scipy, numba
-# Các gói trên vẫn cần cài theo requirements gốc của repo.

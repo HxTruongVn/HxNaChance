@@ -54,7 +54,7 @@ REQUIRED_PACKAGES: Dict[str, str] = {
 OPTIONAL_PACKAGES: Dict[str, str] = {
     "torch": "torch torchvision (pip install torch torchvision)",
     "torchvision": "torchvision",
-    "codeformer": "codeformer (pip install git+https://github.com/sczhou/CodeFormer.git)",
+    "codeformer": "codeformer-pip (pip install codeformer-pip; hoặc chạy python setup_models.py)",
     "realesrgan": "realesrgan (pip install git+https://github.com/xinntao/Real-ESRGAN.git)",
     "basicsr": "basicsr",
 }

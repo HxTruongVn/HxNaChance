@@ -7,7 +7,7 @@ Dùng checklist này khi review PR hoặc trước khi commit code.
 ## 📋 Pre-Commit Checklist
 
 ### Naming & Convention
-- [ ] **Files**: Tất cả `.py` files là `snake_case` (ví dụ: `photo_engine_v2.py` ✓)
+- [ ] **Files**: Tất cả `.py` files là `snake_case` (ví dụ: `photo_engine.py` ✓)
 - [ ] **Classes**: PascalCase với suffix rõ (Processor, Manager, Engine, Analyzer...)
 - [ ] **Functions/Methods**: snake_case, bắt đầu bằng verb (parse_, enhance_, detect_...)
 - [ ] **Private methods**: Có `_` prefix (ví dụ: `def _to_tensor()`)
@@ -87,7 +87,7 @@ Khi tạo PR, sử dụng template này:
 | `data`, `result`, `value` | `parsing_map`, `face_data` | Mô tả cụ thể |
 | `m`, `mask` | `skin_mask`, `eye_mask` | Rõ type mask |
 | `p`, `parse` | `parse_face()` | Descriptive verb |
-| `Core.py`, `PhotoEngine.py` | `photo_engine_v2.py` | Consistent casing, version |
+| `Core.py`, `PhotoEngine.py` | `photo_engine.py` | Consistent casing |
 | `Helper`, `Util`, `Tool` | `FaceParsingProcessor` | Descriptive suffix |
 | `do_enhance()`, `perform_parse()` | `enhance()`, `parse()` | Động từ đơn giản |
 | `PhotoX`, `PhotoY`, `PhotoZ` | `FaceAnalyzer`, `BackgroundProcessor` | Suffix rõ ràng |
@@ -175,7 +175,7 @@ Maintains same API surface for backward compatibility.
 
 - Initialize MediaPipe Face Mesh on first use
 - Extract skin/eye/teeth masks from face landmarks
-- Update photo_engine_v2.py to use new parser
+- Update photo_engine.py to use new parser
 - Update README with license changes
 
 Fixes #42

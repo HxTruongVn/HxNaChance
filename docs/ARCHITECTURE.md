@@ -7,9 +7,9 @@
         │                             │
      APP CORE                    RUNTIME
         │                             │
-  photo_engine_v2              runtime_manager
-  print_layout                 (Python/GPU/package/model
-  main_ui_v2                    detection — 1 lần lúc khởi động)
+  photo_engine                 runtime_manager
+  main_ui                      (Python/GPU/package/model
+  print_layout                  detection — 1 lần lúc khởi động)
         │                             │
         └──────────────┬──────────────┘
                        │
@@ -91,8 +91,7 @@ test, ngoài phạm vi những gì có thể xác minh trong lần sửa này):
 2. **Model weights (~680MB) không nên nhét vào exe.** Nên giữ nguyên
    cách hiện tại: exe (hoặc `main.py` chạy từ source) khởi động, gọi
    `RuntimeManager` phát hiện model thiếu, rồi hướng dẫn/tự động chạy
-   `setup_models.py` để tải vào
-   `models/` (hoặc `weights/`) cục cạnh exe. Sau lần tải đầu, mọi lần
+   `setup_models.py` để tải vào thư mục `weights/` cục bộ cạnh exe. Sau lần tải đầu, mọi lần
    chạy sau đều offline hoàn toàn — đúng tinh thần "OFFLINE APP" ở
    trên.
 

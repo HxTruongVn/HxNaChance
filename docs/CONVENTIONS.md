@@ -400,7 +400,7 @@ photo-master-pro/
 
 | Kiểu | Convention | Ví dụ |
 |------|-----------|--------|
-| **File** | snake_case | `photo_engine_v2.py` |
+| **File** | snake_case | `photo_engine.py` |
 | **Class** | PascalCase | `FaceParsingProcessor` |
 | **Function** | snake_case, verb_noun | `parse_face()` |
 | **Method (public)** | snake_case | `def enhance(self)` |

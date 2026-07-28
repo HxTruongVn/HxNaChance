@@ -112,7 +112,18 @@ docker build -f api/Dockerfile -t photo-master-api .
 docker run --gpus all -p 8000:8000 -v $(pwd)/weights:/app/weights photo-master-api
 ```
 
-Test nhanh: `python api/test_api.py` (server phải đang chạy).
+Test thủ công API (server phải đang chạy):
+`python scripts/manual_api_test.py --image path/to/photo.jpg`
+
+## 🧪 Phát triển & CI
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest -q
+```
+
+GitHub Actions (`.github/workflows/tests.yml`) chạy pytest trên mỗi push/PR.
+Chi tiết khắc phục sự cố: [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md).
 
 ## ⚡ Chạy KHÔNG cần weights (Lite Mode)
 
@@ -175,6 +186,7 @@ python main.py
 
 ## 🆘 Khắc phục sự cố
 
+Xem [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) (đầy đủ). Tóm tắt:
 **App khởi động rồi tắt ngay:**
 ```bash
 python debug.py      # xem thiếu gì
@@ -183,7 +195,8 @@ python main.py       # đọc lỗi in ra console
 
 **Lỗi "No module named 'codeformer'":**
 ```bash
-pip install git+https://github.com/sczhou/CodeFormer.git
+pip install codeformer-pip
+# hoặc chạy lại: python setup_models.py
 ```
 
 **Lỗi "No module named 'realesrgan'":**

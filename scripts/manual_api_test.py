@@ -1,10 +1,15 @@
 """
-Script test nhanh cho Photo Master Pro API.
-Chạy:  python test_api.py --image path/to/photo.jpg --output result.png
+Script thủ công gọi Photo Master Pro API (không phải pytest).
+
+Chạy từ thư mục gốc repo (server phải đang chạy):
+  python scripts/manual_api_test.py --image path/to/photo.jpg --output result.png
 """
 import argparse
 import base64
 import json
+import sys
+from pathlib import Path
+
 import requests
 
 API_BASE = "http://localhost:8000"
@@ -67,7 +72,12 @@ if __name__ == "__main__":
     parser.add_argument("--format", default="file", choices=["file", "base64"])
     args = parser.parse_args()
 
+    if not Path(args.image).is_file():
+        print(f"Không tìm thấy file ảnh: {args.image}", file=sys.stderr)
+        sys.exit(1)
+
     if test_health():
         test_process(args.image, args.output, args.format)
     else:
         print("Health check thất bại — kiểm tra server đã chạy chưa.")
+        sys.exit(1)

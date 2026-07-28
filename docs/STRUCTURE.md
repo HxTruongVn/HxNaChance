@@ -19,7 +19,26 @@ photo-master-pro/
 │
 ├── debug.py                      # Debug utilities
 ├── requirements.txt              # Dependencies (core)
-├── requirements-cpu.txt           # torch CPU-only, dùng với --cpu-only (cài TRƯỚC requirements.txt)
+├── requirements-cpu.txt          # torch CPU-only, dùng với --cpu-only (cài TRƯỚC requirements.txt)
+├── requirements-dev.txt          # pytest (dev/CI)
+├── pytest.ini
+│
+├── api/                          # FastAPI service (tuỳ chọn)
+│   ├── main.py
+│   ├── engine_wrapper.py
+│   ├── schemas.py
+│   ├── requirements.txt          # -r requirements.txt + FastAPI stack
+│   └── Dockerfile
+│
+├── scripts/
+│   └── manual_api_test.py        # Gọi API thủ công (không phải pytest)
+│
+├── tests/                        # pytest (CI: .github/workflows/tests.yml)
+│   ├── test_runtime_manager.py
+│   ├── test_photo_agent.py
+│   └── test_spec_presets.py
+│
+├── presets/                      # JSON presets (spec, layout)
 │
 ├── README.md                     # Usage guide (giữ ở root - GitHub render làm trang chủ repo)
 └── docs/                         # Tài liệu nội bộ — xem docs/STRUCTURE.md (file này)
@@ -95,19 +114,19 @@ photo-master-pro/
 │   ├── API.md                   # API reference
 │   └── TROUBLESHOOTING.md
 │
-├── tests/                       # Unit & integration tests (future)
+├── tests/                       # Unit tests
 │   ├── __init__.py
-│   ├── test_engine.py
-│   ├── test_processors.py
-│   └── conftest.py
+│   ├── test_runtime_manager.py
+│   ├── test_photo_agent.py
+│   └── test_spec_presets.py
 │
 ├── examples/                    # Usage examples (future)
 │   ├── simple_enhancement.py
 │   └── batch_processing.py
 │
 ├── .github/
-│   └── workflows/               # CI/CD (future)
-│       └── tests.yml
+│   └── workflows/
+│       └── tests.yml            # CI: pytest on push/PR
 │
 ├── .gitignore
 ├── README.md
@@ -243,13 +262,13 @@ Khi chuyển từ flat structure sang package structure:
 
 ## 📚 Import Examples
 
-### Before (Flat structure)
+### Current (Flat structure)
 ```python
-from photo_engine_v2 import PhotoMasterEngineV2, FaceParsingProcessor
+from photo_engine import PhotoMasterEngineV2, FaceParsingProcessor
 from runtime_manager import RuntimeManager
 ```
 
-### After (Package structure)
+### After (Package structure — planned)
 ```python
 from photo_engine import PhotoMasterEngineV2, FaceParsingProcessor
 from photo_engine.runtime import RuntimeManager
@@ -280,11 +299,13 @@ from photo_engine.utils import PhotoSpec
 ```
 main.py
 ├── main_ui.py (PhotoMasterApp)
-│   └── photo_engine.py (PhotoMasterEngineV2)
-│       ├── runtime_manager.py (RuntimeManager)
-│       └── print_layout.py (LayoutSimulator, LayoutRenderer)
+│   ├── photo_engine.py (PhotoMasterEngineV2)
+│   ├── photo_agent.py (PhotoQAAgent)
+│   └── print_layout.py (LayoutSimulator, LayoutRenderer)
 ├── runtime_manager.py
-└── setup_models.py
+├── setup_models.py
+└── api/main.py (FastAPI, tuỳ chọn)
+    └── api/engine_wrapper.py → photo_engine, photo_agent, runtime_manager
 ```
 
 ---
@@ -355,5 +376,5 @@ DEFAULT_DEVICE = "cuda"
 
 ---
 
-**Last Updated**: 2026-07-26  
-**Status**: Ready for implementation (future refactoring)
+**Last Updated**: 2026-07-28  
+**Status**: Flat layout + tests/CI active; package refactor vẫn theo roadmap trong Plan.md

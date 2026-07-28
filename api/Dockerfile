@@ -29,11 +29,8 @@ RUN apt-get update && apt-get install -y \
 # opencv, mediapipe, rembg...) bị để dạng comment, phải tự tay bỏ
 # comment. Build theo file cũ sẽ thiếu sạch dependency AI. Giờ cài cả
 # 2 file thật, không còn bước thủ công nào.
-COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-COPY api/requirements.txt api-requirements.txt
-RUN pip3 install --no-cache-dir -r api-requirements.txt
+COPY requirements.txt api/requirements.txt ./
+RUN pip3 install --no-cache-dir -r api/requirements.txt
 
 # --- Copy source ---
 # Build context là thư mục gốc repo (xem lệnh build ở trên) nên copy
