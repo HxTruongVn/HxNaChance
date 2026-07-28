@@ -1,5 +1,5 @@
 # =============================================================================
-# Dockerfile — NaChanse API (Production)
+# Dockerfile — NaChance API (Production)
 # =============================================================================
 # Build (chạy từ THƯ MỤC GỐC repo, không phải trong api/):
 #   docker build -f api/Dockerfile -t photo-master-api .

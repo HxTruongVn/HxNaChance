@@ -1,7 +1,7 @@
-# Kiến trúc NaChanse
+# Kiến trúc NaChance
 
 ```
-                NACHANSE
+                NACHANCE
                        │
         ┌──────────────┴──────────────┐
         │                             │
@@ -69,8 +69,8 @@ engine theo thời gian.
 Mục tiêu cấu trúc phân phối:
 
 ```
-NaChanse/
-    NaChanse.exe
+NaChance/
+    NaChance.exe
     runtime/
     models/
     config/

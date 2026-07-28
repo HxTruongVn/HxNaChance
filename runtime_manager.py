@@ -1,5 +1,5 @@
 """
-Runtime / Environment Manager — NaChanse
+Runtime / Environment Manager — NaChance
 =====================================================
 
 Tầng trung gian giữa (OS / Python / GPU / package / model weights) và
@@ -221,6 +221,6 @@ if __name__ == "__main__":
 
     report = RuntimeManager().detect()
     print("=" * 60)
-    print("NaChanse — Runtime Report")
+    print("NaChance — Runtime Report")
     print("=" * 60)
     print(report.summary_text())

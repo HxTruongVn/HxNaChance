@@ -1,5 +1,5 @@
 """
-NaChanse — AI Photo Processing Engine (Lazy Load Edition)
+NaChance — AI Photo Processing Engine (Lazy Load Edition)
 Không import nặng ở top-level. Chỉ load model khi cần.
 """
 

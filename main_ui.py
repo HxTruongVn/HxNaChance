@@ -1,5 +1,5 @@
 """
-NaChanse — Main UI (AI Pipeline Edition)
+NaChance — Main UI (AI Pipeline Edition)
 Tích hợp: CodeFormer + Real-ESRGAN + BiSeNet Face Parsing + isnet RMBG
 """
 
@@ -87,7 +87,7 @@ class PhotoMasterApp(ctk.CTk):
 
     def __init__(self, runtime_report=None):
         super().__init__()
-        self.title("NACHANSE — AI Edition")
+        self.title("NACHANCE — AI Edition")
         self.overrideredirect(True)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.geometry("480x780")
@@ -100,18 +100,20 @@ class PhotoMasterApp(ctk.CTk):
         self.last_results = []
         self.last_layout = None
         self.preview_window = None
-        self.config_path = Path.home() / ".nachanse_ai.json"
+        self.config_path = Path.home() / ".nachance_ai.json"
         # FIX: đồng bộ tên file config theo tên class (PhotoMasterEngineV2
         # -> PhotoMasterEngine), bỏ hậu tố "v2" còn sót lại. Di chuyển file
         # config cũ (nếu có) sang tên mới 1 lần duy nhất, để người dùng cũ
         # không bị mất theme/cấu hình đã lưu trước đó.
-        # Đổi thương hiệu Photo Master Pro -> NaChanse: giữ nguyên chuỗi
+        # Đổi thương hiệu Photo Master Pro -> NaChance: giữ nguyên chuỗi
         # migrate theo thứ tự file cũ nhất trước, để không mất config của
         # người dùng đã cài từ trước khi đổi tên.
         legacy_config_paths = [
             Path.home() / ".photo_master_pro_v2_ai.json",
             Path.home() / ".photo_master_pro_ai.json",
             Path.home() / ".nachanse_v2_ai.json",
+            Path.home() / ".nachanse_ai.json",
+            Path.home() / ".nachance_v2_ai.json",
         ]
         if not self.config_path.exists():
             for old_config_path in legacy_config_paths:
@@ -234,7 +236,7 @@ class PhotoMasterApp(ctk.CTk):
         )
         self.btn_toggle.pack(side="left", padx=6, pady=5)
 
-        ctk.CTkLabel(self.title_bar, text="📷 NACHANSE AI",
+        ctk.CTkLabel(self.title_bar, text="📷 NACHANCE AI",
                      font=("Segoe UI", 13, "bold"), text_color=self.COLORS['accent']).pack(side="left", padx=8)
 
         self.btn_quick = ctk.CTkButton(

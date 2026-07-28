@@ -1,5 +1,5 @@
 """
-Pydantic schemas for NaChanse API
+Pydantic schemas for NaChance API
 """
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any

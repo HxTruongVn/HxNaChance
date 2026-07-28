@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-NaChanse — AI Edition
+NaChance — AI Edition
 Chạy: python main.py
 
 Kiến trúc:
@@ -56,7 +56,7 @@ def _detect_runtime():
     report = manager.detect()
 
     print("=" * 60)
-    print("NaChanse — Runtime Report")
+    print("NaChance — Runtime Report")
     print("=" * 60)
     print(report.summary_text())
     print("=" * 60)

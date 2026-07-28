@@ -1,10 +1,10 @@
-# NaChanse — AI Edition
+# NaChance — AI Edition
 
 Hệ thống xử lý ảnh thẻ chuyên nghiệp với pipeline **Deep Learning** hoàn chỉnh.
 
 ## 📌 Hệ thống này dùng để làm gì?
 
-**NaChanse** là ứng dụng desktop (Windows) dành cho **tiệm ảnh /
+**NaChance** là ứng dụng desktop (Windows) dành cho **tiệm ảnh /
 studio chụp ảnh thẻ**, tự động hoá toàn bộ quy trình từ ảnh chân dung gốc
 đến file ảnh thẻ đạt chuẩn, sẵn sàng in:
 

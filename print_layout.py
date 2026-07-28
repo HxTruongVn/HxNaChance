@@ -1,5 +1,5 @@
 """
-NaChanse- Print Layout Engine
+NaChance- Print Layout Engine
 Dựa trên logic xếp ảnh thẻ của xepanhthe_standalone.py
 Công thức layout: parser + simulator + renderer
 """

@@ -1,5 +1,5 @@
 """
-NaChanse — FastAPI Service
+NaChance — FastAPI Service
 ======================================
 Chạy (từ thư mục gốc repo):  uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="NaChanse API",
+    title="NaChance API",
     description="AI Photo ID Processing Pipeline — CodeFormer + Real-ESRGAN + BiSeNet + isnet",
     version="2.0.0",
     lifespan=lifespan,
