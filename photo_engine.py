@@ -797,7 +797,7 @@ class PhotoSpec:
 
 
 SPEC_PRESETS = {
-    "13x18":     PhotoSpec("13x18", 1500, 2126, 0.20, 0.62, 0.50, 0.70),
+    "13x18":             PhotoSpec("13x18", 1500, 2126, 0.20, 0.62, 0.50, 0.70),
     "Quân Phục":         PhotoSpec("Quân Phục", 1500, 2126, 0.18, 0.62, 0.50, 0.70),
     "(4x6) Phổ thông":   PhotoSpec("(4x6)", 472, 709, 0.20, 0.62, 0.50, 0.70),
     "VN Passport (4x6)": PhotoSpec("VN Passport", 1200, 1800, 0.25, 0.55, 0.55, 0.70, 300, 28),
