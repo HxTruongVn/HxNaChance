@@ -482,16 +482,67 @@ class PhotoMasterApp(ctk.CTk):
         for key, preset in LAYOUT_PRESETS.items():
             row = ctk.CTkFrame(fl, fg_color="transparent")
             row.pack(fill="x", padx=10, pady=2)
+
+            spin = ctk.CTkEntry(row, width=40, font=("Segoe UI", 10), justify="center",
+                                fg_color=self.COLORS['bg_hover'], border_color=self.COLORS['border'])
+            spin.insert(0, "1")
+
             var = ctk.CTkCheckBox(row, text=preset["label"], font=("Segoe UI", 10),
                                    checkbox_width=18, checkbox_height=18,
                                    fg_color=self.COLORS['accent'],
                                    border_color=self.COLORS['border'])
             var.pack(side="left")
 
-            spin = ctk.CTkEntry(row, width=50, font=("Segoe UI", 10),
-                                fg_color=self.COLORS['bg_hover'], border_color=self.COLORS['border'])
-            spin.insert(0, "1")
-            spin.pack(side="right", padx=5)
+            def _get_int(entry):
+                try:
+                    return int(entry.get())
+                except Exception:
+                    return 0
+
+            def _clamp_and_set(entry, value):
+                value = max(0, value)
+                entry.delete(0, "end")
+                entry.insert(0, str(value))
+                return value
+
+            # entry=spin và chk=var truyền làm default arg (không phải free
+            # variable trong lambda) để mỗi hàng đóng đúng biến của riêng
+            # mình — tránh lỗi Python closure "muộn" (late binding) khi định
+            # nghĩa hàm bên trong vòng lặp, do row/spin/var bị gán đè ở mỗi
+            # lần lặp tiếp theo.
+            def _on_check_toggle(entry=spin, chk=var):
+                # FIX: mô phỏng thói quen ở bản standalone cũ — vừa tích
+                # chọn preset thì ô số lượng tự nhảy về 1 nếu đang trống/0,
+                # để không quên nhập số lượng rồi báo lỗi "chưa chọn bố cục".
+                if chk.get() and _get_int(entry) <= 0:
+                    _clamp_and_set(entry, 1)
+
+            def _step(entry=spin, chk=var, delta=0):
+                new_val = _clamp_and_set(entry, _get_int(entry) + delta)
+                # Bấm +/- để tăng số lượng thì coi như đã chọn preset này
+                # luôn, khỏi phải tích thêm ô checkbox riêng; giảm về 0 thì
+                # tự bỏ chọn.
+                if new_val > 0:
+                    chk.select()
+                else:
+                    chk.deselect()
+
+            var.configure(command=_on_check_toggle)
+
+            # Nút +/- để tăng giảm số lượng bằng chuột, đỡ phải gõ tay.
+            # Pack theo thứ tự ngược (phải->trái) để hiển thị đúng thứ tự
+            # trực quan trái->phải: [-][số lượng][+].
+            btn_plus = ctk.CTkButton(row, text="+", width=22, height=22, font=("Segoe UI", 11),
+                                      fg_color=self.COLORS['bg_hover'], hover_color=self.COLORS['bg_card'],
+                                      text_color=self.COLORS['text_secondary'],
+                                      command=lambda s=_step: s(delta=1))
+            btn_plus.pack(side="right", padx=(5, 10))
+            spin.pack(side="right")
+            btn_minus = ctk.CTkButton(row, text="−", width=22, height=22, font=("Segoe UI", 11),
+                                       fg_color=self.COLORS['bg_hover'], hover_color=self.COLORS['bg_card'],
+                                       text_color=self.COLORS['text_secondary'],
+                                       command=lambda s=_step: s(delta=-1))
+            btn_minus.pack(side="right", padx=5)
 
             self.layout_preset_vars[key] = {"chk": var, "count": spin}
 
