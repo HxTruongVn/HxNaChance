@@ -7,7 +7,7 @@ Hướng dẫn cấu trúc thư mục, module organization để maintain consis
 ## 📁 Current Structure (Acceptable for Small Repo)
 
 ```
-photo-master-pro/
+nachanse/
 │
 ├── main.py                       # Entry point (1-2 imports, call main function)
 ├── main_ui.py                 # UI application class
@@ -55,7 +55,7 @@ photo-master-pro/
 Khi repo phát triển lớn hơn, refactor thành:
 
 ```
-photo-master-pro/
+nachanse/
 │
 ├── photo_engine/                 # Core package
 │   ├── __init__.py              # Export public API
@@ -146,7 +146,7 @@ photo-master-pro/
 
 ```python
 # photo_engine/__init__.py
-"""Photo Master Pro Engine - AI photo processing."""
+"""NaChanse Engine - AI photo processing."""
 
 from .engine import PhotoMasterEngine
 from .processors.face_parser import FaceParsingProcessor

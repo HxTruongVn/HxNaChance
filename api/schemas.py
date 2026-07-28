@@ -1,5 +1,5 @@
 """
-Pydantic schemas for Photo Master Pro API
+Pydantic schemas for NaChanse API
 """
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any

@@ -1,6 +1,6 @@
 # 📋 Coding Conventions & Standards
 
-Hướng dẫn chuẩn hóa tên file, hàm, biến, class trong repo Photo Master Pro.
+Hướng dẫn chuẩn hóa tên file, hàm, biến, class trong repo NaChanse.
 
 ---
 
@@ -346,7 +346,7 @@ def detect_blur(image: np.ndarray, threshold: float = 100.0) -> Tuple[bool, floa
 
 ### Recommended future structure (không bắt buộc ngay)
 ```
-photo-master-pro/
+nachanse/
 ├── photo_engine/
 │   ├── __init__.py
 │   ├── engine.py              # Main PhotoMasterEngine

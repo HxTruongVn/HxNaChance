@@ -1,5 +1,5 @@
 """
-Photo Master Pro- Print Layout Engine
+NaChanse- Print Layout Engine
 Dựa trên logic xếp ảnh thẻ của xepanhthe_standalone.py
 Công thức layout: parser + simulator + renderer
 """

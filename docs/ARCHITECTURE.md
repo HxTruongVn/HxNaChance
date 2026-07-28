@@ -1,7 +1,7 @@
-# Kiến trúc Photo Master Pro
+# Kiến trúc NaChanse
 
 ```
-                PHOTO MASTER PRO
+                NACHANSE
                        │
         ┌──────────────┴──────────────┐
         │                             │
@@ -69,8 +69,8 @@ engine theo thời gian.
 Mục tiêu cấu trúc phân phối:
 
 ```
-PhotoMasterPro/
-    PhotoMasterPro.exe
+NaChanse/
+    NaChanse.exe
     runtime/
     models/
     config/

@@ -1,5 +1,5 @@
 """
-Script thủ công gọi Photo Master Pro API (không phải pytest).
+Script thủ công gọi NaChanse API (không phải pytest).
 
 Chạy từ thư mục gốc repo (server phải đang chạy):
   python scripts/manual_api_test.py --image path/to/photo.jpg --output result.png
