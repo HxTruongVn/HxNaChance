@@ -59,7 +59,7 @@ class FaceParsingProcessor:     # Xử lý face parsing
 class CodeFormerRestorer:       # Phục hồi khuôn mặt
 class RealESRGANUpscaler:       # Upscale ảnh
 class BackgroundProcessor:      # Xử lý nền
-class PhotoMasterEngine:      # Engine chính, v2
+class PhotoMasterEngine:      # Engine chính
 class PhotoMasterApp:           # Ứng dụng UI chính
 class PhotoSpec:                # Spec/config cho ảnh
 class FaceAnalyzer:             # Phân tích khuôn mặt

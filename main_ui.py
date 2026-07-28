@@ -4,16 +4,13 @@ Tích hợp: CodeFormer + Real-ESRGAN + BiSeNet Face Parsing + isnet RMBG
 """
 
 import os
-import sys
 import json
 import threading
 import tempfile
 import subprocess
 import platform
-import traceback
 from pathlib import Path
 from datetime import datetime
-from typing import List, Tuple, Optional, Dict
 
 import cv2
 import numpy as np
@@ -25,7 +22,6 @@ from photo_engine import PhotoMasterEngine, SPEC_PRESETS, PhotoSpec, DEFAULT_PRE
 from photo_agent import PhotoQAAgent
 from print_layout import (
     build_layout_canvas, save_layout, LAYOUT_PRESETS,
-    DEFAULT_LAYOUT_CONFIG, load_sidecar
 )
 
 

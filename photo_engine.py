@@ -62,9 +62,6 @@ def _build_bisenet():
     import torch
     import torch.nn as nn
     import torch.nn.functional as F
-    import torch.utils.model_zoo as modelzoo
-
-    resnet18_url = 'https://download.pytorch.org/models/resnet18-5c106cde.pth'
 
     def conv3x3(in_planes, out_planes, stride=1):
         return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
@@ -376,7 +373,6 @@ class CodeFormerRestorer:
 
         try:
             import torch
-            from codeformer.facelib.utils.face_restoration_helper import FaceRestoreHelper
 
             # Lazy load model weights
             if self.net is None:
@@ -414,14 +410,12 @@ class CodeFormerRestorer:
 
     @staticmethod
     def _to_tensor(bgr: np.ndarray, device) -> "torch.Tensor":
-        import torch
         import torchvision.transforms as transforms
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
         return transforms.ToTensor()(rgb).unsqueeze(0).to(device)
 
     @staticmethod
     def _to_bgr(tensor) -> np.ndarray:
-        import torch
         img = tensor.squeeze(0).cpu().numpy().transpose(1, 2, 0)
         img = np.clip(img * 255, 0, 255).astype(np.uint8)
         return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
@@ -936,8 +930,8 @@ class PhotoMasterEngine:
         print(f"[Engine] FaceParser: {'✓' if self.face_parser.available else '✗'}")
         print(f"[Engine] CodeFormer: {'✓' if self.codeformer.available else '✗'}")
         print(f"[Engine] RealESRGAN: {'✓' if self.upscaler.available else '✗'}")
-        print(f"[Engine] MediaPipe: ✓")
-        print(f"[Engine] rembg: ✓")
+        print(f"[Engine] MediaPipe: {'✓' if self.face_analyzer is not None else '✗'}")
+        print(f"[Engine] rembg: {'✓' if self.bg_processor is not None else '✗'}")
 
     def process(self, image_path: str, spec: PhotoSpec,
                 bg_color: Tuple[int, int, int], options: Dict) -> Dict:

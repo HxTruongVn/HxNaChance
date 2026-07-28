@@ -1,5 +1,5 @@
 """
-Photo Master Pro v2 — FastAPI Service
+Photo Master Pro — FastAPI Service
 ======================================
 Chạy (từ thư mục gốc repo):  uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
@@ -17,7 +17,7 @@ from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.responses import Response, JSONResponse
 
 from api.engine_wrapper import ThreadSafeEngine
-from api.schemas import HealthResponse, ErrorResponse, Base64Response
+from api.schemas import HealthResponse
 
 # ------------------------------------------------------------------
 # Lifespan: khởi tạo engine 1 lần khi server start
