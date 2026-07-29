@@ -365,6 +365,8 @@ class PhotoMasterApp(ctk.CTk):
         # Row 3
         self.chk_validate = self._chk(grid, "Kiểm tra chuẩn", 3, 0, True)
         self.chk_preview = self._chk(grid, "Xem trước", 3, 1, True)
+        # Row 4
+        self.chk_auto_rotate = self._chk(grid, "Tự dò hướng ảnh (90/180/270°)", 4, 0, True)
 
         # Face Restore Fidelity slider
         fs = ctk.CTkFrame(fe, fg_color="transparent")
@@ -770,7 +772,8 @@ class PhotoMasterApp(ctk.CTk):
             'teeth_strength': 0.3,
             'remove_bg': self.chk_remove_bg.get(),
             'validate': self.chk_validate.get(),
-            'preview': self.chk_preview.get()
+            'preview': self.chk_preview.get(),
+            'auto_rotate_detect': self.chk_auto_rotate.get()
         }
 
     def _get_spec(self):

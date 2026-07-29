@@ -14,6 +14,7 @@ from pathlib import Path
 import cv2
 import gc
 import json
+from PIL import Image as PILImage, ImageOps
 
 if TYPE_CHECKING:
     from runtime_manager import RuntimeReport
@@ -29,13 +30,29 @@ def _ensure_rgb(image_bgr: np.ndarray) -> np.ndarray:
 
 
 def _imread_unicode(path: str) -> np.ndarray:
-    """Đọc ảnh an toàn với đường dẫn Unicode (dấu tiếng Việt, khoảng trắng)."""
+    """Đọc ảnh an toàn với đường dẫn Unicode (dấu tiếng Việt, khoảng trắng).
+
+    FIX: tự áp dụng EXIF Orientation trước khi trả ảnh ra. Nhiều ảnh chụp
+    từ điện thoại lưu PIXEL GỐC (chưa xoay) + 1 tag EXIF báo "xoay khi
+    hiển thị" — các trình xem ảnh/thư viện ảnh đều tự áp tag này nên
+    người dùng thấy ảnh bình thường, nhưng cv2.imdecode (code cũ) đọc
+    thẳng pixel gốc, bỏ qua tag EXIF => ảnh vào pipeline bị lệch
+    90/180/270 độ so với những gì mắt thường thấy, dù file "trông ổn".
+    Đây là nguyên nhân phổ biến của tình trạng ảnh vào bị ngược 180 độ.
+    """
     try:
-        buf = np.fromfile(path, dtype=np.uint8)
-        img = cv2.imdecode(buf, cv2.IMREAD_COLOR)
-        return img
+        pil_img = PILImage.open(path)
+        pil_img = ImageOps.exif_transpose(pil_img)  # áp dụng orientation, bỏ tag đi
+        rgb = np.array(pil_img.convert("RGB"))
+        return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
     except Exception:
-        return None
+        # Fallback: một số trường hợp PIL lỗi tuỳ định dạng/hệ điều hành —
+        # thử lại kiểu cũ (không áp EXIF) còn hơn không đọc được gì.
+        try:
+            buf = np.fromfile(path, dtype=np.uint8)
+            return cv2.imdecode(buf, cv2.IMREAD_COLOR)
+        except Exception:
+            return None
 
 
 # ------------------------------------------------------------------
@@ -676,6 +693,48 @@ class PhotoTransformer:
 
 
 # ------------------------------------------------------------------
+# 7b. ORIENTATION FALLBACK — thử xoay ảnh nếu nhận diện thất bại
+# ------------------------------------------------------------------
+#
+# Lý do tách riêng khỏi FaceAnalyzer.analyze(): giữ analyze() đơn giản,
+# chỉ làm đúng 1 việc (nhận diện trên ảnh đưa vào, không tự ý xoay).
+# EXIF fix ở _imread_unicode xử lý được đa số ảnh điện thoại có tag
+# EXIF đúng, nhưng KHÔNG xử lý được ảnh không có/sai EXIF (webcam, ảnh
+# scan, camera studio gắn/đặt sai chiều vật lý) — những ảnh đó pixel
+# thật sự bị xoay, không chỉ là vấn đề hiển thị. Với các ảnh đó, cách
+# duy nhất để biết hướng đúng là thử nhận diện khuôn mặt ở cả 4 hướng.
+
+def _rotate_cv2(image: np.ndarray, angle_deg: int) -> np.ndarray:
+    if angle_deg == 90:
+        return cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+    if angle_deg == 180:
+        return cv2.rotate(image, cv2.ROTATE_180)
+    if angle_deg == 270:
+        return cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    return image
+
+
+def _analyze_with_orientation_fallback(analyzer: "FaceAnalyzer", image: np.ndarray,
+                                        enabled: bool = True) -> Tuple[np.ndarray, Optional[Dict]]:
+    """Nhận diện khuôn mặt ở hướng ảnh hiện tại; nếu thất bại và
+    enabled=True, thử xoay lần lượt 90/180/270 độ rồi nhận diện lại.
+    Trả về (ảnh_đúng_hướng, face_data) — ảnh trả về LÀ ảnh đã xoay (nếu
+    có), để các bước xử lý phía sau (restore/align/...) dùng đúng ảnh
+    đó thay vì ảnh gốc còn lệch hướng."""
+    face_data = analyzer.analyze(image)
+    if face_data is not None or not enabled:
+        return image, face_data
+
+    for angle in (90, 180, 270):
+        rotated = _rotate_cv2(image, angle)
+        face_data = analyzer.analyze(rotated)
+        if face_data is not None:
+            return rotated, face_data
+
+    return image, None
+
+
+# ------------------------------------------------------------------
 # 8. FACE ANALYZER (MediaPipe)
 # ------------------------------------------------------------------
 
@@ -971,8 +1030,13 @@ class PhotoMasterEngine:
         if is_blur:
             result['validation_errors'].append(f"Ảnh mờ (score: {blur_score:.1f})")
 
-        # Face detection
-        face_data = self.face_analyzer.analyze(image)
+        # Face detection — nếu thất bại ở hướng gốc, thử luôn 90/180/270
+        # độ (ảnh ngược/lệch do thiếu EXIF, webcam, hoặc scan/chụp sai
+        # chiều). image được thay bằng bản đã xoay đúng hướng (nếu có) để
+        # toàn bộ pipeline phía dưới (restore/parsing/align) dùng đúng ảnh.
+        image, face_data = _analyze_with_orientation_fallback(
+            self.face_analyzer, image,
+            enabled=options.get('auto_rotate_detect', True))
         if face_data is None:
             result['validation_errors'].append("Không nhận diện được khuôn mặt")
             return result
