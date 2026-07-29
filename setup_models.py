@@ -51,6 +51,16 @@ MODELS = {
         "gh": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx",
         "size_mb": 180,
     },
+    # Dùng cho tính năng "Cân vai theo sống mũi" (ShoulderAnalyzer).
+    # Tuỳ chọn — pipeline vẫn chạy bình thường nếu file này không có;
+    # tính năng tự tắt (.available = False). Lite ~3MB đủ để phát hiện
+    # vai trong ảnh thẻ (không cần toàn thân chi tiết).
+    "pose_landmarker_lite.task": {
+        "hf": "https://huggingface.co/qualcomm/MediaPipe-Pose-Estimation/resolve/main/pose_landmarker_lite.task",
+        "gh": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task",
+        "size_mb": 3,
+        "optional": True,   # Không tính vào failed list, không fail setup
+    },
 }
 
 
@@ -295,8 +305,12 @@ def download_all_weights():
     print("\nTải weights về ./weights/ ...")
     failed = []
     for name, info in MODELS.items():
-        if not download_weight(name, info):
-            failed.append(name)
+        ok = download_weight(name, info)
+        if not ok:
+            if info.get("optional"):
+                print(f"  (tuỳ chọn) {name} chưa tải được — tính năng liên quan sẽ bị tắt.")
+            else:
+                failed.append(name)
     if failed:
         print_manual_links(failed)
     return failed

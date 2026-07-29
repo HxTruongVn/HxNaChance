@@ -390,6 +390,9 @@ class NaChanceApp(ctk.CTk):
         # Row 4
         self.chk_auto_rotate = self._chk(grid, "Tự dò hướng ảnh (90/180/270°)", 4, 0, True)
         self.chk_confirm_orientation = self._chk(grid, "Xác nhận chiều ảnh trước khi xử lý", 4, 1, True)
+        # Row 5
+        self.chk_shoulder_warp = self._chk(
+            grid, "Cân vai theo sống mũi (cần pose model)", 5, 0, False)
 
         # Face Restore Fidelity slider
         fs = ctk.CTkFrame(fe, fg_color="transparent")
@@ -796,7 +799,8 @@ class NaChanceApp(ctk.CTk):
             'remove_bg': self.chk_remove_bg.get(),
             'validate': self.chk_validate.get(),
             'preview': self.chk_preview.get(),
-            'auto_rotate_detect': self.chk_auto_rotate.get()
+            'auto_rotate_detect': self.chk_auto_rotate.get(),
+            'shoulder_warp':      self.chk_shoulder_warp.get(),
         }
 
     def _get_spec(self):
