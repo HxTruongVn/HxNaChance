@@ -16,6 +16,7 @@ Chạy: python setup_models.py
 """
 
 import argparse
+import json
 import platform
 import re
 import sys
@@ -27,54 +28,79 @@ from venv_bootstrap import PROJECT_ROOT, VENV_DIR, in_venv, ensure_venv_and_reex
 WEIGHTS_DIR = PROJECT_ROOT / "weights"
 WEIGHTS_DIR.mkdir(exist_ok=True)
 
-# Nguồn DUY NHẤT khai báo weights cần tải. Mỗi model thử lần lượt các
-# nguồn theo thứ tự "hf" -> "gh" -> (gdown nếu "gdown" là True).
-MODELS = {
+# MODELS TRƯỚC ĐÂY hard-code trực tiếp trong file này (khoá cứng đúng 2
+# "slot" nguồn tải "hf"/"gh" cho mỗi weight) — giờ đọc từ
+# presets/weights_sources.json (cùng pattern với spec_presets.json/
+# layout_presets.json/themes.json: tách data khỏi code). Lợi ích:
+#   - Thêm weight mới sau này = thêm 1 mục trong JSON, KHÔNG cần sửa file
+#     .py này.
+#   - Thêm/đổi link dự phòng cho 1 weight = sửa JSON, không đụng code.
+#   - Mỗi weight có DANH SÁCH nguồn dài tuỳ ý (không giới hạn 2 slot cố
+#     định "hf"/"gh" như trước) — download_weight() thử lần lượt hết
+#     danh sách "sources", dừng ở nguồn đầu tiên thành công.
+# Dict dưới đây CHỈ còn vai trò fallback an toàn nếu file JSON bị
+# thiếu/hỏng — giữ đúng tinh thần graceful-degrade của các loader khác.
+_MODELS_FALLBACK = {
     "codeformer.pth": {
-        "hf": "https://huggingface.co/sczhou/CodeFormer/resolve/main/codeformer.pth",
-        "gh": "https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth",
         "size_mb": 380,
+        "sources": [
+            {"method": "http", "url": "https://huggingface.co/sczhou/CodeFormer/resolve/main/codeformer.pth"},
+            {"method": "http", "url": "https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth"},
+        ],
     },
     "RealESRGAN_x2plus.pth": {
-        "hf": "https://huggingface.co/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x2plus.pth",
-        "gh": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth",
         "size_mb": 70,
+        "sources": [
+            {"method": "http", "url": "https://huggingface.co/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x2plus.pth"},
+            {"method": "http", "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth"},
+        ],
     },
     "79999_iter.pth": {
-        "hf": "https://huggingface.co/spaces/ysharma/FaceParsing/resolve/main/79999_iter.pth",
-        "gh": "https://drive.google.com/uc?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812",
-        "gdown": True,
         "size_mb": 50,
+        "sources": [
+            {"method": "http", "url": "https://huggingface.co/spaces/ysharma/FaceParsing/resolve/main/79999_iter.pth"},
+            {"method": "gdown", "url": "https://drive.google.com/uc?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812"},
+        ],
     },
     "isnet-general-use.onnx": {
-        "hf": "https://huggingface.co/OzzyGT/REMBG/resolve/main/isnet-general-use.onnx",
-        "gh": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx",
         "size_mb": 180,
-    },
-    # Dùng cho tính năng "Cân vai theo sống mũi" (ShoulderAnalyzer).
-    # Tuỳ chọn — pipeline vẫn chạy bình thường nếu file này không có;
-    # tính năng tự tắt (.available = False). Lite ~3MB đủ để phát hiện
-    # vai trong ảnh thẻ (không cần toàn thân chi tiết).
-    #
-    # FIX: 2 URL gốc (khi tính năng shoulder-warp mới được thêm) đều sai,
-    # khiến model KHÔNG BAO GIỜ tải được — đây chính là lý do tính năng
-    # "cân vai" không có tác dụng gì trên máy thật:
-    #   - "hf" cũ trỏ vào repo qualcomm/MediaPipe-Pose-Estimation — đây là
-    #     export TFLite/QNN cho Qualcomm AI Hub SDK, KHÁC HOÀN TOÀN định
-    #     dạng ".task bundle" mà mediapipe.tasks.python.vision cần — sai
-    #     repo, không phải chỉ "backup kém tin cậy".
-    #   - "gh" cũ dùng path "float16/latest/" — kiểm tra lại mọi ví dụ
-    #     chính thức của Google (docs, sample Python/Web/Android) đều
-    #     dùng "float16/1/", không có phiên bản "latest" trên GCS.
-    # Giữ đúng 1 nguồn chính thức duy nhất (Google Cloud Storage, path đã
-    # sửa đúng) thay vì thêm 1 "hf" mirror cộng đồng chưa xác minh được
-    # tính toàn vẹn file (rủi ro chuỗi cung ứng cho 1 model tải tự động).
-    "pose_landmarker_lite.task": {
-        "gh": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
-        "size_mb": 3,
-        "optional": True,   # Không tính vào failed list, không fail setup
+        "sources": [
+            {"method": "http", "url": "https://huggingface.co/OzzyGT/REMBG/resolve/main/isnet-general-use.onnx"},
+            {"method": "http", "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx"},
+        ],
     },
 }
+
+_REQUIRED_MODEL_KEYS = ("size_mb", "sources")
+
+
+def _load_models() -> dict:
+    models_path = PROJECT_ROOT / "presets" / "weights_sources.json"
+    try:
+        with open(models_path, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+        # Chỉ nhận entry có đủ field bắt buộc + sources không rỗng — 1
+        # weight khai sai trong JSON (lỗi gõ tay) không được làm hỏng
+        # toàn bộ danh sách model cần tải.
+        result = {}
+        for name, info in raw.items():
+            if not all(k in info for k in _REQUIRED_MODEL_KEYS):
+                print(f"[MODELS] ⚠ Bỏ qua '{name}': thiếu field {_REQUIRED_MODEL_KEYS}")
+                continue
+            if not info["sources"]:
+                print(f"[MODELS] ⚠ Bỏ qua '{name}': danh sách sources rỗng")
+                continue
+            result[name] = info
+        if not result:
+            raise ValueError("File weights_sources.json rỗng hoặc không có model hợp lệ")
+        return result
+    except Exception as e:
+        print(f"[MODELS] ⚠ Không đọc được {models_path} ({e}) — "
+              f"dùng {len(_MODELS_FALLBACK)} model mặc định built-in.")
+        return dict(_MODELS_FALLBACK)
+
+
+MODELS = _load_models()
 
 
 # ------------------------------------------------------------------
@@ -268,35 +294,39 @@ def download_weight(name: str, info: dict) -> bool:
         print(f"✓ {name} đã có ({dest.stat().st_size // 1024 // 1024} MB)")
         return True
 
-    for source in ("hf", "gh"):
-        url = info.get(source)
-        if not url or (source == "gh" and info.get("gdown")):
-            # Nếu model này cần gdown thì link "gh" thực chất là link
-            # Google Drive (uc?id=...), không tải bằng urllib thường được.
+    # Thử LẦN LƯỢT hết danh sách sources (dài tuỳ ý, không giới hạn 2
+    # slot cố định như trước) — dừng ở nguồn đầu tiên tải thành công.
+    for i, source in enumerate(info["sources"], 1):
+        method = source.get("method", "http")
+        url = source.get("url")
+        if not url:
             continue
-        print(f"\n↓ Đang tải {name} từ {source.upper()}...")
-        ok, err = _download_with_progress(url, dest)
-        if ok:
-            print(f"✓ {name} tải xong.")
-            return True
-        print(f"✗ Lỗi từ {source}: {err}")
+
+        if method == "gdown":
+            print(f"\n↓ [{i}/{len(info['sources'])}] Đang tải {name} bằng gdown (Google Drive)...")
+            try:
+                try:
+                    import gdown
+                except ImportError:
+                    run_cmd(f'"{sys.executable}" -m pip install gdown', "Cài gdown...")
+                    import gdown
+                gdown.download(url, str(dest), quiet=False, fuzzy=True)
+                if dest.exists() and dest.stat().st_size > 1_000_000:
+                    print(f"✓ {name} tải xong (gdown).")
+                    return True
+                print(f"✗ gdown tải xong nhưng file quá nhỏ/không hợp lệ.")
+            except Exception as e:
+                print(f"✗ Lỗi gdown: {e}")
+        else:
+            print(f"\n↓ [{i}/{len(info['sources'])}] Đang tải {name} từ {url}...")
+            ok, err = _download_with_progress(url, dest)
+            if ok:
+                print(f"✓ {name} tải xong.")
+                return True
+            print(f"✗ Lỗi: {err}")
+
         if dest.exists():
             dest.unlink()
-
-    if info.get("gdown"):
-        print(f"\n↓ Thử tải {name} bằng gdown (Google Drive)...")
-        try:
-            try:
-                import gdown
-            except ImportError:
-                run_cmd(f'"{sys.executable}" -m pip install gdown', "Cài gdown...")
-                import gdown
-            gdown.download(info["gh"], str(dest), quiet=False, fuzzy=True)
-            if dest.exists() and dest.stat().st_size > 1_000_000:
-                print(f"✓ {name} tải xong (gdown).")
-                return True
-        except Exception as e:
-            print(f"✗ gdown cũng lỗi: {e}")
 
     return False
 
@@ -308,24 +338,30 @@ def print_manual_links(failed_names):
     for name in failed_names:
         info = MODELS[name]
         print(f"\n{name} (~{info['size_mb']} MB)")
-        if "hf" in info and not info.get("gdown"):
-            print(f"   HF:  {info['hf']}")
-        print(f"   GH/Drive: {info['gh']}")
+        for source in info["sources"]:
+            label = "Google Drive (gdown)" if source.get("method") == "gdown" else "HTTP"
+            print(f"   [{label}] {source.get('url')}")
         print(f"   -> Lưu vào: weights/{name}")
 
 
 def download_all_weights():
     print("\nTải weights về ./weights/ ...")
-    failed = []
+    failed = []          # bắt buộc — fail cả quá trình setup
+    failed_optional = [] # tuỳ chọn — chỉ tắt tính năng liên quan
     for name, info in MODELS.items():
         ok = download_weight(name, info)
         if not ok:
             if info.get("optional"):
+                failed_optional.append(name)
                 print(f"  (tuỳ chọn) {name} chưa tải được — tính năng liên quan sẽ bị tắt.")
             else:
                 failed.append(name)
-    if failed:
-        print_manual_links(failed)
+    # FIX: trước đây weight tuỳ chọn (optional) thất bại chỉ in 1 dòng
+    # ngắn, KHÔNG hiện link tải thủ công — người dùng muốn bật tính năng
+    # đó không biết phải tự tải từ đâu. Giờ báo cáo đầy đủ link cho CẢ
+    # 2 loại thất bại (bắt buộc lẫn tuỳ chọn) khi mọi nguồn đều lỗi.
+    if failed or failed_optional:
+        print_manual_links(failed + failed_optional)
     return failed
 
 

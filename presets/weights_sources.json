@@ -1,0 +1,38 @@
+{
+  "codeformer.pth": {
+    "size_mb": 380,
+    "sources": [
+      {"method": "http", "url": "https://huggingface.co/sczhou/CodeFormer/resolve/main/codeformer.pth"},
+      {"method": "http", "url": "https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth"}
+    ]
+  },
+  "RealESRGAN_x2plus.pth": {
+    "size_mb": 70,
+    "sources": [
+      {"method": "http", "url": "https://huggingface.co/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x2plus.pth"},
+      {"method": "http", "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth"}
+    ]
+  },
+  "79999_iter.pth": {
+    "size_mb": 50,
+    "sources": [
+      {"method": "http", "url": "https://huggingface.co/spaces/ysharma/FaceParsing/resolve/main/79999_iter.pth"},
+      {"method": "gdown", "url": "https://drive.google.com/uc?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812"}
+    ]
+  },
+  "isnet-general-use.onnx": {
+    "size_mb": 180,
+    "sources": [
+      {"method": "http", "url": "https://huggingface.co/OzzyGT/REMBG/resolve/main/isnet-general-use.onnx"},
+      {"method": "http", "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx"}
+    ]
+  },
+  "pose_landmarker_lite.task": {
+    "size_mb": 3,
+    "optional": true,
+    "_comment": "Dùng cho tính năng 'Cân vai theo sống mũi' (ShoulderAnalyzer). Tuỳ chọn — pipeline vẫn chạy bình thường nếu thiếu, tính năng tự tắt (.available=False). URL đã verify tồn tại thật bằng tải thử trực tiếp (xem git log) — nguồn duy nhất vì đây là repo/định dạng .task bundle chính thức của Google, không dùng mirror cộng đồng chưa xác minh.",
+    "sources": [
+      {"method": "http", "url": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"}
+    ]
+  }
+}
