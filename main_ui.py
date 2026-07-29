@@ -18,7 +18,7 @@ from PIL import Image as PILImage
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
 
-from photo_engine import NaChanceEngine, SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME
+from photo_engine import NaChanceEngine, SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME, _imread_unicode
 from photo_agent import PhotoQAAgent
 from print_layout import (
     build_layout_canvas, save_layout, LAYOUT_PRESETS,
@@ -389,6 +389,7 @@ class NaChanceApp(ctk.CTk):
         self.chk_preview = self._chk(grid, "Xem trước", 3, 1, True)
         # Row 4
         self.chk_auto_rotate = self._chk(grid, "Tự dò hướng ảnh (90/180/270°)", 4, 0, True)
+        self.chk_confirm_orientation = self._chk(grid, "Xác nhận chiều ảnh trước khi xử lý", 4, 1, True)
 
         # Face Restore Fidelity slider
         fs = ctk.CTkFrame(fe, fg_color="transparent")
@@ -844,11 +845,123 @@ class NaChanceApp(ctk.CTk):
         self._set_busy(False)
 
     # ===== PROCESSING =====
+    def _confirm_orientation(self, image_bgr: np.ndarray, title_suffix: str = ""):
+        """Mở dialog xác nhận chiều ảnh (modal — dừng ở đây tới khi người
+        dùng chọn), cho xoay tay 0/90/180/270° TRƯỚC KHI đưa ảnh vào
+        pipeline xử lý (face restore/align/...). image_bgr đưa vào đã
+        qua _imread_unicode (đã tự áp EXIF) — dialog này là bước xác
+        nhận CUỐI, dành cho trường hợp EXIF sai/thiếu hoặc ảnh chụp/scan
+        vốn đã lệch (không phải vấn đề hiển thị) mà máy không tự đoán ra.
+
+        Trả về (action, ảnh_đã_xoay):
+          - action="confirm": người dùng đồng ý, dùng ảnh đã xoay để xử lý.
+          - action="skip": bỏ qua RIÊNG ảnh này (dùng khi xử lý theo lô).
+          - action="cancel_all": huỷ toàn bộ (đóng cửa sổ / bấm Hủy)."""
+        result = {"action": "cancel_all", "image": image_bgr}
+        state = {"deg": 0}
+
+        dlg = ctk.CTkToplevel(self)
+        dlg.title(f"Xác nhận chiều ảnh{title_suffix}")
+        dlg.geometry("460x640")
+        dlg.resizable(False, False)
+        dlg.configure(fg_color=self.COLORS['bg_dark'])
+        dlg.transient(self)
+        dlg.grab_set()
+
+        ctk.CTkLabel(dlg, text="Ảnh đã đúng chiều chưa? Chọn góc xoay nếu chưa đúng:",
+                     font=("Segoe UI", 11), text_color=self.COLORS['text_secondary'],
+                     wraplength=420).pack(pady=(15, 8))
+
+        lbl_img = ctk.CTkLabel(dlg, text="")
+        lbl_img.pack(pady=5)
+
+        rotate_buttons = []
+
+        def _rotated(deg):
+            if deg == 90:
+                return cv2.rotate(image_bgr, cv2.ROTATE_90_CLOCKWISE)
+            if deg == 180:
+                return cv2.rotate(image_bgr, cv2.ROTATE_180)
+            if deg == 270:
+                return cv2.rotate(image_bgr, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            return image_bgr
+
+        def _render():
+            img = _rotated(state["deg"])
+            result["image"] = img
+            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            pil_img = PILImage.fromarray(rgb)
+            pil_img.thumbnail((400, 420), PILImage.LANCZOS)
+            ctk_img = ctk.CTkImage(light_image=pil_img, size=pil_img.size)
+            lbl_img.configure(image=ctk_img)
+            lbl_img.image = ctk_img
+
+        def _set_rotation(deg):
+            state["deg"] = deg
+            _render()
+            for b, d in rotate_buttons:
+                b.configure(fg_color=self.COLORS['accent'] if d == deg else self.COLORS['bg_hover'])
+
+        row_rotate = ctk.CTkFrame(dlg, fg_color="transparent")
+        row_rotate.pack(pady=8)
+        for deg in (0, 90, 180, 270):
+            b = ctk.CTkButton(row_rotate, text=f"{deg}°", width=75,
+                               fg_color=self.COLORS['accent'] if deg == 0 else self.COLORS['bg_hover'],
+                               hover_color=self.COLORS['accent_hover'],
+                               command=lambda d=deg: _set_rotation(d))
+            b.pack(side="left", padx=4)
+            rotate_buttons.append((b, deg))
+
+        def _confirm():
+            result["action"] = "confirm"
+            dlg.destroy()
+
+        def _skip():
+            result["action"] = "skip"
+            dlg.destroy()
+
+        def _cancel():
+            result["action"] = "cancel_all"
+            dlg.destroy()
+
+        row_btn = ctk.CTkFrame(dlg, fg_color="transparent")
+        row_btn.pack(pady=(20, 10), fill="x", padx=25)
+        ctk.CTkButton(row_btn, text="✅ Xử lý ảnh này", fg_color=self.COLORS['success'],
+                      hover_color=self.COLORS['success'], command=_confirm).pack(fill="x", pady=3)
+        if title_suffix:  # chỉ hiện "bỏ qua riêng ảnh này" khi đang xử lý theo lô
+            ctk.CTkButton(row_btn, text="⏭ Bỏ qua ảnh này", fg_color=self.COLORS['bg_hover'],
+                          hover_color=self.COLORS['bg_card'], command=_skip).pack(fill="x", pady=3)
+        ctk.CTkButton(row_btn, text="✖ Hủy", fg_color=self.COLORS['danger'],
+                      hover_color=self.COLORS['danger'], command=_cancel).pack(fill="x", pady=3)
+
+        dlg.protocol("WM_DELETE_WINDOW", _cancel)
+        _render()
+        dlg.wait_window()
+        return result["action"], result["image"]
+
     def _run_single(self):
         file_path = filedialog.askopenfilename(title="Chọn ảnh",
                                                 filetypes=[("Ảnh", "*.jpg *.jpeg *.png *.bmp *.tiff"), ("Tất cả", "*.*")])
         if not file_path:
             return
+
+        if self.chk_confirm_orientation.get():
+            image = _imread_unicode(file_path)  # đã tự áp EXIF orientation
+            if image is None:
+                messagebox.showerror("Lỗi", f"Không đọc được ảnh:\n{file_path}")
+                return
+            action, final_image = self._confirm_orientation(image)
+            if action != "confirm":
+                return
+            # Lưu ảnh đã xác nhận chiều ra file tạm (giữ tên gốc để output
+            # sau này vẫn đặt tên theo file gốc như bình thường) — pipeline
+            # xử lý (_process_files) đọc lại từ path như mọi khi.
+            stem = os.path.splitext(os.path.basename(file_path))[0]
+            file_path = os.path.join(tempfile.gettempdir(), f"{stem}_oriented.jpg")
+            if not _imwrite_unicode(file_path, final_image, [cv2.IMWRITE_JPEG_QUALITY, 95]):
+                messagebox.showerror("Lỗi", "Không lưu được ảnh đã xoay ra file tạm.")
+                return
+
         self._process_files([file_path])
 
     def _run_batch(self):
@@ -860,6 +973,27 @@ class NaChanceApp(ctk.CTk):
         if not files:
             messagebox.showwarning("Thông báo", "Không tìm thấy ảnh!")
             return
+
+        if self.chk_confirm_orientation.get():
+            confirmed = []
+            for idx, path in enumerate(files):
+                image = _imread_unicode(path)
+                if image is None:
+                    continue  # ảnh lỗi đọc — bỏ qua riêng ảnh đó, không chặn cả lô
+                action, final_image = self._confirm_orientation(
+                    image, title_suffix=f" ({idx+1}/{len(files)}: {os.path.basename(path)})")
+                if action == "cancel_all":
+                    return
+                if action == "skip":
+                    continue
+                stem = os.path.splitext(os.path.basename(path))[0]
+                tmp_path = os.path.join(tempfile.gettempdir(), f"{stem}_oriented.jpg")
+                if _imwrite_unicode(tmp_path, final_image, [cv2.IMWRITE_JPEG_QUALITY, 95]):
+                    confirmed.append(tmp_path)
+            if not confirmed:
+                return
+            files = confirmed
+
         self._process_files(files)
 
     def _process_files(self, files):
