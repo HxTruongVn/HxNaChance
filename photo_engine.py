@@ -894,10 +894,10 @@ DEFAULT_PRESET_NAME = "13x18" if "13x18" in SPEC_PRESETS else next(iter(SPEC_PRE
 
 
 # ------------------------------------------------------------------
-# 10. PHOTO MASTER ENGINE (Lazy Load)
+# 10. NACHANCE ENGINE (Lazy Load)
 # ------------------------------------------------------------------
 
-class PhotoMasterEngine:
+class NaChanceEngine:
     """Engine chính — lazy load model, graceful fallback."""
 
     def __init__(self, weights_dir: str = "weights", runtime_report: "Optional[RuntimeReport]" = None):
@@ -940,7 +940,7 @@ class PhotoMasterEngine:
         def _safe_init(label, factory):
             """Mỗi processor tự đứng riêng — nếu 1 cái khởi tạo lỗi
             (kể cả lỗi chưa lường trước, không chỉ ImportError), chỉ
-            tính năng đó bị tắt, không kéo sập cả PhotoMasterEngine.
+            tính năng đó bị tắt, không kéo sập cả NaChanceEngine.
             Trước đây 1 lỗi RuntimeError trong RealESRGANUpscaler (xung
             đột NumPy 1.x/2.x) làm sập toàn bộ Engine dù FaceParser/
             CodeFormer phía trước đã khởi tạo (hoặc graceful-fail) xong."""

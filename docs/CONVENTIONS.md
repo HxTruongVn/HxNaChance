@@ -8,22 +8,25 @@ Hướng dẫn chuẩn hóa tên file, hàm, biến, class trong repo NaChance.
 
 ### Format
 ```
-{module}_{version}.py
-{action}_{purpose}.py
 {module}.py
+{action}_{purpose}.py
 ```
 
 ### Quy tắc
 - ✅ **snake_case** (chữ thường, gạch dưới ngăn cách)
 - ✅ **Mô tả rõ ràng** chức năng file
-- ✅ **Version suffix** nếu file có nhiều iteration (v1, v2, v3...)
+- ✅ **Không dùng hậu tố version** (v1, v2, v2...) trong tên file/tên class/branding —
+  khi file/class thay thế bản cũ, đổi tên thẳng (không giữ hậu tố), xem
+  `main_ui.py`/`photo_engine.py` từng có class tên `...V2` đã được đổi
+  lại cho gọn (không hậu tố) và ghi migration cho user cũ, không phải
+  giữ song song 2 tên.
 - ✅ **Thứ tự logic**: `main.py` → engine → utils
 
 ### Ví dụ hiện tại (✓ đúng)
 ```
 main.py                          # Entry point
-main_ui.py                       # UI, version 2
-photo_engine.py                  # Processing engine, version 2
+main_ui.py                       # UI
+photo_engine.py                  # Processing engine
 runtime_manager.py               # Runtime detection & management
 setup_models.py                  # Model downloading & setup (venv, pip, weights)
 print_layout.py                  # Print layout rendering
@@ -34,7 +37,7 @@ requirements.txt                 # Dependencies
 ```
 core.py                          # Mơ hồ
 PhotoEngine.py                   # PascalCase
-photo_engine.py photo_engine2.py # Không có version rõ
+photo_engine.py photo_engine2.py # Đặt song song 2 bản thay vì đổi tên/xoá bản cũ
 ```
 
 ---
@@ -59,8 +62,8 @@ class FaceParsingProcessor:     # Xử lý face parsing
 class CodeFormerRestorer:       # Phục hồi khuôn mặt
 class RealESRGANUpscaler:       # Upscale ảnh
 class BackgroundProcessor:      # Xử lý nền
-class PhotoMasterEngine:      # Engine chính
-class PhotoMasterApp:           # Ứng dụng UI chính
+class NaChanceEngine:      # Engine chính
+class NaChanceApp:           # Ứng dụng UI chính
 class PhotoSpec:                # Spec/config cho ảnh
 class FaceAnalyzer:             # Phân tích khuôn mặt
 class SmartEnhancer:            # Nâng cao thông minh
@@ -349,7 +352,7 @@ def detect_blur(image: np.ndarray, threshold: float = 100.0) -> Tuple[bool, floa
 nachance/
 ├── photo_engine/
 │   ├── __init__.py
-│   ├── engine.py              # Main PhotoMasterEngine
+│   ├── engine.py              # Main NaChanceEngine
 │   ├── processors/
 │   │   ├── face_parser.py     # FaceParsingProcessor
 │   │   ├── face_restorer.py   # CodeFormerRestorer
@@ -359,7 +362,7 @@ nachance/
 │       ├── validators.py      # FaceAnalyzer, PhotoSpec
 │       └── transformers.py    # PhotoTransformer
 ├── ui/
-│   ├── main_app.py            # PhotoMasterApp
+│   ├── main_app.py            # NaChanceApp
 │   └── components.py          # UI helpers
 ├── runtime/
 │   ├── manager.py             # RuntimeManager

@@ -59,7 +59,7 @@ nachance/
 │
 ├── photo_engine/                 # Core package
 │   ├── __init__.py              # Export public API
-│   ├── engine.py                # PhotoMasterEngine class
+│   ├── engine.py                # NaChanceEngine class
 │   │
 │   ├── processors/              # Processing modules
 │   │   ├── __init__.py
@@ -82,7 +82,7 @@ nachance/
 │
 ├── ui/                          # UI package
 │   ├── __init__.py
-│   ├── app.py                   # PhotoMasterApp (main UI class)
+│   ├── app.py                   # NaChanceApp (main UI class)
 │   ├── components/              # Reusable UI components
 │   │   ├── __init__.py
 │   │   ├── sliders.py
@@ -148,20 +148,18 @@ nachance/
 # photo_engine/__init__.py
 """NaChance Engine - AI photo processing."""
 
-from .engine import PhotoMasterEngine
+from .engine import NaChanceEngine
 from .processors.face_parser import FaceParsingProcessor
 from .processors.face_restorer import CodeFormerRestorer
 from .utils.validators import PhotoSpec, FaceAnalyzer
 
 __all__ = [
-    "PhotoMasterEngine",
+    "NaChanceEngine",
     "FaceParsingProcessor",
     "CodeFormerRestorer",
     "PhotoSpec",
     "FaceAnalyzer",
 ]
-
-__version__ = "2.0.0"
 ```
 
 ### 3. **Constants Organization**
@@ -264,13 +262,13 @@ Khi chuyển từ flat structure sang package structure:
 
 ### Current (Flat structure)
 ```python
-from photo_engine import PhotoMasterEngine, FaceParsingProcessor
+from photo_engine import NaChanceEngine, FaceParsingProcessor
 from runtime_manager import RuntimeManager
 ```
 
 ### After (Package structure — planned)
 ```python
-from photo_engine import PhotoMasterEngine, FaceParsingProcessor
+from photo_engine import NaChanceEngine, FaceParsingProcessor
 from photo_engine.runtime import RuntimeManager
 from photo_engine.utils import PhotoSpec
 ```
@@ -281,7 +279,7 @@ from photo_engine.utils import PhotoSpec
 
 | File/Module | Responsibility | Key Classes |
 |------------|---------------|----|
-| `engine.py` | Main orchestrator | `PhotoMasterEngine` |
+| `engine.py` | Main orchestrator | `NaChanceEngine` |
 | `face_parser.py` | Face semantic parsing | `FaceParsingProcessor` |
 | `face_restorer.py` | Face enhancement | `CodeFormerRestorer` |
 | `bg_processor.py` | Background removal/replacement | `BackgroundProcessor` |
@@ -289,7 +287,7 @@ from photo_engine.utils import PhotoSpec
 | `enhancer.py` | Smart enhancements | `SmartEnhancer` |
 | `validators.py` | Validation & specs | `FaceAnalyzer`, `PhotoSpec` |
 | `transformers.py` | Image transforms | `PhotoTransformer` |
-| `app.py` | UI application | `PhotoMasterApp` |
+| `app.py` | UI application | `NaChanceApp` |
 | `manager.py` | Runtime detection | `RuntimeManager` |
 
 ---
@@ -298,8 +296,8 @@ from photo_engine.utils import PhotoSpec
 
 ```
 main.py
-├── main_ui.py (PhotoMasterApp)
-│   ├── photo_engine.py (PhotoMasterEngine)
+├── main_ui.py (NaChanceApp)
+│   ├── photo_engine.py (NaChanceEngine)
 │   ├── photo_agent.py (PhotoQAAgent)
 │   └── print_layout.py (LayoutSimulator, LayoutRenderer)
 ├── runtime_manager.py
@@ -318,7 +316,7 @@ main.py
 from .processors import FaceParsingProcessor
 
 # photo_engine/processors/__init__.py
-from ..engine import PhotoMasterEngine  # ❌ CIRCULAR!
+from ..engine import NaChanceEngine  # ❌ CIRCULAR!
 ```
 
 **Fix**: Remove circular dependency, reorganize into separate concerns.
@@ -335,7 +333,7 @@ from photo_engine import FaceParsingProcessor
 ### ❌ Mixed Responsibilities
 ```python
 # ❌ Don't mix engine logic with UI
-class PhotoMasterApp:
+class NaChanceApp:
     def enhance_face(self, image):  # Belongs in engine, not UI
         ...
 ```

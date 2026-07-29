@@ -18,14 +18,14 @@ from PIL import Image as PILImage
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
 
-from photo_engine import PhotoMasterEngine, SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME
+from photo_engine import NaChanceEngine, SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME
 from photo_agent import PhotoQAAgent
 from print_layout import (
     build_layout_canvas, save_layout, LAYOUT_PRESETS,
 )
 
 
-# Theme TRƯỚC ĐÂY hard-code trực tiếp trong class PhotoMasterApp — giờ đọc
+# Theme TRƯỚC ĐÂY hard-code trực tiếp trong class NaChanceApp — giờ đọc
 # từ presets/themes.json (cùng pattern với SPEC_PRESETS/LAYOUT_PRESETS:
 # tách data ra khỏi code, thêm/sửa theme không cần đụng main_ui.py). Dict
 # dưới đây chỉ còn vai trò fallback an toàn nếu file JSON bị thiếu/hỏng.
@@ -96,13 +96,13 @@ def _open_folder(path: str):
         pass
 
 
-class PhotoMasterApp(ctk.CTk):
+class NaChanceApp(ctk.CTk):
     # THEMES: đọc từ presets/themes.json (xem _load_themes() ở trên) —
     # nhiều bảng màu để người dùng chọn.
     THEMES = THEMES
     DEFAULT_THEME = next(iter(THEMES)) if THEMES else "Dark Blue (mặc định)"
     # Giữ COLORS như một alias trỏ về theme mặc định — code cũ tham chiếu
-    # PhotoMasterApp.COLORS (nếu có) vẫn không vỡ; instance luôn tự set
+    # NaChanceApp.COLORS (nếu có) vẫn không vỡ; instance luôn tự set
     # self.COLORS theo theme đã chọn trong __init__.
     COLORS = THEMES[DEFAULT_THEME]
 
@@ -122,8 +122,8 @@ class PhotoMasterApp(ctk.CTk):
         self.last_layout = None
         self.preview_window = None
         self.config_path = Path.home() / ".nachance_ai.json"
-        # FIX: đồng bộ tên file config theo tên class (PhotoMasterEngineV2
-        # -> PhotoMasterEngine), bỏ hậu tố "v2" còn sót lại. Di chuyển file
+        # FIX: đồng bộ tên file config theo tên class (NaChanceEngineV2
+        # -> NaChanceEngine), bỏ hậu tố "v2" còn sót lại. Di chuyển file
         # config cũ (nếu có) sang tên mới 1 lần duy nhất, để người dùng cũ
         # không bị mất theme/cấu hình đã lưu trước đó.
         # Đổi thương hiệu Photo Master Pro -> NaChance: giữ nguyên chuỗi
@@ -156,7 +156,7 @@ class PhotoMasterApp(ctk.CTk):
         self.engine = None
         self.qa_agent = None
         try:
-            self.engine = PhotoMasterEngine(weights_dir="weights", runtime_report=runtime_report)
+            self.engine = NaChanceEngine(weights_dir="weights", runtime_report=runtime_report)
             # Cấp 1: agent tự thử lại (không LLM) khi ảnh chưa đạt chuẩn —
             # xem photo_agent.py. Bọc quanh engine đã khởi tạo, không tạo
             # engine thứ 2.
@@ -1309,5 +1309,5 @@ if __name__ == "__main__":
     _report = RuntimeManager(weights_dir="weights").detect()
     ctk.set_appearance_mode("dark")
     ctk.set_default_color_theme("dark-blue")
-    app = PhotoMasterApp(runtime_report=_report)
+    app = NaChanceApp(runtime_report=_report)
     app.mainloop()

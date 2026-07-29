@@ -16,7 +16,7 @@ không tự dò môi trường nữa.
     RuntimeManager.detect()
             │
             ▼
-      RuntimeReport  ──▶  PhotoMasterEngine(runtime_report=report)
+      RuntimeReport  ──▶  NaChanceEngine(runtime_report=report)
             │
             ▼
       UI hiển thị tính năng nào bật/tắt được, không cần thử-rồi-mới-biết

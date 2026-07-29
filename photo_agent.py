@@ -2,13 +2,13 @@
 Photo QA Agent — Cấp 1 (rule-based, không cần LLM)
 ====================================================
 
-Bọc PhotoMasterEngine.process() trong vòng lặp:
+Bọc NaChanceEngine.process() trong vòng lặp:
 
     quan sát (validation_errors) -> quyết định (fixable hay không)
         -> hành động (tăng fidelity/upscale rồi chạy lại) -> quan sát lại
 
 Không tự "bịa" ra khả năng mới — chỉ dùng lại đúng các tham số mà
-PhotoMasterEngine.process() đã đọc từ `options` (face_restore_fidelity,
+NaChanceEngine.process() đã đọc từ `options` (face_restore_fidelity,
 upscale, ...) và đúng các câu lỗi mà FaceAnalyzer.validate() /
 SmartEnhancer.detect_blur() đã sinh ra trong photo_engine.py.
 
@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 
 
 # Khớp đúng chuỗi lỗi thật sinh ra trong photo_engine.py (FaceAnalyzer.validate,
-# PhotoMasterEngine.process). Nếu văn bản lỗi đổi bên đó, nhớ đồng bộ ở đây.
+# NaChanceEngine.process). Nếu văn bản lỗi đổi bên đó, nhớ đồng bộ ở đây.
 _FIXABLE_PREFIXES = (
     "Ảnh mờ",
     "Không nhận diện được khuôn mặt",
@@ -75,7 +75,7 @@ class AttemptLog:
 
 @dataclass
 class AgentResult:
-    """Bọc thêm quanh Dict trả về từ PhotoMasterEngine.process()."""
+    """Bọc thêm quanh Dict trả về từ NaChanceEngine.process()."""
     verdict: str  # "ok" | "best_effort" | "needs_reshoot" | "failed"
     engine_result: Dict
     attempts: List[AttemptLog] = field(default_factory=list)
@@ -102,7 +102,7 @@ class AgentResult:
 
 
 class PhotoQAAgent:
-    """Bọc PhotoMasterEngine để tự retry khi ảnh chưa đạt chuẩn.
+    """Bọc NaChanceEngine để tự retry khi ảnh chưa đạt chuẩn.
 
     Dùng cùng engine đã có sẵn (không tạo engine mới), giữ nguyên toàn bộ
     logic xử lý ảnh trong photo_engine.py — agent chỉ quyết định "có nên
@@ -170,7 +170,7 @@ class PhotoQAAgent:
     @staticmethod
     def _escalate(options: Dict) -> Dict:
         """Tăng dần mức xử lý cho lượt thử kế tiếp. Chỉ đụng tới đúng các
-        key mà PhotoMasterEngine.process() thực sự đọc (xem photo_engine.py)."""
+        key mà NaChanceEngine.process() thực sự đọc (xem photo_engine.py)."""
         new_options = dict(options)
         fidelity = float(new_options.get("face_restore_fidelity", 0.7))
         new_options["face_restore_fidelity"] = min(0.95, fidelity + 0.1)

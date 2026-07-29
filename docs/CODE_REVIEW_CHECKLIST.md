@@ -184,5 +184,4 @@ Fixes #42
 ---
 
 **Last Updated**: 2026-07-26  
-**Version**: 1.0  
 **Author**: NaChance Team

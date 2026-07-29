@@ -31,7 +31,7 @@ If applicable, add screenshots or console output.
 - **OS**: (Windows 10/11, macOS, Linux, etc.)
 - **Python version**: (3.8, 3.9, 3.10, 3.11, etc.)
 - **GPU**: (NVIDIA GPU name if applicable, or CPU-only)
-- **App version**: (main branch, v2.0.0, etc.)
+- **App version**: (main branch, commit hash, or date you pulled/downloaded)
 
 ## 📝 Additional Context
 

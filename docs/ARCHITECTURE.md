@@ -38,8 +38,8 @@ main.py
   │
   ├─▶ nếu thiếu package bắt buộc → in lỗi rõ ràng, thoát trước khi mở UI
   │
-  └─▶ PhotoMasterApp(runtime_report=report)
-          └─▶ PhotoMasterEngine(runtime_report=report)
+  └─▶ NaChanceApp(runtime_report=report)
+          └─▶ NaChanceEngine(runtime_report=report)
                   └─▶ đọc report.device, không tự dò lại
                       mỗi processor (CodeFormer/RealESRGAN/BiSeNet) vẫn tự
                       lazy-load model thật khi được gọi lần đầu — report chỉ

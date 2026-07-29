@@ -10,7 +10,7 @@ Kiến trúc:
     RuntimeReport   → báo cáo bất biến: tính năng nào bật/tắt được
          │
          ▼
-    PhotoMasterApp(runtime_report) → UI + Engine chỉ ĐỌC report,
+    NaChanceApp(runtime_report) → UI + Engine chỉ ĐỌC report,
                                       không tự dò môi trường lại nữa
 
 Pipeline xử lý ảnh: Real-ESRGAN → CodeFormer → BiSeNet Face Parsing →
@@ -74,7 +74,7 @@ def _detect_runtime():
 
 try:
     RUNTIME_REPORT = _detect_runtime()
-    from main_ui import PhotoMasterApp
+    from main_ui import NaChanceApp
     import customtkinter as ctk
 except SystemExit:
     raise
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     try:
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("dark-blue")
-        app = PhotoMasterApp(runtime_report=RUNTIME_REPORT)
+        app = NaChanceApp(runtime_report=RUNTIME_REPORT)
         app.mainloop()
     except Exception:
         print("=" * 60)

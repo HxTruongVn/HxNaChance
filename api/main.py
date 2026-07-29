@@ -40,7 +40,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="NaChance API",
     description="AI Photo ID Processing Pipeline — CodeFormer + Real-ESRGAN + BiSeNet + isnet",
-    version="2.0.0",
     lifespan=lifespan,
 )
 
