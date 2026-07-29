@@ -25,6 +25,46 @@ from print_layout import (
 )
 
 
+# Theme TRƯỚC ĐÂY hard-code trực tiếp trong class PhotoMasterApp — giờ đọc
+# từ presets/themes.json (cùng pattern với SPEC_PRESETS/LAYOUT_PRESETS:
+# tách data ra khỏi code, thêm/sửa theme không cần đụng main_ui.py). Dict
+# dưới đây chỉ còn vai trò fallback an toàn nếu file JSON bị thiếu/hỏng.
+_BUILTIN_THEMES_FALLBACK = {
+    "Dark Blue (mặc định)": {
+        'bg_dark': '#0d1117', 'bg_card': '#161b22', 'bg_hover': '#21262d',
+        'border': '#30363d', 'text_primary': '#c9d1d9', 'text_secondary': '#8b949e',
+        'accent': '#58a6ff', 'accent_hover': '#79c0ff',
+        'success': '#238636', 'warning': '#d29922', 'danger': '#da3633', 'info': '#1f6feb'
+    },
+}
+
+_REQUIRED_THEME_KEYS = (
+    'bg_dark', 'bg_card', 'bg_hover', 'border', 'text_primary', 'text_secondary',
+    'accent', 'accent_hover', 'success', 'warning', 'danger', 'info',
+)
+
+
+def _load_themes() -> dict:
+    themes_path = Path(__file__).parent / "presets" / "themes.json"
+    try:
+        with open(themes_path, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+        # Chỉ nhận theme có đủ key màu bắt buộc — 1 theme thiếu key (lỗi
+        # gõ JSON tay) không được làm hỏng toàn bộ danh sách theme.
+        result = {name: fields for name, fields in raw.items()
+                  if all(k in fields for k in _REQUIRED_THEME_KEYS)}
+        if not result:
+            raise ValueError("File theme rỗng hoặc không có theme hợp lệ")
+        return result
+    except Exception as e:
+        print(f"[THEMES] ⚠ Không đọc được {themes_path} ({e}) — "
+              f"dùng {len(_BUILTIN_THEMES_FALLBACK)} theme mặc định built-in.")
+        return dict(_BUILTIN_THEMES_FALLBACK)
+
+
+THEMES = _load_themes()
+
+
 def _imwrite_unicode(path: str, image: np.ndarray, params=None) -> bool:
     """Ghi ảnh an toàn với đường dẫn Unicode (dấu tiếng Việt, khoảng trắng)."""
     try:
@@ -57,29 +97,10 @@ def _open_folder(path: str):
 
 
 class PhotoMasterApp(ctk.CTk):
-    # THEMES: nhiều bảng màu để người dùng chọn (mặc định vẫn giữ nguyên
-    # bảng màu cũ để không đổi giao diện của ai đang dùng nếu chưa chọn gì).
-    THEMES = {
-        "Dark Blue (mặc định)": {
-            'bg_dark': '#0d1117', 'bg_card': '#161b22', 'bg_hover': '#21262d',
-            'border': '#30363d', 'text_primary': '#c9d1d9', 'text_secondary': '#8b949e',
-            'accent': '#58a6ff', 'accent_hover': '#79c0ff',
-            'success': '#238636', 'warning': '#d29922', 'danger': '#da3633', 'info': '#1f6feb'
-        },
-        "Dark Green": {
-            'bg_dark': '#0d1117', 'bg_card': '#141d17', 'bg_hover': '#1c2b20',
-            'border': '#2a3d2e', 'text_primary': '#c9d1d9', 'text_secondary': '#8b949e',
-            'accent': '#3fb950', 'accent_hover': '#56d364',
-            'success': '#238636', 'warning': '#d29922', 'danger': '#da3633', 'info': '#3fb950'
-        },
-        "Light": {
-            'bg_dark': '#f6f8fa', 'bg_card': '#ffffff', 'bg_hover': '#eaeef2',
-            'border': '#d0d7de', 'text_primary': '#1f2328', 'text_secondary': '#57606a',
-            'accent': '#0969da', 'accent_hover': '#218bff',
-            'success': '#1a7f37', 'warning': '#9a6700', 'danger': '#cf222e', 'info': '#0969da'
-        },
-    }
-    DEFAULT_THEME = "Dark Blue (mặc định)"
+    # THEMES: đọc từ presets/themes.json (xem _load_themes() ở trên) —
+    # nhiều bảng màu để người dùng chọn.
+    THEMES = THEMES
+    DEFAULT_THEME = next(iter(THEMES)) if THEMES else "Dark Blue (mặc định)"
     # Giữ COLORS như một alias trỏ về theme mặc định — code cũ tham chiếu
     # PhotoMasterApp.COLORS (nếu có) vẫn không vỡ; instance luôn tự set
     # self.COLORS theo theme đã chọn trong __init__.
@@ -161,6 +182,7 @@ class PhotoMasterApp(ctk.CTk):
         self._drag_x = 0
         self._drag_y = 0
         self._process_timer_id = None  # FIX: lưu timer ID để hủy
+        self._is_busy = False  # dùng để chặn đổi theme khi đang xử lý ảnh (thread nền)
 
         self._build_title_bar()
         self._build_main_panel()
@@ -810,6 +832,7 @@ class PhotoMasterApp(ctk.CTk):
         self.geometry(f"+{x}+{y}")
 
     def _set_busy(self, busy):
+        self._is_busy = busy
         state = "disabled" if busy else "normal"
         for btn in [self.btn_run, self.btn_quick, self.btn_batch, self.btn_to_layout,
                      self.btn_layout_preview, self.btn_layout_save, self.btn_layout_print]:
@@ -1159,13 +1182,42 @@ class PhotoMasterApp(ctk.CTk):
         return self.DEFAULT_THEME
 
     def _on_theme_change(self, theme_name: str):
+        # FIX: trước đây chỉ lưu tên theme + báo "khởi động lại app để áp
+        # dụng" — không thật sự đổi màu. customtkinter không hỗ trợ đổi
+        # màu hàng loạt cho cây widget đã dựng sẵn (mỗi widget nhận màu
+        # đúng 1 lần lúc khởi tạo), nên cách đáng tin cậy để áp dụng NGAY
+        # là huỷ toàn bộ widget con rồi dựng lại — vẫn cùng 1 tiến trình
+        # đang chạy, KHÔNG phải khởi động lại app.
+        if self._is_busy:
+            # Thread xử lý ảnh nền đang giữ tham chiếu tới các widget hiện
+            # tại (self.status, các nút...) qua self.after(...) — huỷ
+            # widget giữa chừng sẽ làm thread đó lỗi khi nó chạy tiếp.
+            # An toàn nhất là chặn đổi theme lúc đang xử lý, không đoán mò.
+            messagebox.showinfo("Đang xử lý ảnh",
+                                 "Đợi xử lý ảnh xong rồi đổi giao diện nhé.")
+            self.theme_menu.set(self.theme_name)
+            return
+
         self.theme_name = theme_name
+        self.COLORS = self.THEMES.get(theme_name, self.THEMES[self.DEFAULT_THEME])
         self._save_config()
-        messagebox.showinfo(
-            "Đổi giao diện",
-            f"Đã lưu giao diện '{theme_name}'.\n"
-            "Khởi động lại app để áp dụng đầy đủ cho toàn bộ giao diện."
-        )
+
+        for child in self.winfo_children():
+            child.destroy()
+
+        self.configure(fg_color=self.COLORS['bg_dark'])
+        self._build_title_bar()
+        self._build_main_panel()
+        self._lock_unavailable_features()
+        if self.is_mini:
+            self.main_frame.pack_forget()
+            self.geometry("480x42")
+        else:
+            self.main_frame.pack(fill="both", expand=True, padx=0, pady=0)
+        # Nạp lại cấu hình đã lưu (thư mục lưu, preset xếp in, margin...)
+        # vào bộ widget MỚI vừa dựng — widget cũ đã bị huỷ nên trạng thái
+        # không tự "dính" theo, phải nạp lại từ file config như lúc mở app.
+        self._load_config()
 
     def _load_config(self):
         if self.config_path.exists():
