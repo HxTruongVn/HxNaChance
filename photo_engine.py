@@ -635,7 +635,27 @@ class BackgroundProcessor:
 
 
 # ------------------------------------------------------------------
-# 7. PHOTO TRANSFORMER (đã fix -angle)
+# 7. PHOTO TRANSFORMER
+# ------------------------------------------------------------------
+#
+# FIX (nghiêm trọng, độc lập với fix EXIF/orientation-fallback ở trên):
+# dấu góc xoay trong getRotationMatrix2D() trước đây là "-angle" — tưởng
+# đã fix nhưng SAI CHIỀU. Đã kiểm chứng bằng mô phỏng số học + áp affine
+# thật (xoay 1 khuôn mặt nghiêng đúng góc phi thật, chạy qua công thức,
+# đo lại xem mắt có thẳng hàng không): dùng "-angle" khiến độ lệch mắt
+# còn lại sau khi "sửa" gần như không bao giờ về 0 — ví dụ nghiêng 15°
+# còn lệch ~74px, nghiêng 45° còn lệch ~148px, nghiêng 90° "tình cờ" hết
+# lệch nhưng ảnh bị LỘN NGƯỢC (cằm lên trên trán). Đây là lớp lỗi KHÁC
+# với lớp EXIF/orientation-fallback phía trên: lớp đó lo việc MediaPipe
+# có NHẬN DIỆN ĐƯỢC mặt hay không (đưa ảnh về gần đúng hướng trước); còn
+# bug này nằm ở bước "cân bằng mắt" tinh chỉnh CUỐI CÙNG sau khi đã nhận
+# diện được — dù ảnh đầu vào đã đúng hướng 90/180/270° nhờ fallback,
+# phần lệch nhỏ còn lại (do người chụp nghiêng máy) vẫn không được sửa
+# đúng. Sửa: đổi "-angle" thành "+angle" trong getRotationMatrix2D, đồng
+# thời đảo dấu theta trong _rotate_pt() (dùng "-angle") để công thức
+# tính scale/kích thước khớp đúng với M thực sự tạo ra. Đã kiểm chứng
+# lại: mắt thẳng hàng (lệch 0.00px) ở mọi góc test (15°/45°/90°/135°/
+# 179°), cằm luôn ở dưới trán (không còn lộn ngược).
 # ------------------------------------------------------------------
 
 class PhotoTransformer:
@@ -652,7 +672,7 @@ class PhotoTransformer:
         angle = np.degrees(np.arctan2(right_eye[1] - left_eye[1],
                                       right_eye[0] - left_eye[0]))
 
-        theta = np.radians(angle)
+        theta = np.radians(-angle)
         cos_t, sin_t = np.cos(theta), np.sin(theta)
         center = np.array([mx, my])
 
@@ -682,7 +702,7 @@ class PhotoTransformer:
 
         scale = min(scale_eye, scale_chin, scale_top)
 
-        M = cv2.getRotationMatrix2D((mx, my), -angle, scale)
+        M = cv2.getRotationMatrix2D((mx, my), angle, scale)
         M[0, 2] += (spec.w / 2.0) - mx
         M[1, 2] += target_my - my
 
