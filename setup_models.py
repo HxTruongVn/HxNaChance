@@ -55,9 +55,22 @@ MODELS = {
     # Tuỳ chọn — pipeline vẫn chạy bình thường nếu file này không có;
     # tính năng tự tắt (.available = False). Lite ~3MB đủ để phát hiện
     # vai trong ảnh thẻ (không cần toàn thân chi tiết).
+    #
+    # FIX: 2 URL gốc (khi tính năng shoulder-warp mới được thêm) đều sai,
+    # khiến model KHÔNG BAO GIỜ tải được — đây chính là lý do tính năng
+    # "cân vai" không có tác dụng gì trên máy thật:
+    #   - "hf" cũ trỏ vào repo qualcomm/MediaPipe-Pose-Estimation — đây là
+    #     export TFLite/QNN cho Qualcomm AI Hub SDK, KHÁC HOÀN TOÀN định
+    #     dạng ".task bundle" mà mediapipe.tasks.python.vision cần — sai
+    #     repo, không phải chỉ "backup kém tin cậy".
+    #   - "gh" cũ dùng path "float16/latest/" — kiểm tra lại mọi ví dụ
+    #     chính thức của Google (docs, sample Python/Web/Android) đều
+    #     dùng "float16/1/", không có phiên bản "latest" trên GCS.
+    # Giữ đúng 1 nguồn chính thức duy nhất (Google Cloud Storage, path đã
+    # sửa đúng) thay vì thêm 1 "hf" mirror cộng đồng chưa xác minh được
+    # tính toàn vẹn file (rủi ro chuỗi cung ứng cho 1 model tải tự động).
     "pose_landmarker_lite.task": {
-        "hf": "https://huggingface.co/qualcomm/MediaPipe-Pose-Estimation/resolve/main/pose_landmarker_lite.task",
-        "gh": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task",
+        "gh": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
         "size_mb": 3,
         "optional": True,   # Không tính vào failed list, không fail setup
     },
