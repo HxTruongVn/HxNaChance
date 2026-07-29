@@ -1,5 +1,5 @@
 """
-NaChance — Main UI (AI Pipeline Edition)
+NaChance — Main UI
 Tích hợp: CodeFormer + Real-ESRGAN + BiSeNet Face Parsing + isnet RMBG
 """
 
@@ -108,7 +108,7 @@ class NaChanceApp(ctk.CTk):
 
     def __init__(self, runtime_report=None):
         super().__init__()
-        self.title("NACHANCE — AI Edition")
+        self.title("NACHANCE")
         self.overrideredirect(True)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.geometry("480x780")
@@ -175,8 +175,8 @@ class NaChanceApp(ctk.CTk):
             # Vẫn mở UI, báo lỗi sau
             self.after(500, lambda msg=_engine_error_msg: messagebox.showwarning(
                 "Khởi động Lite Mode",
-                f"Không thể khởi tạo AI Engine:\n{msg}\n\n"
-                "App sẽ chạy ở chế độ Lite (không có AI enhance).\n"
+                f"Không thể khởi tạo engine xử lý ảnh:\n{msg}\n\n"
+                "App sẽ chạy ở chế độ Lite (không có phục hồi/nâng cao ảnh).\n"
                 "Kiểm tra console để biết chi tiết lỗi."
             ))
         self._drag_x = 0
@@ -258,7 +258,7 @@ class NaChanceApp(ctk.CTk):
         )
         self.btn_toggle.pack(side="left", padx=6, pady=5)
 
-        ctk.CTkLabel(self.title_bar, text="📷 NACHANCE AI",
+        ctk.CTkLabel(self.title_bar, text="📷 NACHANCE",
                      font=("Segoe UI", 13, "bold"), text_color=self.COLORS['accent']).pack(side="left", padx=8)
 
         self.btn_quick = ctk.CTkButton(
@@ -366,8 +366,8 @@ class NaChanceApp(ctk.CTk):
         self.color_preview.pack(side="left")
         self.entry_hex.bind("<KeyRelease>", lambda e: self._update_color_preview())
 
-        # AI Enhancements (thay thế các checkbox cũ)
-        self._section_header(tab, "✨ AI NÂNG CAO")
+        # Nâng cao ảnh (thay thế các checkbox cũ)
+        self._section_header(tab, "Nâng cao ảnh")
         fe = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'], corner_radius=8,
                           border_width=1, border_color=self.COLORS['border'])
         fe.pack(fill="x", pady=(0, 10))

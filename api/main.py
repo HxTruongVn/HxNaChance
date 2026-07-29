@@ -28,7 +28,7 @@ _engine: Optional[ThreadSafeEngine] = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _engine
-    print("🚀 [Lifespan] Khởi tạo AI Engine...")
+    print("🚀 [Lifespan] Khởi tạo NaChance Engine...")
     _engine = ThreadSafeEngine(weights_dir="weights")
     print("✅ [Lifespan] Engine sẵn sàng.")
     yield
@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="NaChance API",
-    description="AI Photo ID Processing Pipeline — CodeFormer + Real-ESRGAN + BiSeNet + isnet",
+    description="Photo ID Processing Pipeline — CodeFormer + Real-ESRGAN + BiSeNet + isnet",
     lifespan=lifespan,
 )
 

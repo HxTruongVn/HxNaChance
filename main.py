@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-NaChance — AI Edition
+NaChance
 Chạy: python main.py
 
 Kiến trúc:
