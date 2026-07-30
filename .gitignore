@@ -90,3 +90,6 @@ exports/
 config.local.py
 .env.local
 .env.*.local
+
+# Windows Explorer thumbnail cache — không phải asset thật, không nên commit
+Thumbs.db

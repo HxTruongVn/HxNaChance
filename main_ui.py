@@ -14,7 +14,7 @@ from datetime import datetime
 
 import cv2
 import numpy as np
-from PIL import Image as PILImage
+from PIL import Image as PILImage, ImageTk
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
 
@@ -109,6 +109,7 @@ class NaChanceApp(ctk.CTk):
     def __init__(self, runtime_report=None):
         super().__init__()
         self.title("NACHANCE")
+        self._set_app_icon()
         self.overrideredirect(True)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.geometry("480x780")
@@ -245,6 +246,88 @@ class NaChanceApp(ctk.CTk):
             pass
         self.destroy()
 
+    def _set_app_icon(self):
+        """Đặt icon app (thanh tác vụ/Alt-Tab) từ assets/logo (1).ico
+        (bản màu xanh, khớp theme mặc định 'Dark Blue'). Dùng iconphoto
+        (qua PIL) thay vì iconbitmap vì iconphoto hoạt động được trên cả
+        Windows/Linux/Mac — iconbitmap chỉ nhận .ico trên Windows và
+        .xbm trên X11. Bọc try/except vì icon không phải chức năng cốt
+        lõi — thiếu file/lỗi đọc ảnh không được làm sập cả app."""
+        try:
+            icon_path = Path(__file__).parent / "assets" / "logo (1).ico"
+            if not icon_path.exists():
+                return
+            img = PILImage.open(icon_path)
+            # File .ico chứa nhiều frame kích thước khác nhau (16..256px)
+            # — lấy frame LỚN NHẤT để hiển thị sắc nét ở mọi độ phân giải.
+            if getattr(img, "n_frames", 1) > 1:
+                best_frame, best_size = img, 0
+                for i in range(img.n_frames):
+                    img.seek(i)
+                    if img.size[0] > best_size:
+                        best_size = img.size[0]
+                        best_frame = img.copy()
+                img = best_frame
+            self._icon_photo = ImageTk.PhotoImage(img)  # giữ ref — PhotoImage bị GC nếu không giữ
+            self.iconphoto(True, self._icon_photo)
+        except Exception as e:
+            print(f"[Icon] Không đặt được icon app: {e}")
+
+    def _show_about(self):
+        """Dialog 'Giới thiệu' — logo + mô tả ngắn các tính năng chính,
+        cho người dùng cuối biết app làm gì mà không cần đọc README."""
+        dlg = ctk.CTkToplevel(self)
+        dlg.title("Giới thiệu")
+        dlg.geometry("420x520")
+        dlg.resizable(False, False)
+        dlg.configure(fg_color=self.COLORS['bg_dark'])
+        dlg.transient(self)
+        dlg.grab_set()
+
+        try:
+            icon_path = Path(__file__).parent / "assets" / "logo (1).ico"
+            img = PILImage.open(icon_path)
+            if getattr(img, "n_frames", 1) > 1:
+                best_frame, best_size = img, 0
+                for i in range(img.n_frames):
+                    img.seek(i)
+                    if img.size[0] > best_size:
+                        best_size = img.size[0]
+                        best_frame = img.copy()
+                img = best_frame
+            img = img.convert("RGBA")
+            img.thumbnail((120, 120), PILImage.LANCZOS)
+            ctk_img = ctk.CTkImage(light_image=img, size=img.size)
+            ctk.CTkLabel(dlg, image=ctk_img, text="").pack(pady=(25, 10))
+        except Exception:
+            pass  # thiếu icon không ngăn hiện phần thông tin còn lại
+
+        ctk.CTkLabel(dlg, text="NaChance", font=("Segoe UI", 20, "bold"),
+                     text_color=self.COLORS['accent']).pack(pady=(0, 4))
+        ctk.CTkLabel(dlg, text="Xử lý ảnh thẻ tự động cho tiệm ảnh / studio",
+                     font=("Segoe UI", 11), text_color=self.COLORS['text_secondary'],
+                     wraplength=360, justify="center").pack(pady=(0, 15))
+
+        features = [
+            "Phục hồi & làm nét khuôn mặt (CodeFormer)",
+            "Nâng cấp độ phân giải (Real-ESRGAN)",
+            "Tách nền & đổi màu nền (isnet)",
+            "Căn chỉnh chuẩn ảnh thẻ theo từng loại giấy tờ",
+            "Xếp ảnh vào khổ in tự động",
+            "Kiểm tra chuẩn tự động trước khi giao khách",
+        ]
+        box = ctk.CTkFrame(dlg, fg_color=self.COLORS['bg_card'], corner_radius=10)
+        box.pack(fill="x", padx=25, pady=(0, 15))
+        for f in features:
+            ctk.CTkLabel(box, text=f"• {f}", font=("Segoe UI", 10), anchor="w",
+                         text_color=self.COLORS['text_primary'], wraplength=340,
+                         justify="left").pack(fill="x", padx=12, pady=4)
+
+        ctk.CTkButton(dlg, text="Đóng", fg_color=self.COLORS['accent'],
+                      hover_color=self.COLORS['accent_hover'],
+                      command=dlg.destroy).pack(pady=(5, 20), padx=25, fill="x")
+        dlg.protocol("WM_DELETE_WINDOW", dlg.destroy)
+
     def _build_title_bar(self):
         self.title_bar = ctk.CTkFrame(self, fg_color=self.COLORS['bg_card'],
                                       corner_radius=0, height=42, border_width=0)
@@ -271,6 +354,10 @@ class NaChanceApp(ctk.CTk):
         ctk.CTkButton(self.title_bar, text="✕", width=32, height=28,
                       fg_color="transparent", hover_color=self.COLORS['danger'],
                       font=("Segoe UI", 12), command=self._on_close).pack(side="right", padx=6)
+
+        ctk.CTkButton(self.title_bar, text="ℹ", width=32, height=28,
+                      fg_color="transparent", hover_color=self.COLORS['bg_hover'],
+                      font=("Segoe UI", 13), command=self._show_about).pack(side="right", padx=2)
 
         self.title_bar.bind("<Button-1>", self._start_drag)
         self.title_bar.bind("<B1-Motion>", self._do_drag)
