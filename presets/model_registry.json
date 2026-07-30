@@ -1,0 +1,38 @@
+{
+  "face_parser": {
+    "provider": "bisenet",
+    "version": "1.0",
+    "adapter": "bisenet_face_parser",
+    "weight": "79999_iter.pth",
+    "optional": false
+  },
+  "face_restorer": {
+    "provider": "codeformer",
+    "version": "1.0",
+    "adapter": "codeformer_face_restorer",
+    "weight": "codeformer.pth",
+    "optional": false
+  },
+  "upscaler": {
+    "provider": "realesrgan",
+    "version": "1.0",
+    "adapter": "realesrgan_upscaler",
+    "weight": "RealESRGAN_x2plus.pth",
+    "optional": false
+  },
+  "background_remover": {
+    "provider": "isnet",
+    "version": "1.0",
+    "adapter": "isnet_background_remover",
+    "weight": "isnet-general-use.onnx",
+    "optional": false
+  },
+  "pose_estimator": {
+    "provider": "mediapipe_pose_lite",
+    "version": "1.0",
+    "adapter": "mediapipe_pose_estimator",
+    "weight": "pose_landmarker_lite.task",
+    "optional": true,
+    "_comment": "Dùng cho tính năng cân vai (ShoulderAnalyzer) — tuỳ chọn, pipeline chạy bình thường nếu thiếu."
+  }
+}

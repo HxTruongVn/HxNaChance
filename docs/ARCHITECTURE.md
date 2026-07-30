@@ -103,3 +103,33 @@ test, ngoài phạm vi những gì có thể xác minh trong lần sửa này):
 Bước tiếp theo hợp lý khi sẵn sàng đóng gói: viết `pyinstaller.spec`
 cho bản CPU-only trước (ít rủi ro nhất), test trên đúng máy Windows
 mục tiêu, rồi mới tính đến bản có GPU.
+
+---
+
+## Model Registry — tiến độ theo Giai đoạn 2 (docs/Plan.md)
+
+`presets/model_registry.json` + `model_registry.py` mô tả ánh xạ
+**Capability → Provider → Version → Adapter → Weight** cho 4 capability
+bắt buộc hiện có (`face_parser`, `face_restorer`, `upscaler`,
+`background_remover`) và 1 capability tuỳ chọn (`pose_estimator`, dùng
+cho tính năng cân vai).
+
+Đây **chỉ là lớp mô tả dữ liệu** (đúng ranh giới Plan.md vạch ra ở mục
+8: "Registry không chứa logic xử lý ảnh") — `model_registry.py` có thể
+đọc/validate/tra cứu registry, đối chiếu chéo với
+`presets/weights_sources.json` để bắt lỗi lệch dữ liệu giữa 2 file,
+nhưng **CHƯA được nối vào `photo_engine.py`**. `NaChanceEngine` vẫn
+import và khởi tạo thẳng `CodeFormerRestorer`/`RealESRGANUpscaler`/
+`FaceParser`/`BackgroundProcessor` như trước — đúng tinh thần Giai đoạn
+2 của Plan ("PhotoEngine không thay đổi").
+
+**Còn thiếu để hoàn thành Giai đoạn 3-4** (chưa làm):
+- `ModelManager`/`ModelLoader`/`ModelValidator` — lớp thật sự dùng
+  registry này để load model lúc runtime (hiện registry chỉ nằm đó,
+  chưa ai gọi tới ngoài test).
+- Interface `FaceParser`/`FaceRestorer`/`Upscaler`/`BackgroundRemover`
+  (theo capability) + Adapter cho từng provider hiện có (BiSeNet nên
+  làm mẫu đầu tiên, theo đúng kết luận cuối `docs/Plan.md`).
+- Sửa `NaChanceEngine` gọi qua interface/Capability thay vì gọi thẳng
+  class cụ thể — đây là thay đổi có rủi ro, cần làm cẩn thận từng
+  capability một, bắt đầu từ BiSeNet.
