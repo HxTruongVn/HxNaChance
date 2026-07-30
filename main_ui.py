@@ -320,31 +320,36 @@ class NaChanceApp(ctk.CTk):
         )
         self.btn_toggle.pack(side="left", padx=6, pady=5)
 
-        # Sử dụng file .png và tính toán tỷ lệ để tránh bị bóp dẹp ảnh
-        assets_path = Path(__file__).parent / "assets" / "logo_title_bar1.png"
-        if assets_path.exists():
-            pil_img = Image.open(assets_path)
-            
-            # Tính toán width tự động dựa theo chiều cao 30px để giữ nguyên tỷ lệ gốc
-            target_height = 30
+        # Chọn 1 trong 3 file phù hợp nhất, ví dụ "logo (3).ico"
+        icon_path = Path(__file__).parent / "assets" / "logo (3).ico"
+        if icon_path.exists():
+            pil_img = Image.open(icon_path)
+            target_height = 26
             orig_width, orig_height = pil_img.size
             target_width = int(orig_width * (target_height / float(orig_height)))
             
+            # Sử dụng chung một ảnh hoặc phân bổ light/dark nếu muốn
             self.logo_image = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(target_width, target_height))
             self.logo_label = ctk.CTkLabel(self.title_bar, text="", image=self.logo_image)
-            self.logo_label.pack(side="left", padx=8)
-        else:
-            # Fallback nếu chưa tìm thấy file png
-            self.logo_label = ctk.CTkLabel(self.title_bar, text="📷 NACHANCE",
-                                           font=self.F_LARGE, text_color=self.COLORS['accent'])
-            self.logo_label.pack(side="left", padx=8)
+            self.logo_label.pack(side="left", padx=(6, 4))
+            self.logo_label.bind("<Button-1>", self._start_drag)
+            self.logo_label.bind("<B1-Motion>", self._do_drag)
+
+        # Phần chữ thương hiệu dạng Text chuẩn để tự thích ứng màu sắc theo mọi theme
+        self.title_text_label = ctk.CTkLabel(
+            self.title_bar, text="NACHANCE",
+            font=self.F_LARGE, text_color=self.COLORS['accent']
+        )
+        self.title_text_label.pack(side="left", padx=4)
+        self.title_text_label.bind("<Button-1>", self._start_drag)
+        self.title_text_label.bind("<B1-Motion>", self._do_drag)
 
         self.btn_quick = ctk.CTkButton(
             self.title_bar, text="▶ RUN", width=65, height=28,
             fg_color=self.COLORS['accent'], hover_color=self.COLORS['accent_hover'],
             font=self.F_NORMAL, text_color="white", command=self._run_single
         )
-        self.btn_quick.pack(side="left", padx=5)
+        self.btn_quick.pack(side="left", padx=10)
 
         ctk.CTkButton(self.title_bar, text="✕", width=32, height=28,
                       fg_color="transparent", hover_color=self.COLORS['danger'],
