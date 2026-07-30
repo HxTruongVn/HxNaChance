@@ -121,7 +121,6 @@ class NaChanceApp(ctk.CTk):
         self.last_result = None
         self.last_results = []
         self.last_layout = None
-        self.preview_window = None
         self.config_path = Path.home() / ".nachance_ai.json"
 
         # runtime_report: do main.py dò 1 lần qua RuntimeManager rồi truyền xuống
@@ -158,6 +157,18 @@ class NaChanceApp(ctk.CTk):
             self.geometry("480x42")
         else:
             self.main_frame.pack(fill="both", expand=True, padx=0, pady=0)
+
+        # Cửa sổ phụ (side panel) chuyên dụng cho MỌI loại preview trong
+        # app — tạo 1 LẦN DUY NHẤT (không destroy/recreate theo theme hay
+        # theo từng lần mở), ẩn/hiện qua withdraw()/deiconify(). Bind
+        # <Configure> đúng 1 lần ở đây (không đặt trong _build_title_bar/
+        # _build_main_panel vì 2 hàm đó bị gọi lại mỗi lần đổi theme —
+        # bind lại sẽ chồng nhiều lần, khiến 1 sự kiện kéo cửa sổ kích
+        # hoạt sync nhiều lần).
+        self._side_panel_mode = None  # 'orient' | 'result' | 'layout' | None
+        self._build_side_panel()
+        self.bind("<Configure>", self._sync_side_panel_position)
+
         self._load_config()
         
     def _lock_unavailable_features(self):
@@ -394,40 +405,8 @@ class NaChanceApp(ctk.CTk):
     def _build_process_tab(self):
         tab = self.tab_process
 
-        # Khung preview NHÚNG TRỰC TIẾP trong UI chính (không phải cửa sổ
-        # rời) — giống cách máy scan hiển thị preview ngay trong cùng 1
-        # cửa sổ công cụ, tránh mở nhiều cửa sổ rời có thể đè lên nhau
-        # hoặc che khuất app khác (Photoshop...) đang mở cạnh app này.
-        # Ẩn mặc định — _show_preview_panel()/_hide_preview_panel() điều
-        # khiển hiện/ẩn, dùng chung cho cả bước "xác nhận chiều ảnh" lẫn
-        # "xem trước kết quả" (2 việc trước đây là 2 cửa sổ popup riêng).
-        self.preview_panel = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'],
-                                           corner_radius=8, border_width=1,
-                                           border_color=self.COLORS['border'])
-        self.preview_panel_title = ctk.CTkLabel(
-            self.preview_panel, text="", font=self.F_HEADER,
-            text_color=self.COLORS['text_primary'], wraplength=420, justify="center")
-        self.preview_panel_title.pack(pady=(12, 6), padx=10)
-
-        self.preview_panel_img = ctk.CTkLabel(self.preview_panel, text="")
-        self.preview_panel_img.pack(pady=5, padx=10)
-
-        self.preview_panel_rotate_row = ctk.CTkFrame(self.preview_panel, fg_color="transparent")
-        self._preview_rotate_buttons = []
-        for deg in (0, 90, 180, 270):
-            b = ctk.CTkButton(self.preview_panel_rotate_row, text=f"{deg}°", width=75,
-                               fg_color=self.COLORS['bg_hover'],
-                               hover_color=self.COLORS['accent_hover'],
-                               command=lambda d=deg: self._preview_set_rotation(d))
-            b.pack(side="left", padx=4)
-            self._preview_rotate_buttons.append((b, deg))
-
-        self.preview_panel_btn_row = ctk.CTkFrame(self.preview_panel, fg_color="transparent")
-        self.preview_panel_btn_row.pack(pady=(10, 12), padx=15, fill="x")
-        # preview_panel CHƯA pack() ở đây — ẩn cho tới khi thật sự cần.
-
         # Preset
-        self._process_tab_top_anchor = self._section_header(tab, "🎯 LOẠI ẢNH")
+        self._section_header(tab, "🎯 LOẠI ẢNH")
         fp = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'], corner_radius=8,
                           border_width=1, border_color=self.COLORS['border'])
         fp.pack(fill="x", pady=(0, 10))
@@ -652,6 +631,7 @@ class NaChanceApp(ctk.CTk):
                 # để không quên nhập số lượng rồi báo lỗi "chưa chọn bố cục".
                 if chk.get() and _get_int(entry) <= 0:
                     _clamp_and_set(entry, 1)
+                self._layout_live_refresh()
 
             def _step(entry=spin, chk=var, delta=0):
                 new_val = _clamp_and_set(entry, _get_int(entry) + delta)
@@ -662,6 +642,7 @@ class NaChanceApp(ctk.CTk):
                     chk.select()
                 else:
                     chk.deselect()
+                self._layout_live_refresh()
 
             var.configure(command=_on_check_toggle)
 
@@ -959,23 +940,85 @@ class NaChanceApp(ctk.CTk):
         self._set_busy(False)
 
     # ===== PROCESSING =====
-    def _show_preview_panel(self):
-        # Luôn chuyển sang tab "Xử lý ảnh" trước khi hiện — panel này
-        # nằm trong tab đó, nếu người dùng đang ở tab "Xếp in" (ví dụ
-        # bấm nút RUN nhanh ở title bar) mà không chuyển tab thì sẽ
-        # không thấy panel vừa hiện lên.
-        self.tabview.set("🖼 Xử lý ảnh")
-        # Nếu app đang thu gọn (mini — chỉ còn title bar, main_frame bị
-        # ẩn hẳn), panel dù pack() bên trong vẫn vô hình vì cha nó đang
-        # ẩn — phải mở rộng lại giống lúc bấm nút toggle panel.
-        if self.is_mini:
-            self.main_frame.pack(fill="both", expand=True, padx=0, pady=0)
-            self.geometry("480x780")
-            self.is_mini = False
-        self.preview_panel.pack(fill="x", pady=(0, 10), before=self._process_tab_top_anchor)
+    def _build_side_panel(self):
+        """Cửa sổ phụ (side panel) CHUYÊN DỤNG cho MỌI loại preview trong
+        app — xác nhận chiều ảnh, xem kết quả xử lý, xem trước bản in.
+        Trước đây mỗi việc hiển thị theo 1 cách khác nhau (nhúng trong
+        tab / mở Toplevel riêng mỗi lần) — giờ gom về DUY NHẤT 1 cửa sổ,
+        tạo 1 LẦN, ẩn/hiện qua withdraw()/deiconify() (không destroy/
+        recreate) để giữ nguyên vị trí và tránh giật hình mỗi lần mở."""
+        self.side_panel = ctk.CTkToplevel(self)
+        self.side_panel.title("Xem trước")
+        self.side_panel.overrideredirect(True)
+        self.side_panel.transient(self)
+        self.side_panel.configure(fg_color=self.COLORS['bg_dark'])
+        self.side_panel.withdraw()  # ẩn ngay từ đầu, chỉ hiện khi cần
 
-    def _hide_preview_panel(self):
-        self.preview_panel.pack_forget()
+        self.side_panel_title = ctk.CTkLabel(
+            self.side_panel, text="", font=self.F_HEADER,
+            text_color=self.COLORS['text_primary'], wraplength=440, justify="center")
+        self.side_panel_title.pack(pady=(15, 8), padx=15)
+
+        self.side_panel_img = ctk.CTkLabel(self.side_panel, text="")
+        self.side_panel_img.pack(pady=5, padx=15)
+
+        self.side_panel_extra_label = ctk.CTkLabel(
+            self.side_panel, text="", font=self.F_NORMAL,
+            text_color=self.COLORS['text_secondary'])
+        # Chưa pack() — chỉ dùng ở chế độ xem trước bản in (kích thước
+        # thực px). _hide_side_panel()/mỗi chế độ tự bật/tắt khi cần.
+
+        self.side_panel_rotate_row = ctk.CTkFrame(self.side_panel, fg_color="transparent")
+        self._preview_rotate_buttons = []
+        for deg in (0, 90, 180, 270):
+            b = ctk.CTkButton(self.side_panel_rotate_row, text=f"{deg}°", width=75,
+                               fg_color=self.COLORS['bg_hover'],
+                               hover_color=self.COLORS['accent_hover'],
+                               command=lambda d=deg: self._preview_set_rotation(d))
+            b.pack(side="left", padx=4)
+            self._preview_rotate_buttons.append((b, deg))
+        # Chưa pack() row — chỉ hiện ở chế độ xác nhận chiều ảnh.
+
+        self.side_panel_btn_row = ctk.CTkFrame(self.side_panel, fg_color="transparent")
+        self.side_panel_btn_row.pack(pady=(10, 15), padx=20, fill="x", side="bottom")
+
+    def _restyle_side_panel(self):
+        """Cập nhật màu cửa sổ phụ theo theme mới — gọi từ
+        _on_theme_change() thay vì destroy/recreate, vì side_panel là
+        cửa sổ SỐNG LÂU DÀI (giữ nguyên vị trí/trạng thái xuyên suốt
+        phiên làm việc), khác với main_frame vốn được dựng lại mỗi lần
+        đổi theme."""
+        self.side_panel.configure(fg_color=self.COLORS['bg_dark'])
+        self.side_panel_title.configure(text_color=self.COLORS['text_primary'])
+        self.side_panel_extra_label.configure(text_color=self.COLORS['text_secondary'])
+        for b, d in self._preview_rotate_buttons:
+            is_selected = (getattr(self, "_orient_rotation", 0) == d)
+            b.configure(fg_color=self.COLORS['accent'] if is_selected else self.COLORS['bg_hover'],
+                        hover_color=self.COLORS['accent_hover'])
+
+    def _sync_side_panel_position(self, event=None):
+        """Bám theo cửa sổ chính — bind <Configure> ở __init__ gọi hàm
+        này mỗi khi cửa sổ chính di chuyển/đổi kích thước (kéo bằng tay
+        hoặc geometry() đổi khi thu/phóng panel). Bỏ qua khi panel đang
+        ẩn để không gọi geometry() vô ích trên 1 cửa sổ không hiển thị."""
+        if not self.side_panel.winfo_viewable():
+            return
+        main_x, main_y = self.winfo_x(), self.winfo_y()
+        main_w = self.winfo_width()
+        panel_w = self.side_panel.winfo_width()
+        panel_h = self.side_panel.winfo_height()
+        self.side_panel.geometry(f"{panel_w}x{panel_h}+{main_x + main_w + 8}+{main_y}")
+
+    def _show_side_panel(self, width=460, height=700):
+        main_x, main_y = self.winfo_x(), self.winfo_y()
+        main_w = self.winfo_width()
+        self.side_panel.geometry(f"{width}x{height}+{main_x + main_w + 8}+{main_y}")
+        self.side_panel.deiconify()
+        self.side_panel.lift()
+
+    def _hide_side_panel(self):
+        self._side_panel_mode = None
+        self.side_panel.withdraw()
 
     def _preview_rotated_image(self):
         deg = self._orient_rotation
@@ -994,8 +1037,8 @@ class NaChanceApp(ctk.CTk):
         pil_img = PILImage.fromarray(rgb)
         pil_img.thumbnail((400, 380), PILImage.LANCZOS)
         ctk_img = ctk.CTkImage(light_image=pil_img, size=pil_img.size)
-        self.preview_panel_img.configure(image=ctk_img)
-        self.preview_panel_img.image = ctk_img
+        self.side_panel_img.configure(image=ctk_img)
+        self.side_panel_img.image = ctk_img
 
     def _preview_set_rotation(self, deg):
         self._orient_rotation = deg
@@ -1004,12 +1047,11 @@ class NaChanceApp(ctk.CTk):
             b.configure(fg_color=self.COLORS['accent'] if d == deg else self.COLORS['bg_hover'])
 
     def _start_orientation_queue(self, file_paths, on_done):
-        """Xác nhận chiều ảnh cho 1 hoặc nhiều ảnh, HIỂN THỊ NGAY TRONG
-        khung preview nhúng (không mở cửa sổ rời) — dùng chung cho luồng
-        1 ảnh (_run_single) và theo lô (_run_batch), xử lý tuần tự từng
-        ảnh. Đây là luồng KHÔNG CHẶN (không dùng wait_window) vì preview
-        giờ là 1 phần của UI chính, không phải dialog modal riêng — mỗi
-        bước tiếp theo được gọi lại qua callback khi người dùng bấm nút.
+        """Xác nhận chiều ảnh cho 1 hoặc nhiều ảnh, hiển thị trong cửa sổ
+        phụ (side panel) — dùng chung cho luồng 1 ảnh (_run_single) và
+        theo lô (_run_batch), xử lý tuần tự từng ảnh. Luồng KHÔNG CHẶN
+        (không dùng wait_window) — mỗi bước tiếp theo được gọi lại qua
+        callback khi người dùng bấm nút.
 
         on_done(confirmed_paths): gọi khi xong hết hàng đợi (hoặc rỗng
         nếu bị huỷ toàn bộ) — confirmed_paths là danh sách file tạm đã
@@ -1024,7 +1066,7 @@ class NaChanceApp(ctk.CTk):
     def _orient_next(self):
         if not self._orient_queue:
             self._orient_active = False
-            self._hide_preview_panel()
+            self._hide_side_panel()
             cb, self._orient_on_done = self._orient_on_done, None
             if cb:
                 cb(self._orient_confirmed)
@@ -1040,6 +1082,7 @@ class NaChanceApp(ctk.CTk):
         self._render_orientation_step()
 
     def _render_orientation_step(self):
+        self._side_panel_mode = 'orient'
         idx_done = self._orient_total - len(self._orient_queue) - 1
         if self._orient_total > 1:
             title = (f"Ảnh {idx_done + 1}/{self._orient_total}: "
@@ -1047,27 +1090,28 @@ class NaChanceApp(ctk.CTk):
                      "Đã đúng chiều chưa? Chọn góc xoay nếu chưa đúng:")
         else:
             title = "Ảnh đã đúng chiều chưa? Chọn góc xoay nếu chưa đúng:"
-        self.preview_panel_title.configure(text=title)
+        self.side_panel_title.configure(text=title)
+        self.side_panel_extra_label.pack_forget()
 
         for b, d in self._preview_rotate_buttons:
             b.configure(fg_color=self.COLORS['accent'] if d == 0 else self.COLORS['bg_hover'])
-        self.preview_panel_rotate_row.pack(pady=8, before=self.preview_panel_btn_row)
+        self.side_panel_rotate_row.pack(pady=8, before=self.side_panel_btn_row)
         self._preview_render_current()
 
-        for w in self.preview_panel_btn_row.winfo_children():
+        for w in self.side_panel_btn_row.winfo_children():
             w.destroy()
-        ctk.CTkButton(self.preview_panel_btn_row, text="✅ Xử lý ảnh này",
+        ctk.CTkButton(self.side_panel_btn_row, text="✅ Xử lý ảnh này",
                       fg_color=self.COLORS['success'], hover_color=self.COLORS['success'],
                       command=self._orient_confirm_current).pack(fill="x", pady=3)
         if self._orient_total > 1:  # chỉ hiện "bỏ qua riêng ảnh này" khi xử lý theo lô
-            ctk.CTkButton(self.preview_panel_btn_row, text="⏭ Bỏ qua ảnh này",
+            ctk.CTkButton(self.side_panel_btn_row, text="⏭ Bỏ qua ảnh này",
                           fg_color=self.COLORS['bg_hover'], hover_color=self.COLORS['bg_card'],
                           command=self._orient_skip_current).pack(fill="x", pady=3)
-        ctk.CTkButton(self.preview_panel_btn_row, text="✖ Hủy",
+        ctk.CTkButton(self.side_panel_btn_row, text="✖ Hủy",
                       fg_color=self.COLORS['danger'], hover_color=self.COLORS['danger'],
                       command=self._orient_cancel_all).pack(fill="x", pady=3)
 
-        self._show_preview_panel()
+        self._show_side_panel()
 
     def _orient_confirm_current(self):
         final_image = self._preview_rotated_image()
@@ -1089,7 +1133,7 @@ class NaChanceApp(ctk.CTk):
         self._orient_confirmed = []
         self._orient_on_done = None
         self._orient_active = False
-        self._hide_preview_panel()
+        self._hide_side_panel()
 
     def _run_single(self):
         file_path = filedialog.askopenfilename(title="Chọn ảnh",
@@ -1262,24 +1306,27 @@ class NaChanceApp(ctk.CTk):
     def _show_preview(self):
         if self.last_result is None:
             return
-        # Dùng CHUNG khung preview nhúng với bước xác nhận chiều ảnh —
-        # không mở cửa sổ rời, tránh đè lên nhau / che khuất app khác.
-        self.preview_panel_title.configure(text="Xem trước kết quả")
-        self.preview_panel_rotate_row.pack_forget()  # không cần xoay ở bước xem kết quả
+        # Dùng CHUNG cửa sổ phụ (side panel) với bước xác nhận chiều ảnh
+        # và xem trước bản in — không mở cửa sổ rời riêng, tránh đè lên
+        # nhau / che khuất app khác.
+        self._side_panel_mode = 'result'
+        self.side_panel_title.configure(text="Xem trước kết quả")
+        self.side_panel_rotate_row.pack_forget()  # không cần xoay ở bước xem kết quả
+        self.side_panel_extra_label.pack_forget()
 
         rgb = cv2.cvtColor(self.last_result, cv2.COLOR_BGR2RGB)
         pil_img = PILImage.fromarray(rgb)
         pil_img.thumbnail((400, 420), PILImage.LANCZOS)
         ctk_img = ctk.CTkImage(light_image=pil_img, size=pil_img.size)
-        self.preview_panel_img.configure(image=ctk_img)
-        self.preview_panel_img.image = ctk_img
+        self.side_panel_img.configure(image=ctk_img)
+        self.side_panel_img.image = ctk_img
 
-        for w in self.preview_panel_btn_row.winfo_children():
+        for w in self.side_panel_btn_row.winfo_children():
             w.destroy()
-        ctk.CTkButton(self.preview_panel_btn_row, text="Đóng", fg_color=self.COLORS['bg_card'],
+        ctk.CTkButton(self.side_panel_btn_row, text="Đóng", fg_color=self.COLORS['bg_card'],
                       hover_color=self.COLORS['bg_hover'],
-                      command=self._hide_preview_panel).pack(fill="x", pady=3)
-        self._show_preview_panel()
+                      command=self._hide_side_panel).pack(fill="x", pady=3)
+        self._show_side_panel()
 
     @staticmethod
     def _safe_float(val, default=0.0):
@@ -1348,46 +1395,64 @@ class NaChanceApp(ctk.CTk):
             messagebox.showerror("Lỗi xếp ảnh", str(e))
             return None, None
 
-    def _layout_preview(self):
-        canvas, payload = self._build_layout()
-        if canvas is None:
-            return
-
+    def _render_layout_preview(self, canvas):
+        """Vẽ canvas bản in vào side panel — dùng chung cho cả bấm nút
+        'Xem trước' (_layout_preview) lẫn tự động làm mới khi đổi tuỳ
+        chọn (_layout_live_refresh), tránh trùng lặp code vẽ."""
+        self._side_panel_mode = 'layout'
         self.last_layout = canvas
-
-        if self.preview_window and self.preview_window.winfo_exists():
-            self.preview_window.destroy()
-
-        self.preview_window = ctk.CTkToplevel(self)
-        self.preview_window.title("Xem trước bản in")
-        # Neo cửa sổ này NGAY CẠNH cửa sổ chính (không để hệ điều hành đặt
-        # vị trí mặc định tuỳ ý) — bản in cần khổ lớn hơn khung 480px của
-        # app chính nên không nhúng được như preview 1 ảnh, nhưng vẫn giữ
-        # nguyên tắc "gắn liền, không đè lên app khác": luôn xuất hiện dính
-        # liền bên phải cửa sổ chính, giống khung phụ của máy scan.
-        main_x, main_y = self.winfo_x(), self.winfo_y()
-        main_w = self.winfo_width()
-        self.preview_window.geometry(f"600x800+{main_x + main_w + 8}+{main_y}")
-        self.preview_window.configure(fg_color=self.COLORS['bg_dark'])
+        self.side_panel_title.configure(text="Xem trước bản in")
+        self.side_panel_rotate_row.pack_forget()
 
         w, h = canvas.size
         scale = min(1.0, 700 / float(h), 550 / float(w))
         disp_w, disp_h = int(w * scale), int(h * scale)
         thumb = canvas.resize((disp_w, disp_h), PILImage.LANCZOS)
         ctk_img = ctk.CTkImage(light_image=thumb, size=thumb.size)
+        self.side_panel_img.configure(image=ctk_img)
+        self.side_panel_img.image = ctk_img
 
-        ctk.CTkLabel(self.preview_window, text=f"Kích thước thực: {w} x {h} px",
-                     font=self.F_NORMAL, text_color=self.COLORS['text_secondary']).pack(pady=5)
+        self.side_panel_extra_label.configure(text=f"Kích thước thực: {w} x {h} px")
+        self.side_panel_extra_label.pack(pady=(0, 5), before=self.side_panel_btn_row)
 
-        label = ctk.CTkLabel(self.preview_window, image=ctk_img, text="")
-        label.pack(pady=10)
-        label.image = ctk_img
-
-        ctk.CTkButton(self.preview_window, text="Đóng", fg_color=self.COLORS['bg_card'],
+        for widget in self.side_panel_btn_row.winfo_children():
+            widget.destroy()
+        ctk.CTkButton(self.side_panel_btn_row, text="Đóng", fg_color=self.COLORS['bg_card'],
                       hover_color=self.COLORS['bg_hover'],
-                      command=self.preview_window.destroy).pack(pady=10)
+                      command=self._hide_side_panel).pack(fill="x", pady=3)
+        self._show_side_panel(width=620, height=820)
 
+    def _layout_preview(self):
+        canvas, payload = self._build_layout()
+        if canvas is None:
+            return
+        self._render_layout_preview(canvas)
+        w, h = canvas.size
         self.status.configure(text=f"✓ Preview: {w}x{h}px", text_color=self.COLORS['success'])
+
+    def _layout_live_refresh(self):
+        """Tự động render lại xem trước bản in ngay khi người dùng đổi
+        tuỳ chọn (tick preset, bấm +/- số lượng...) — theo yêu cầu 'lắng
+        nghe thay đổi tuỳ chọn để tự render lại'. KHÁC với _layout_preview()
+        (gọi khi bấm nút tay): hàm này KHÔNG được tự bật popup/dialog —
+        _build_layout() vốn mở dialog chọn file khi bật 'nối thêm' và
+        hiện messagebox khi lỗi, cả 2 đều không chấp nhận được nếu tự
+        động kích hoạt mỗi lần tick checkbox. Vì vậy im lặng bỏ qua khi
+        chưa đủ điều kiện, không làm phiền người dùng giữa lúc họ đang
+        thao tác liên tục."""
+        if self._side_panel_mode != 'layout':
+            return  # panel đang đóng hoặc đang hiển thị nội dung khác — không cần tính
+        src = getattr(self, 'layout_src_path', None)
+        if not src or not os.path.exists(src):
+            return
+        if self.chk_append.get():
+            return  # chế độ nối thêm cần chọn file thủ công, không tự refresh được
+        try:
+            cfg = self._get_layout_config()
+            canvas, _ = build_layout_canvas(src, cfg, False, None)
+        except Exception:
+            return  # công thức đang gõ dở/tạm thời không hợp lệ — bỏ qua êm, không báo lỗi
+        self._render_layout_preview(canvas)
 
     def _layout_save(self):
         canvas, payload = self._build_layout()
@@ -1470,12 +1535,20 @@ class NaChanceApp(ctk.CTk):
         self._save_config()
 
         for child in self.winfo_children():
+            # side_panel là CTkToplevel(self) — về mặt cây widget, Toplevel
+            # có master=self VẪN nằm trong self.winfo_children(), nên phải
+            # loại trừ tường minh ở đây, nếu không vòng lặp sẽ huỷ mất cửa
+            # sổ phụ "sống lâu dài" mỗi lần đổi theme (ngược với thiết kế
+            # tạo 1 lần, chỉ ẩn/hiện qua withdraw()/deiconify()).
+            if child is getattr(self, "side_panel", None):
+                continue
             child.destroy()
 
         self.configure(fg_color=self.COLORS['bg_dark'])
         self._build_title_bar()
         self._build_main_panel()
         self._lock_unavailable_features()
+        self._restyle_side_panel()
         if self.is_mini:
             self.main_frame.pack_forget()
             self.geometry("480x42")
