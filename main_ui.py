@@ -184,6 +184,7 @@ class NaChanceApp(ctk.CTk):
         self._drag_y = 0
         self._process_timer_id = None  # FIX: lưu timer ID để hủy
         self._is_busy = False  # dùng để chặn đổi theme khi đang xử lý ảnh (thread nền)
+        self._orient_active = False  # dùng để chặn đổi theme khi đang xác nhận chiều ảnh
 
         self._build_title_bar()
         self._build_main_panel()
@@ -405,8 +406,40 @@ class NaChanceApp(ctk.CTk):
     def _build_process_tab(self):
         tab = self.tab_process
 
+        # Khung preview NHÚNG TRỰC TIẾP trong UI chính (không phải cửa sổ
+        # rời) — giống cách máy scan hiển thị preview ngay trong cùng 1
+        # cửa sổ công cụ, tránh mở nhiều cửa sổ rời có thể đè lên nhau
+        # hoặc che khuất app khác (Photoshop...) đang mở cạnh app này.
+        # Ẩn mặc định — _show_preview_panel()/_hide_preview_panel() điều
+        # khiển hiện/ẩn, dùng chung cho cả bước "xác nhận chiều ảnh" lẫn
+        # "xem trước kết quả" (2 việc trước đây là 2 cửa sổ popup riêng).
+        self.preview_panel = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'],
+                                           corner_radius=8, border_width=1,
+                                           border_color=self.COLORS['border'])
+        self.preview_panel_title = ctk.CTkLabel(
+            self.preview_panel, text="", font=("Segoe UI", 11, "bold"),
+            text_color=self.COLORS['text_primary'], wraplength=420, justify="center")
+        self.preview_panel_title.pack(pady=(12, 6), padx=10)
+
+        self.preview_panel_img = ctk.CTkLabel(self.preview_panel, text="")
+        self.preview_panel_img.pack(pady=5, padx=10)
+
+        self.preview_panel_rotate_row = ctk.CTkFrame(self.preview_panel, fg_color="transparent")
+        self._preview_rotate_buttons = []
+        for deg in (0, 90, 180, 270):
+            b = ctk.CTkButton(self.preview_panel_rotate_row, text=f"{deg}°", width=75,
+                               fg_color=self.COLORS['bg_hover'],
+                               hover_color=self.COLORS['accent_hover'],
+                               command=lambda d=deg: self._preview_set_rotation(d))
+            b.pack(side="left", padx=4)
+            self._preview_rotate_buttons.append((b, deg))
+
+        self.preview_panel_btn_row = ctk.CTkFrame(self.preview_panel, fg_color="transparent")
+        self.preview_panel_btn_row.pack(pady=(10, 12), padx=15, fill="x")
+        # preview_panel CHƯA pack() ở đây — ẩn cho tới khi thật sự cần.
+
         # Preset
-        self._section_header(tab, "🎯 LOẠI ẢNH")
+        self._process_tab_top_anchor = self._section_header(tab, "🎯 LOẠI ẢNH")
         fp = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'], corner_radius=8,
                           border_width=1, border_color=self.COLORS['border'])
         fp.pack(fill="x", pady=(0, 10))
@@ -766,8 +799,10 @@ class NaChanceApp(ctk.CTk):
 
     # ===== HELPERS =====
     def _section_header(self, parent, text):
-        ctk.CTkLabel(parent, text=text, font=("Segoe UI", 10, "bold"),
-                      text_color=self.COLORS['text_secondary']).pack(anchor="w", padx=15, pady=(15, 5))
+        lbl = ctk.CTkLabel(parent, text=text, font=("Segoe UI", 10, "bold"),
+                            text_color=self.COLORS['text_secondary'])
+        lbl.pack(anchor="w", padx=15, pady=(15, 5))
+        return lbl
 
     def _chk(self, parent, text, row, col, default):
         chk = ctk.CTkCheckBox(parent, text=text, font=("Segoe UI", 10),
@@ -936,99 +971,137 @@ class NaChanceApp(ctk.CTk):
         self._set_busy(False)
 
     # ===== PROCESSING =====
-    def _confirm_orientation(self, image_bgr: np.ndarray, title_suffix: str = ""):
-        """Mở dialog xác nhận chiều ảnh (modal — dừng ở đây tới khi người
-        dùng chọn), cho xoay tay 0/90/180/270° TRƯỚC KHI đưa ảnh vào
-        pipeline xử lý (face restore/align/...). image_bgr đưa vào đã
-        qua _imread_unicode (đã tự áp EXIF) — dialog này là bước xác
-        nhận CUỐI, dành cho trường hợp EXIF sai/thiếu hoặc ảnh chụp/scan
-        vốn đã lệch (không phải vấn đề hiển thị) mà máy không tự đoán ra.
+    def _show_preview_panel(self):
+        # Luôn chuyển sang tab "Xử lý ảnh" trước khi hiện — panel này
+        # nằm trong tab đó, nếu người dùng đang ở tab "Xếp in" (ví dụ
+        # bấm nút RUN nhanh ở title bar) mà không chuyển tab thì sẽ
+        # không thấy panel vừa hiện lên.
+        self.tabview.set("🖼 Xử lý ảnh")
+        # Nếu app đang thu gọn (mini — chỉ còn title bar, main_frame bị
+        # ẩn hẳn), panel dù pack() bên trong vẫn vô hình vì cha nó đang
+        # ẩn — phải mở rộng lại giống lúc bấm nút toggle panel.
+        if self.is_mini:
+            self.main_frame.pack(fill="both", expand=True, padx=0, pady=0)
+            self.geometry("480x780")
+            self.is_mini = False
+        self.preview_panel.pack(fill="x", pady=(0, 10), before=self._process_tab_top_anchor)
 
-        Trả về (action, ảnh_đã_xoay):
-          - action="confirm": người dùng đồng ý, dùng ảnh đã xoay để xử lý.
-          - action="skip": bỏ qua RIÊNG ảnh này (dùng khi xử lý theo lô).
-          - action="cancel_all": huỷ toàn bộ (đóng cửa sổ / bấm Hủy)."""
-        result = {"action": "cancel_all", "image": image_bgr}
-        state = {"deg": 0}
+    def _hide_preview_panel(self):
+        self.preview_panel.pack_forget()
 
-        dlg = ctk.CTkToplevel(self)
-        dlg.title(f"Xác nhận chiều ảnh{title_suffix}")
-        dlg.geometry("460x640")
-        dlg.resizable(False, False)
-        dlg.configure(fg_color=self.COLORS['bg_dark'])
-        dlg.transient(self)
-        dlg.grab_set()
+    def _preview_rotated_image(self):
+        deg = self._orient_rotation
+        img = self._orient_current_image_raw
+        if deg == 90:
+            return cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+        if deg == 180:
+            return cv2.rotate(img, cv2.ROTATE_180)
+        if deg == 270:
+            return cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        return img
 
-        ctk.CTkLabel(dlg, text="Ảnh đã đúng chiều chưa? Chọn góc xoay nếu chưa đúng:",
-                     font=("Segoe UI", 11), text_color=self.COLORS['text_secondary'],
-                     wraplength=420).pack(pady=(15, 8))
+    def _preview_render_current(self):
+        img = self._preview_rotated_image()
+        rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        pil_img = PILImage.fromarray(rgb)
+        pil_img.thumbnail((400, 380), PILImage.LANCZOS)
+        ctk_img = ctk.CTkImage(light_image=pil_img, size=pil_img.size)
+        self.preview_panel_img.configure(image=ctk_img)
+        self.preview_panel_img.image = ctk_img
 
-        lbl_img = ctk.CTkLabel(dlg, text="")
-        lbl_img.pack(pady=5)
+    def _preview_set_rotation(self, deg):
+        self._orient_rotation = deg
+        self._preview_render_current()
+        for b, d in self._preview_rotate_buttons:
+            b.configure(fg_color=self.COLORS['accent'] if d == deg else self.COLORS['bg_hover'])
 
-        rotate_buttons = []
+    def _start_orientation_queue(self, file_paths, on_done):
+        """Xác nhận chiều ảnh cho 1 hoặc nhiều ảnh, HIỂN THỊ NGAY TRONG
+        khung preview nhúng (không mở cửa sổ rời) — dùng chung cho luồng
+        1 ảnh (_run_single) và theo lô (_run_batch), xử lý tuần tự từng
+        ảnh. Đây là luồng KHÔNG CHẶN (không dùng wait_window) vì preview
+        giờ là 1 phần của UI chính, không phải dialog modal riêng — mỗi
+        bước tiếp theo được gọi lại qua callback khi người dùng bấm nút.
 
-        def _rotated(deg):
-            if deg == 90:
-                return cv2.rotate(image_bgr, cv2.ROTATE_90_CLOCKWISE)
-            if deg == 180:
-                return cv2.rotate(image_bgr, cv2.ROTATE_180)
-            if deg == 270:
-                return cv2.rotate(image_bgr, cv2.ROTATE_90_COUNTERCLOCKWISE)
-            return image_bgr
+        on_done(confirmed_paths): gọi khi xong hết hàng đợi (hoặc rỗng
+        nếu bị huỷ toàn bộ) — confirmed_paths là danh sách file tạm đã
+        xác nhận/xoay, sẵn sàng đưa vào _process_files()."""
+        self._orient_queue = list(file_paths)
+        self._orient_total = len(file_paths)
+        self._orient_confirmed = []
+        self._orient_on_done = on_done
+        self._orient_active = True
+        self._orient_next()
 
-        def _render():
-            img = _rotated(state["deg"])
-            result["image"] = img
-            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            pil_img = PILImage.fromarray(rgb)
-            pil_img.thumbnail((400, 420), PILImage.LANCZOS)
-            ctk_img = ctk.CTkImage(light_image=pil_img, size=pil_img.size)
-            lbl_img.configure(image=ctk_img)
-            lbl_img.image = ctk_img
+    def _orient_next(self):
+        if not self._orient_queue:
+            self._orient_active = False
+            self._hide_preview_panel()
+            cb, self._orient_on_done = self._orient_on_done, None
+            if cb:
+                cb(self._orient_confirmed)
+            return
+        path = self._orient_queue.pop(0)
+        image = _imread_unicode(path)
+        if image is None:
+            self._orient_next()  # ảnh lỗi đọc -- bỏ qua riêng ảnh này, không chặn cả lô
+            return
+        self._orient_current_path = path
+        self._orient_current_image_raw = image
+        self._orient_rotation = 0
+        self._render_orientation_step()
 
-        def _set_rotation(deg):
-            state["deg"] = deg
-            _render()
-            for b, d in rotate_buttons:
-                b.configure(fg_color=self.COLORS['accent'] if d == deg else self.COLORS['bg_hover'])
+    def _render_orientation_step(self):
+        idx_done = self._orient_total - len(self._orient_queue) - 1
+        if self._orient_total > 1:
+            title = (f"Ảnh {idx_done + 1}/{self._orient_total}: "
+                     f"{os.path.basename(self._orient_current_path)}\n"
+                     "Đã đúng chiều chưa? Chọn góc xoay nếu chưa đúng:")
+        else:
+            title = "Ảnh đã đúng chiều chưa? Chọn góc xoay nếu chưa đúng:"
+        self.preview_panel_title.configure(text=title)
 
-        row_rotate = ctk.CTkFrame(dlg, fg_color="transparent")
-        row_rotate.pack(pady=8)
-        for deg in (0, 90, 180, 270):
-            b = ctk.CTkButton(row_rotate, text=f"{deg}°", width=75,
-                               fg_color=self.COLORS['accent'] if deg == 0 else self.COLORS['bg_hover'],
-                               hover_color=self.COLORS['accent_hover'],
-                               command=lambda d=deg: _set_rotation(d))
-            b.pack(side="left", padx=4)
-            rotate_buttons.append((b, deg))
+        for b, d in self._preview_rotate_buttons:
+            b.configure(fg_color=self.COLORS['accent'] if d == 0 else self.COLORS['bg_hover'])
+        self.preview_panel_rotate_row.pack(pady=8, before=self.preview_panel_btn_row)
+        self._preview_render_current()
 
-        def _confirm():
-            result["action"] = "confirm"
-            dlg.destroy()
+        for w in self.preview_panel_btn_row.winfo_children():
+            w.destroy()
+        ctk.CTkButton(self.preview_panel_btn_row, text="✅ Xử lý ảnh này",
+                      fg_color=self.COLORS['success'], hover_color=self.COLORS['success'],
+                      command=self._orient_confirm_current).pack(fill="x", pady=3)
+        if self._orient_total > 1:  # chỉ hiện "bỏ qua riêng ảnh này" khi xử lý theo lô
+            ctk.CTkButton(self.preview_panel_btn_row, text="⏭ Bỏ qua ảnh này",
+                          fg_color=self.COLORS['bg_hover'], hover_color=self.COLORS['bg_card'],
+                          command=self._orient_skip_current).pack(fill="x", pady=3)
+        ctk.CTkButton(self.preview_panel_btn_row, text="✖ Hủy",
+                      fg_color=self.COLORS['danger'], hover_color=self.COLORS['danger'],
+                      command=self._orient_cancel_all).pack(fill="x", pady=3)
 
-        def _skip():
-            result["action"] = "skip"
-            dlg.destroy()
+        self._show_preview_panel()
 
-        def _cancel():
-            result["action"] = "cancel_all"
-            dlg.destroy()
+    def _orient_confirm_current(self):
+        final_image = self._preview_rotated_image()
+        stem = os.path.splitext(os.path.basename(self._orient_current_path))[0]
+        tmp_path = os.path.join(tempfile.gettempdir(), f"{stem}_oriented.jpg")
+        if _imwrite_unicode(tmp_path, final_image, [cv2.IMWRITE_JPEG_QUALITY, 95]):
+            self._orient_confirmed.append(tmp_path)
+        else:
+            messagebox.showerror("Lỗi", "Không lưu được ảnh đã xoay ra file tạm.")
+        self._orient_next()
 
-        row_btn = ctk.CTkFrame(dlg, fg_color="transparent")
-        row_btn.pack(pady=(20, 10), fill="x", padx=25)
-        ctk.CTkButton(row_btn, text="✅ Xử lý ảnh này", fg_color=self.COLORS['success'],
-                      hover_color=self.COLORS['success'], command=_confirm).pack(fill="x", pady=3)
-        if title_suffix:  # chỉ hiện "bỏ qua riêng ảnh này" khi đang xử lý theo lô
-            ctk.CTkButton(row_btn, text="⏭ Bỏ qua ảnh này", fg_color=self.COLORS['bg_hover'],
-                          hover_color=self.COLORS['bg_card'], command=_skip).pack(fill="x", pady=3)
-        ctk.CTkButton(row_btn, text="✖ Hủy", fg_color=self.COLORS['danger'],
-                      hover_color=self.COLORS['danger'], command=_cancel).pack(fill="x", pady=3)
+    def _orient_skip_current(self):
+        self._orient_next()
 
-        dlg.protocol("WM_DELETE_WINDOW", _cancel)
-        _render()
-        dlg.wait_window()
-        return result["action"], result["image"]
+    def _orient_cancel_all(self):
+        # Huỷ hẳn — không gọi on_done, khớp hành vi "cancel_all" cũ:
+        # dừng lại ngay, không đưa gì vào _process_files().
+        self._orient_queue = []
+        self._orient_confirmed = []
+        self._orient_on_done = None
+        self._orient_active = False
+        self._hide_preview_panel()
 
     def _run_single(self):
         file_path = filedialog.askopenfilename(title="Chọn ảnh",
@@ -1037,23 +1110,12 @@ class NaChanceApp(ctk.CTk):
             return
 
         if self.chk_confirm_orientation.get():
-            image = _imread_unicode(file_path)  # đã tự áp EXIF orientation
-            if image is None:
-                messagebox.showerror("Lỗi", f"Không đọc được ảnh:\n{file_path}")
-                return
-            action, final_image = self._confirm_orientation(image)
-            if action != "confirm":
-                return
-            # Lưu ảnh đã xác nhận chiều ra file tạm (giữ tên gốc để output
-            # sau này vẫn đặt tên theo file gốc như bình thường) — pipeline
-            # xử lý (_process_files) đọc lại từ path như mọi khi.
-            stem = os.path.splitext(os.path.basename(file_path))[0]
-            file_path = os.path.join(tempfile.gettempdir(), f"{stem}_oriented.jpg")
-            if not _imwrite_unicode(file_path, final_image, [cv2.IMWRITE_JPEG_QUALITY, 95]):
-                messagebox.showerror("Lỗi", "Không lưu được ảnh đã xoay ra file tạm.")
-                return
-
-        self._process_files([file_path])
+            def _on_confirmed(confirmed_paths):
+                if confirmed_paths:
+                    self._process_files(confirmed_paths)
+            self._start_orientation_queue([file_path], _on_confirmed)
+        else:
+            self._process_files([file_path])
 
     def _run_batch(self):
         folder = filedialog.askdirectory(title="Chọn thư mục chứa ảnh")
@@ -1066,26 +1128,12 @@ class NaChanceApp(ctk.CTk):
             return
 
         if self.chk_confirm_orientation.get():
-            confirmed = []
-            for idx, path in enumerate(files):
-                image = _imread_unicode(path)
-                if image is None:
-                    continue  # ảnh lỗi đọc — bỏ qua riêng ảnh đó, không chặn cả lô
-                action, final_image = self._confirm_orientation(
-                    image, title_suffix=f" ({idx+1}/{len(files)}: {os.path.basename(path)})")
-                if action == "cancel_all":
-                    return
-                if action == "skip":
-                    continue
-                stem = os.path.splitext(os.path.basename(path))[0]
-                tmp_path = os.path.join(tempfile.gettempdir(), f"{stem}_oriented.jpg")
-                if _imwrite_unicode(tmp_path, final_image, [cv2.IMWRITE_JPEG_QUALITY, 95]):
-                    confirmed.append(tmp_path)
-            if not confirmed:
-                return
-            files = confirmed
-
-        self._process_files(files)
+            def _on_confirmed(confirmed_paths):
+                if confirmed_paths:
+                    self._process_files(confirmed_paths)
+            self._start_orientation_queue(files, _on_confirmed)
+        else:
+            self._process_files(files)
 
     def _process_files(self, files):
         if self.engine is None:
@@ -1226,28 +1274,24 @@ class NaChanceApp(ctk.CTk):
     def _show_preview(self):
         if self.last_result is None:
             return
-        if self.preview_window and self.preview_window.winfo_exists():
-            self.preview_window.lift()
-            return
-
-        self.preview_window = ctk.CTkToplevel(self)
-        self.preview_window.title("Xem trước")
-        self.preview_window.geometry("500x600")
-        self.preview_window.resizable(False, False)
-        self.preview_window.configure(fg_color=self.COLORS['bg_dark'])
+        # Dùng CHUNG khung preview nhúng với bước xác nhận chiều ảnh —
+        # không mở cửa sổ rời, tránh đè lên nhau / che khuất app khác.
+        self.preview_panel_title.configure(text="Xem trước kết quả")
+        self.preview_panel_rotate_row.pack_forget()  # không cần xoay ở bước xem kết quả
 
         rgb = cv2.cvtColor(self.last_result, cv2.COLOR_BGR2RGB)
         pil_img = PILImage.fromarray(rgb)
-        max_size = (480, 520)
-        pil_img.thumbnail(max_size, PILImage.LANCZOS)
+        pil_img.thumbnail((400, 420), PILImage.LANCZOS)
         ctk_img = ctk.CTkImage(light_image=pil_img, size=pil_img.size)
+        self.preview_panel_img.configure(image=ctk_img)
+        self.preview_panel_img.image = ctk_img
 
-        label = ctk.CTkLabel(self.preview_window, image=ctk_img, text="")
-        label.pack(pady=15)
-        label.image = ctk_img
-        ctk.CTkButton(self.preview_window, text="Đóng", fg_color=self.COLORS['bg_card'],
+        for w in self.preview_panel_btn_row.winfo_children():
+            w.destroy()
+        ctk.CTkButton(self.preview_panel_btn_row, text="Đóng", fg_color=self.COLORS['bg_card'],
                       hover_color=self.COLORS['bg_hover'],
-                      command=self.preview_window.destroy).pack(pady=10)
+                      command=self._hide_preview_panel).pack(fill="x", pady=3)
+        self._show_preview_panel()
 
     @staticmethod
     def _safe_float(val, default=0.0):
@@ -1328,7 +1372,14 @@ class NaChanceApp(ctk.CTk):
 
         self.preview_window = ctk.CTkToplevel(self)
         self.preview_window.title("Xem trước bản in")
-        self.preview_window.geometry("600x800")
+        # Neo cửa sổ này NGAY CẠNH cửa sổ chính (không để hệ điều hành đặt
+        # vị trí mặc định tuỳ ý) — bản in cần khổ lớn hơn khung 480px của
+        # app chính nên không nhúng được như preview 1 ảnh, nhưng vẫn giữ
+        # nguyên tắc "gắn liền, không đè lên app khác": luôn xuất hiện dính
+        # liền bên phải cửa sổ chính, giống khung phụ của máy scan.
+        main_x, main_y = self.winfo_x(), self.winfo_y()
+        main_w = self.winfo_width()
+        self.preview_window.geometry(f"600x800+{main_x + main_w + 8}+{main_y}")
         self.preview_window.configure(fg_color=self.COLORS['bg_dark'])
 
         w, h = canvas.size
@@ -1413,11 +1464,14 @@ class NaChanceApp(ctk.CTk):
         # đúng 1 lần lúc khởi tạo), nên cách đáng tin cậy để áp dụng NGAY
         # là huỷ toàn bộ widget con rồi dựng lại — vẫn cùng 1 tiến trình
         # đang chạy, KHÔNG phải khởi động lại app.
-        if self._is_busy:
+        if self._is_busy or getattr(self, "_orient_active", False):
             # Thread xử lý ảnh nền đang giữ tham chiếu tới các widget hiện
             # tại (self.status, các nút...) qua self.after(...) — huỷ
             # widget giữa chừng sẽ làm thread đó lỗi khi nó chạy tiếp.
-            # An toàn nhất là chặn đổi theme lúc đang xử lý, không đoán mò.
+            # Tương tự, đang xác nhận chiều ảnh (hàng đợi orient) mà huỷ
+            # UI giữa chừng sẽ mất luôn khung preview đang hiện dở, dù
+            # state Python vẫn còn treo. An toàn nhất là chặn đổi theme
+            # lúc này, không đoán mò xử lý nửa vời.
             messagebox.showinfo("Đang xử lý ảnh",
                                  "Đợi xử lý ảnh xong rồi đổi giao diện nhé.")
             self.theme_menu.set(self.theme_name)
