@@ -1,3 +1,4 @@
+![Banner NaChance](assets/banner.png)
 # NaChance
 
 Hệ thống xử lý ảnh thẻ chuyên nghiệp với pipeline **Deep Learning** hoàn chỉnh.
