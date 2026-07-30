@@ -2,7 +2,6 @@
 NaChance — Main UI
 Tích hợp: CodeFormer + Real-ESRGAN + BiSeNet Face Parsing + isnet RMBG
 """
-
 import os
 import json
 import threading
@@ -11,24 +10,16 @@ import subprocess
 import platform
 from pathlib import Path
 from datetime import datetime
-
 import cv2
 import numpy as np
 from PIL import Image as PILImage, ImageTk
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
-
 from photo_engine import NaChanceEngine, SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME, _imread_unicode
 from photo_agent import PhotoQAAgent
 from print_layout import (
     build_layout_canvas, save_layout, LAYOUT_PRESETS,
 )
-
-
-# Theme TRƯỚC ĐÂY hard-code trực tiếp trong class NaChanceApp — giờ đọc
-# từ presets/themes.json (cùng pattern với SPEC_PRESETS/LAYOUT_PRESETS:
-# tách data ra khỏi code, thêm/sửa theme không cần đụng main_ui.py). Dict
-# dưới đây chỉ còn vai trò fallback an toàn nếu file JSON bị thiếu/hỏng.
 _BUILTIN_THEMES_FALLBACK = {
     "Dark Blue (mặc định)": {
         'bg_dark': '#0d1117', 'bg_card': '#161b22', 'bg_hover': '#21262d',
@@ -42,8 +33,6 @@ _REQUIRED_THEME_KEYS = (
     'bg_dark', 'bg_card', 'bg_hover', 'border', 'text_primary', 'text_secondary',
     'accent', 'accent_hover', 'success', 'warning', 'danger', 'info',
 )
-
-
 def _load_themes() -> dict:
     themes_path = Path(__file__).parent / "presets" / "themes.json"
     try:
@@ -61,9 +50,7 @@ def _load_themes() -> dict:
               f"dùng {len(_BUILTIN_THEMES_FALLBACK)} theme mặc định built-in.")
         return dict(_BUILTIN_THEMES_FALLBACK)
 
-
 THEMES = _load_themes()
-
 
 def _imwrite_unicode(path: str, image: np.ndarray, params=None) -> bool:
     """Ghi ảnh an toàn với đường dẫn Unicode (dấu tiếng Việt, khoảng trắng)."""
@@ -82,7 +69,6 @@ def _imwrite_unicode(path: str, image: np.ndarray, params=None) -> bool:
     except Exception:
         return False
 
-
 def _open_folder(path: str):
     """Mở thư mục trong File Explorer / Finder."""
     try:
@@ -95,7 +81,6 @@ def _open_folder(path: str):
     except Exception:
         pass
 
-
 class NaChanceApp(ctk.CTk):
     # THEMES: đọc từ presets/themes.json (xem _load_themes() ở trên) —
     # nhiều bảng màu để người dùng chọn.
@@ -107,14 +92,29 @@ class NaChanceApp(ctk.CTk):
     COLORS = THEMES[DEFAULT_THEME]
 
     def __init__(self, runtime_report=None):
-        super().__init__()
+        super().__init__()  
+        
         self.title("NACHANCE")
         self._set_app_icon()
         self.overrideredirect(True)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.geometry("480x780")
+        # Đọc tên theme đã lưu trước để lấy màu sắc chuẩn
+        self.theme_name = self._load_theme_name()
+        self.COLORS = self.THEMES.get(self.theme_name, self.THEMES[self.DEFAULT_THEME])
+        
         self.configure(fg_color=self.COLORS['bg_dark'])
 
+        
+        self.FONT_FAMILY = "Segoe UI"
+        self.FONT_SCALE = 1.4
+        
+        self.F_SMALL  = (self.FONT_FAMILY, int(9  * self.FONT_SCALE))
+        self.F_NORMAL = (self.FONT_FAMILY, int(10 * self.FONT_SCALE))
+        self.F_MEDIUM = (self.FONT_FAMILY, int(11 * self.FONT_SCALE))
+        self.F_LARGE  = (self.FONT_FAMILY, int(13 * self.FONT_SCALE), "bold")
+        self.F_HEADER = (self.FONT_FAMILY, int(10 * self.FONT_SCALE), "bold")
+        # =========================================================================
         self.is_mini = True
         self.save_dir = str(Path.home() / "Pictures" / "ANHTHE")
         os.makedirs(self.save_dir, exist_ok=True)
@@ -123,20 +123,10 @@ class NaChanceApp(ctk.CTk):
         self.last_layout = None
         self.preview_window = None
         self.config_path = Path.home() / ".nachance_ai.json"
-        # FIX: đồng bộ tên file config theo tên class (NaChanceEngineV2
-        # -> NaChanceEngine), bỏ hậu tố "v2" còn sót lại. Di chuyển file
-        # config cũ (nếu có) sang tên mới 1 lần duy nhất, để người dùng cũ
-        # không bị mất theme/cấu hình đã lưu trước đó.
-        # Đổi thương hiệu Photo Master Pro -> NaChance: giữ nguyên chuỗi
-        # migrate theo thứ tự file cũ nhất trước, để không mất config của
-        # người dùng đã cài từ trước khi đổi tên.
+        
         legacy_config_paths = [
-            Path.home() / ".photo_master_pro_v2_ai.json",
-            Path.home() / ".photo_master_pro_ai.json",
-            Path.home() / ".nachanse_v2_ai.json",
-            Path.home() / ".nachanse_ai.json",
-            Path.home() / ".nachance_v2_ai.json",
-        ]
+            Path.home() / ".nachanse.json",
+            ]
         if not self.config_path.exists():
             for old_config_path in legacy_config_paths:
                 if old_config_path.exists():
@@ -146,21 +136,12 @@ class NaChanceApp(ctk.CTk):
                         pass
                     break
 
-        # Đọc tên theme đã lưu (nếu có) TRƯỚC khi build UI, để giao diện
-        # mở lên đúng lựa chọn lần trước, không phải luôn chờ đổi sau.
-        self.theme_name = self._load_theme_name()
-        self.COLORS = self.THEMES.get(self.theme_name, self.THEMES[self.DEFAULT_THEME])
-        # runtime_report: do main.py dò 1 lần qua RuntimeManager rồi truyền
-        # xuống — None nếu app được chạy độc lập (không qua main.py).
+        # runtime_report: do main.py dò 1 lần qua RuntimeManager rồi truyền xuống
         self.runtime_report = runtime_report
-        # Khởi tạo engine với bắt lỗi — UI vẫn mở được dù engine lỗi
         self.engine = None
         self.qa_agent = None
         try:
             self.engine = NaChanceEngine(weights_dir="weights", runtime_report=runtime_report)
-            # Cấp 1: agent tự thử lại (không LLM) khi ảnh chưa đạt chuẩn —
-            # xem photo_agent.py. Bọc quanh engine đã khởi tạo, không tạo
-            # engine thứ 2.
             self.qa_agent = PhotoQAAgent(self.engine, max_retries=3)
         except Exception as e:
             import traceback
@@ -168,12 +149,7 @@ class NaChanceApp(ctk.CTk):
             print("LỖI KHỞI TẠO ENGINE:")
             traceback.print_exc()
             print("=" * 60)
-            # FIX: Python tự "del e" khi except block kết thúc (tránh reference
-            # cycle) — lambda bên dưới chạy SAU 500ms qua self.after(), lúc đó
-            # 'e' đã bị xoá khỏi scope, gây NameError. Chuyển sang string ngay
-            # tại đây rồi mới đưa vào lambda.
             _engine_error_msg = str(e)
-            # Vẫn mở UI, báo lỗi sau
             self.after(500, lambda msg=_engine_error_msg: messagebox.showwarning(
                 "Khởi động Lite Mode",
                 f"Không thể khởi tạo engine xử lý ảnh:\n{msg}\n\n"
@@ -182,8 +158,8 @@ class NaChanceApp(ctk.CTk):
             ))
         self._drag_x = 0
         self._drag_y = 0
-        self._process_timer_id = None  # FIX: lưu timer ID để hủy
-        self._is_busy = False  # dùng để chặn đổi theme khi đang xử lý ảnh (thread nền)
+        self._process_timer_id = None
+        self._is_busy = False
 
         self._build_title_bar()
         self._build_main_panel()
@@ -194,7 +170,7 @@ class NaChanceApp(ctk.CTk):
         else:
             self.main_frame.pack(fill="both", expand=True, padx=0, pady=0)
         self._load_config()
-
+        
     def _lock_unavailable_features(self):
         """Khoá (bỏ chọn + disable) đúng những checkbox mà tính năng tương
         ứng không khả dụng — do thiếu weights, thiếu package, hoặc lỗi môi
@@ -305,7 +281,7 @@ class NaChanceApp(ctk.CTk):
         ctk.CTkLabel(dlg, text="NaChance", font=("Segoe UI", 20, "bold"),
                      text_color=self.COLORS['accent']).pack(pady=(0, 4))
         ctk.CTkLabel(dlg, text="Xử lý ảnh thẻ tự động cho tiệm ảnh / studio",
-                     font=("Segoe UI", 11), text_color=self.COLORS['text_secondary'],
+                     font=self.F_MEDIUM, text_color=self.COLORS['text_secondary'],
                      wraplength=360, justify="center").pack(pady=(0, 15))
 
         features = [
@@ -319,7 +295,7 @@ class NaChanceApp(ctk.CTk):
         box = ctk.CTkFrame(dlg, fg_color=self.COLORS['bg_card'], corner_radius=10)
         box.pack(fill="x", padx=25, pady=(0, 15))
         for f in features:
-            ctk.CTkLabel(box, text=f"• {f}", font=("Segoe UI", 10), anchor="w",
+            ctk.CTkLabel(box, text=f"• {f}", font=self.F_NORMAL, anchor="w",
                          text_color=self.COLORS['text_primary'], wraplength=340,
                          justify="left").pack(fill="x", padx=12, pady=4)
 
@@ -342,12 +318,12 @@ class NaChanceApp(ctk.CTk):
         self.btn_toggle.pack(side="left", padx=6, pady=5)
 
         ctk.CTkLabel(self.title_bar, text="📷 NACHANCE",
-                     font=("Segoe UI", 13, "bold"), text_color=self.COLORS['accent']).pack(side="left", padx=8)
+                     font=self.F_LARGE, text_color=self.COLORS['accent']).pack(side="left", padx=8)
 
         self.btn_quick = ctk.CTkButton(
             self.title_bar, text="▶ RUN", width=65, height=28,
             fg_color=self.COLORS['accent'], hover_color=self.COLORS['accent_hover'],
-            font=("Segoe UI", 10, "bold"), text_color="white", command=self._run_single
+            font=self.F_NORMAL, text_color="white", command=self._run_single
         )
         self.btn_quick.pack(side="left", padx=5)
 
@@ -371,11 +347,11 @@ class NaChanceApp(ctk.CTk):
 
         theme_row = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         theme_row.pack(fill="x", padx=10, pady=(6, 0))
-        ctk.CTkLabel(theme_row, text="🎨 Giao diện:", font=("Segoe UI", 10),
+        ctk.CTkLabel(theme_row, text="🎨 Giao diện:", font=self.F_NORMAL,
                      text_color=self.COLORS['text_secondary']).pack(side="left", padx=(0, 6))
         self.theme_menu = ctk.CTkOptionMenu(
             theme_row, values=list(self.THEMES.keys()), width=170, height=24,
-            font=("Segoe UI", 10),
+            font=self.F_NORMAL,
             fg_color=self.COLORS['bg_hover'], button_color=self.COLORS['accent'],
             button_hover_color=self.COLORS['accent_hover'], text_color=self.COLORS['text_primary'],
             dropdown_fg_color=self.COLORS['bg_card'], dropdown_text_color=self.COLORS['text_primary'],
@@ -399,7 +375,7 @@ class NaChanceApp(ctk.CTk):
         self._build_layout_tab()
 
         self.status = ctk.CTkLabel(self.main_frame, text="Sẵn sàng",
-                                     font=("Segoe UI", 10), text_color=self.COLORS['text_secondary'])
+                                     font=self.F_NORMAL, text_color=self.COLORS['text_secondary'])
         self.status.pack(pady=10)
 
     def _build_process_tab(self):
@@ -413,14 +389,14 @@ class NaChanceApp(ctk.CTk):
 
         self.combo_preset = ctk.CTkComboBox(
             fp, values=list(SPEC_PRESETS.keys()), command=self._on_preset_change,
-            width=360, font=("Segoe UI", 11), fg_color=self.COLORS['bg_hover'],
+            width=360, font=self.F_MEDIUM, fg_color=self.COLORS['bg_hover'],
             border_color=self.COLORS['border'], dropdown_fg_color=self.COLORS['bg_card'],
             dropdown_hover_color=self.COLORS['bg_hover']
         )
         self.combo_preset.set("13x18 (In ấn)")
         self.combo_preset.pack(padx=10, pady=10, fill="x")
 
-        self.lbl_preset_info = ctk.CTkLabel(fp, text="", font=("Segoe UI", 9),
+        self.lbl_preset_info = ctk.CTkLabel(fp, text="", font=self.F_SMALL,
                                                text_color=self.COLORS['text_secondary'])
         self.lbl_preset_info.pack(padx=10, pady=(0, 10), anchor="w")
         self._update_preset_info()
@@ -433,7 +409,7 @@ class NaChanceApp(ctk.CTk):
 
         self.bg_mode = ctk.CTkSegmentedButton(
             fb, values=["Trắng", "Xanh", "Đỏ", "Tùy chỉnh"], command=self._on_bg_change,
-            font=("Segoe UI", 10), fg_color=self.COLORS['bg_hover'],
+            font=self.F_NORMAL, fg_color=self.COLORS['bg_hover'],
             selected_color=self.COLORS['accent'], selected_hover_color=self.COLORS['accent_hover']
         )
         self.bg_mode.set("Trắng")
@@ -443,8 +419,8 @@ class NaChanceApp(ctk.CTk):
         self.frame_custom.pack(fill="x", padx=10, pady=(0, 10))
         self.frame_custom.pack_forget()
 
-        ctk.CTkLabel(self.frame_custom, text="HEX:", width=40, font=("Segoe UI", 10)).pack(side="left")
-        self.entry_hex = ctk.CTkEntry(self.frame_custom, width=100, font=("Segoe UI", 10),
+        ctk.CTkLabel(self.frame_custom, text="HEX:", width=40, font=self.F_NORMAL).pack(side="left")
+        self.entry_hex = ctk.CTkEntry(self.frame_custom, width=100, font=self.F_NORMAL,
                                        fg_color=self.COLORS['bg_hover'], border_color=self.COLORS['border'])
         self.entry_hex.insert(0, "2772D0")
         self.entry_hex.pack(side="left", padx=5)
@@ -484,7 +460,7 @@ class NaChanceApp(ctk.CTk):
         # Face Restore Fidelity slider
         fs = ctk.CTkFrame(fe, fg_color="transparent")
         fs.pack(fill="x", padx=10, pady=(0, 10))
-        ctk.CTkLabel(fs, text="Fidelity (0=đẹp, 1=giữ gốc):", width=180, font=("Segoe UI", 9),
+        ctk.CTkLabel(fs, text="Fidelity (0=đẹp, 1=giữ gốc):", width=180, font=self.F_SMALL,
                       text_color=self.COLORS['text_secondary']).pack(side="left")
         self.sld_fidelity = ctk.CTkSlider(fs, from_=0, to=100, number_of_steps=100,
                                            command=lambda v: self.lbl_fidelity.configure(text=f"{int(v)}%"),
@@ -492,13 +468,13 @@ class NaChanceApp(ctk.CTk):
                                            button_hover_color=self.COLORS['accent_hover'])
         self.sld_fidelity.set(70)
         self.sld_fidelity.pack(side="left", fill="x", expand=True, padx=5)
-        self.lbl_fidelity = ctk.CTkLabel(fs, text="70%", width=35, font=("Segoe UI", 9))
+        self.lbl_fidelity = ctk.CTkLabel(fs, text="70%", width=35, font=self.F_SMALL)
         self.lbl_fidelity.pack(side="left")
 
         # Skin Smooth Strength
         fs2 = ctk.CTkFrame(fe, fg_color="transparent")
         fs2.pack(fill="x", padx=10, pady=(0, 10))
-        ctk.CTkLabel(fs2, text="Mịn da:", width=60, font=("Segoe UI", 9),
+        ctk.CTkLabel(fs2, text="Mịn da:", width=60, font=self.F_SMALL,
                       text_color=self.COLORS['text_secondary']).pack(side="left")
         self.sld_skin = ctk.CTkSlider(fs2, from_=0, to=100, number_of_steps=100,
                                        command=lambda v: self.lbl_skin.configure(text=f"{int(v)}%"),
@@ -506,13 +482,13 @@ class NaChanceApp(ctk.CTk):
                                        button_hover_color=self.COLORS['accent_hover'])
         self.sld_skin.set(50)
         self.sld_skin.pack(side="left", fill="x", expand=True, padx=5)
-        self.lbl_skin = ctk.CTkLabel(fs2, text="50%", width=35, font=("Segoe UI", 9))
+        self.lbl_skin = ctk.CTkLabel(fs2, text="50%", width=35, font=self.F_SMALL)
         self.lbl_skin.pack(side="left")
 
         # Advanced
         self.btn_adv = ctk.CTkButton(tab, text="⚙ Cài đặt nâng cao ▼",
                                       fg_color="transparent", text_color=self.COLORS['text_secondary'],
-                                      hover=False, font=("Segoe UI", 10), command=self._toggle_advanced)
+                                      hover=False, font=self.F_NORMAL, command=self._toggle_advanced)
         self.btn_adv.pack(pady=5)
 
         self.adv_frame = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'], corner_radius=8,
@@ -528,16 +504,16 @@ class NaChanceApp(ctk.CTk):
 
         fd = ctk.CTkFrame(self.adv_frame, fg_color="transparent")
         fd.pack(pady=5, fill="x", padx=10)
-        ctk.CTkLabel(fd, text="DPI:", width=90, anchor="w", font=("Segoe UI", 10)).pack(side="left")
-        self.entry_dpi = ctk.CTkEntry(fd, font=("Segoe UI", 10), width=80,
+        ctk.CTkLabel(fd, text="DPI:", width=90, anchor="w", font=self.F_NORMAL).pack(side="left")
+        self.entry_dpi = ctk.CTkEntry(fd, font=self.F_NORMAL, width=80,
                                        fg_color=self.COLORS['bg_hover'], border_color=self.COLORS['border'])
         self.entry_dpi.insert(0, "300")
         self.entry_dpi.pack(side="left")
 
         fs = ctk.CTkFrame(self.adv_frame, fg_color="transparent")
         fs.pack(pady=5, fill="x", padx=10)
-        ctk.CTkLabel(fs, text="Thư mục lưu:", width=90, anchor="w", font=("Segoe UI", 10)).pack(side="left")
-        self.lbl_save_dir = ctk.CTkLabel(fs, text=self.save_dir, font=("Segoe UI", 9),
+        ctk.CTkLabel(fs, text="Thư mục lưu:", width=90, anchor="w", font=self.F_NORMAL).pack(side="left")
+        self.lbl_save_dir = ctk.CTkLabel(fs, text=self.save_dir, font=self.F_SMALL,
                                             text_color=self.COLORS['text_secondary'])
         self.lbl_save_dir.pack(side="left", fill="x", expand=True)
         ctk.CTkButton(fs, text="📁", width=30, height=28, fg_color=self.COLORS['bg_hover'],
@@ -551,7 +527,7 @@ class NaChanceApp(ctk.CTk):
         self.btn_run = ctk.CTkButton(fa, text="▶ XỬ LÝ 1 ẢNH", command=self._run_single,
                                       height=45, fg_color=self.COLORS['accent'],
                                       hover_color=self.COLORS['accent_hover'],
-                                      font=("Segoe UI", 13, "bold"), text_color="white", corner_radius=8)
+                                      font=self.F_LARGE, text_color="white", corner_radius=8)
         self.btn_run.pack(fill="x", pady=(0, 8))
 
         self.btn_batch = ctk.CTkButton(fa, text="📂 XỬ LÝ THƯ MỤC", command=self._run_batch,
@@ -564,14 +540,14 @@ class NaChanceApp(ctk.CTk):
         self.btn_to_layout = ctk.CTkButton(fa, text="➡ Đưa sang Xếp in", command=self._send_to_layout,
                                             height=35, fg_color=self.COLORS['bg_card'],
                                             hover_color=self.COLORS['bg_hover'], border_width=1,
-                                            border_color=self.COLORS['success'], font=("Segoe UI", 11),
+                                            border_color=self.COLORS['success'], font=self.F_MEDIUM,
                                             text_color=self.COLORS['success'], corner_radius=8)
         self.btn_to_layout.pack(fill="x")
 
         self.btn_preview = ctk.CTkButton(tab, text="👁 Xem trước", command=self._show_preview,
                                           height=35, fg_color=self.COLORS['bg_card'],
                                           hover_color=self.COLORS['bg_hover'], border_width=1,
-                                          border_color=self.COLORS['info'], font=("Segoe UI", 11),
+                                          border_color=self.COLORS['info'], font=self.F_MEDIUM,
                                           text_color=self.COLORS['info'])
 
     def _build_layout_tab(self):
@@ -583,7 +559,7 @@ class NaChanceApp(ctk.CTk):
         fs.pack(fill="x", pady=(0, 10))
 
         self.lbl_layout_src = ctk.CTkLabel(fs, text="(Chưa chọn - dùng ảnh đã xử lý)",
-                                              font=("Segoe UI", 10))
+                                              font=self.F_NORMAL)
         self.lbl_layout_src.pack(side="left", fill="x", expand=True, padx=10, pady=10)
         ctk.CTkButton(fs, text="Chọn ảnh...", command=self._choose_layout_src,
                       width=100, fg_color=self.COLORS['accent']).pack(side="right", padx=10)
@@ -598,11 +574,11 @@ class NaChanceApp(ctk.CTk):
             row = ctk.CTkFrame(fl, fg_color="transparent")
             row.pack(fill="x", padx=10, pady=2)
 
-            spin = ctk.CTkEntry(row, width=40, font=("Segoe UI", 10), justify="center",
+            spin = ctk.CTkEntry(row, width=40, font=self.F_NORMAL, justify="center",
                                 fg_color=self.COLORS['bg_hover'], border_color=self.COLORS['border'])
             spin.insert(0, "1")
 
-            var = ctk.CTkCheckBox(row, text=preset["label"], font=("Segoe UI", 10),
+            var = ctk.CTkCheckBox(row, text=preset["label"], font=self.F_NORMAL,
                                    checkbox_width=18, checkbox_height=18,
                                    fg_color=self.COLORS['accent'],
                                    border_color=self.COLORS['border'])
@@ -647,13 +623,13 @@ class NaChanceApp(ctk.CTk):
             # Nút +/- để tăng giảm số lượng bằng chuột, đỡ phải gõ tay.
             # Pack theo thứ tự ngược (phải->trái) để hiển thị đúng thứ tự
             # trực quan trái->phải: [-][số lượng][+].
-            btn_plus = ctk.CTkButton(row, text="+", width=22, height=22, font=("Segoe UI", 11),
+            btn_plus = ctk.CTkButton(row, text="+", width=22, height=22, font=self.F_MEDIUM,
                                       fg_color=self.COLORS['bg_hover'], hover_color=self.COLORS['bg_card'],
                                       text_color=self.COLORS['text_secondary'],
                                       command=lambda s=_step: s(delta=1))
             btn_plus.pack(side="right", padx=(5, 10))
             spin.pack(side="right")
-            btn_minus = ctk.CTkButton(row, text="−", width=22, height=22, font=("Segoe UI", 11),
+            btn_minus = ctk.CTkButton(row, text="−", width=22, height=22, font=self.F_MEDIUM,
                                        fg_color=self.COLORS['bg_hover'], hover_color=self.COLORS['bg_card'],
                                        text_color=self.COLORS['text_secondary'],
                                        command=lambda s=_step: s(delta=-1))
@@ -662,7 +638,7 @@ class NaChanceApp(ctk.CTk):
             self.layout_preset_vars[key] = {"chk": var, "count": spin}
 
             if key == "custom":
-                self.entry_custom_formula = ctk.CTkEntry(fl, font=("Segoe UI", 10),
+                self.entry_custom_formula = ctk.CTkEntry(fl, font=self.F_NORMAL,
                                                           fg_color=self.COLORS['bg_hover'],
                                                           border_color=self.COLORS['border'])
                 self.entry_custom_formula.pack(fill="x", padx=10, pady=(0, 5))
@@ -674,7 +650,7 @@ class NaChanceApp(ctk.CTk):
 
         self.caf_mode = ctk.CTkSegmentedButton(
             fc, values=["Fit", "Square", "Hybrid", "Extract"],
-            font=("Segoe UI", 10), fg_color=self.COLORS['bg_hover'],
+            font=self.F_NORMAL, fg_color=self.COLORS['bg_hover'],
             selected_color=self.COLORS['accent'], selected_hover_color=self.COLORS['accent_hover']
         )
         self.caf_mode.set("Fit")
@@ -684,22 +660,22 @@ class NaChanceApp(ctk.CTk):
                            border_width=1, border_color=self.COLORS['border'])
         fst.pack(fill="x", pady=(0, 10))
 
-        self.chk_layout_stroke = ctk.CTkCheckBox(fst, text="Viền ảnh", font=("Segoe UI", 10),
+        self.chk_layout_stroke = ctk.CTkCheckBox(fst, text="Viền ảnh", font=self.F_NORMAL,
                                                   checkbox_width=18, checkbox_height=18,
                                                   fg_color=self.COLORS['accent'],
                                                   border_color=self.COLORS['border'])
         self.chk_layout_stroke.select()
         self.chk_layout_stroke.pack(side="left", padx=10, pady=10)
 
-        ctk.CTkLabel(fst, text="%:", font=("Segoe UI", 10)).pack(side="left")
-        self.entry_stroke_w = ctk.CTkEntry(fst, width=60, font=("Segoe UI", 10),
+        ctk.CTkLabel(fst, text="%:", font=self.F_NORMAL).pack(side="left")
+        self.entry_stroke_w = ctk.CTkEntry(fst, width=60, font=self.F_NORMAL,
                                             fg_color=self.COLORS['bg_hover'],
                                             border_color=self.COLORS['border'])
         self.entry_stroke_w.insert(0, "0.85")
         self.entry_stroke_w.pack(side="left", padx=5)
 
-        ctk.CTkLabel(fst, text="Màu HEX:", font=("Segoe UI", 10)).pack(side="left", padx=(10, 0))
-        self.entry_stroke_color = ctk.CTkEntry(fst, width=80, font=("Segoe UI", 10),
+        ctk.CTkLabel(fst, text="Màu HEX:", font=self.F_NORMAL).pack(side="left", padx=(10, 0))
+        self.entry_stroke_color = ctk.CTkEntry(fst, width=80, font=self.F_NORMAL,
                                                 fg_color=self.COLORS['bg_hover'],
                                                 border_color=self.COLORS['border'])
         self.entry_stroke_color.insert(0, "686868")
@@ -727,16 +703,16 @@ class NaChanceApp(ctk.CTk):
             if c == 0:
                 row = ctk.CTkFrame(fcfg, fg_color="transparent")
                 row.pack(fill="x", padx=10, pady=2)
-            ctk.CTkLabel(row, text=label + ":", font=("Segoe UI", 9),
+            ctk.CTkLabel(row, text=label + ":", font=self.F_SMALL,
                           text_color=self.COLORS['text_secondary']).grid(row=0, column=c, sticky="e", padx=2)
-            var = ctk.CTkEntry(row, width=60, font=("Segoe UI", 9),
+            var = ctk.CTkEntry(row, width=60, font=self.F_SMALL,
                                fg_color=self.COLORS['bg_hover'], border_color=self.COLORS['border'])
             var.insert(0, default)
             var.grid(row=0, column=c + 1, sticky="w", padx=2)
             self.layout_cfg_vars[key] = var
 
         self.chk_append = ctk.CTkCheckBox(tab, text="Xếp tiếp vào file có sẵn",
-                                           font=("Segoe UI", 10), checkbox_width=18, checkbox_height=18,
+                                           font=self.F_NORMAL, checkbox_width=18, checkbox_height=18,
                                            fg_color=self.COLORS['accent'], border_color=self.COLORS['border'])
         self.chk_append.pack(anchor="w", padx=15, pady=5)
 
@@ -747,7 +723,7 @@ class NaChanceApp(ctk.CTk):
         self.btn_layout_preview = ctk.CTkButton(fa, text="👁 XEM TRƯỚC", command=self._layout_preview,
                                                  height=45, fg_color=self.COLORS['accent'],
                                                  hover_color=self.COLORS['accent_hover'],
-                                                 font=("Segoe UI", 13, "bold"), text_color="white", corner_radius=8)
+                                                 font=self.F_LARGE, text_color="white", corner_radius=8)
         self.btn_layout_preview.pack(fill="x", pady=(0, 8))
 
         self.btn_layout_save = ctk.CTkButton(fa, text="💾 LƯU FILE", command=self._layout_save,
@@ -766,11 +742,11 @@ class NaChanceApp(ctk.CTk):
 
     # ===== HELPERS =====
     def _section_header(self, parent, text):
-        ctk.CTkLabel(parent, text=text, font=("Segoe UI", 10, "bold"),
+        ctk.CTkLabel(parent, text=text, font=self.F_HEADER,
                       text_color=self.COLORS['text_secondary']).pack(anchor="w", padx=15, pady=(15, 5))
 
     def _chk(self, parent, text, row, col, default):
-        chk = ctk.CTkCheckBox(parent, text=text, font=("Segoe UI", 10),
+        chk = ctk.CTkCheckBox(parent, text=text, font=self.F_NORMAL,
                                checkbox_width=18, checkbox_height=18,
                                fg_color=self.COLORS['accent'],
                                hover_color=self.COLORS['accent_hover'],
@@ -780,7 +756,7 @@ class NaChanceApp(ctk.CTk):
         return chk
 
     def _slider(self, parent, row, label, min_v, max_v, default, unit, fmt_fn):
-        lbl = ctk.CTkLabel(parent, text=fmt_fn(default), width=110, anchor="w", font=("Segoe UI", 10))
+        lbl = ctk.CTkLabel(parent, text=fmt_fn(default), width=110, anchor="w", font=self.F_NORMAL)
         lbl.grid(row=row, column=0, sticky="w", pady=4)
         sld = ctk.CTkSlider(parent, from_=min_v, to=max_v, number_of_steps=max_v - min_v,
                              command=lambda v: lbl.configure(text=fmt_fn(v)),
@@ -960,7 +936,7 @@ class NaChanceApp(ctk.CTk):
         dlg.grab_set()
 
         ctk.CTkLabel(dlg, text="Ảnh đã đúng chiều chưa? Chọn góc xoay nếu chưa đúng:",
-                     font=("Segoe UI", 11), text_color=self.COLORS['text_secondary'],
+                     font=self.F_MEDIUM, text_color=self.COLORS['text_secondary'],
                      wraplength=420).pack(pady=(15, 8))
 
         lbl_img = ctk.CTkLabel(dlg, text="")
@@ -1338,7 +1314,7 @@ class NaChanceApp(ctk.CTk):
         ctk_img = ctk.CTkImage(light_image=thumb, size=thumb.size)
 
         ctk.CTkLabel(self.preview_window, text=f"Kích thước thực: {w} x {h} px",
-                     font=("Segoe UI", 10), text_color=self.COLORS['text_secondary']).pack(pady=5)
+                     font=self.F_NORMAL, text_color=self.COLORS['text_secondary']).pack(pady=5)
 
         label = ctk.CTkLabel(self.preview_window, image=ctk_img, text="")
         label.pack(pady=10)
@@ -1443,7 +1419,6 @@ class NaChanceApp(ctk.CTk):
         # vào bộ widget MỚI vừa dựng — widget cũ đã bị huỷ nên trạng thái
         # không tự "dính" theo, phải nạp lại từ file config như lúc mở app.
         self._load_config()
-
     def _load_config(self):
         if self.config_path.exists():
             try:
@@ -1524,8 +1499,6 @@ class NaChanceApp(ctk.CTk):
                           f, ensure_ascii=False)
         except Exception:
             pass
-
-
 if __name__ == "__main__":
     # Chạy trực tiếp file này (không qua main.py) vẫn hoạt động — tự dò
     # môi trường qua RuntimeManager trước khi mở UI. Cách chạy khuyến nghị
