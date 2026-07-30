@@ -305,8 +305,11 @@ class NaChanceApp(ctk.CTk):
         dlg.protocol("WM_DELETE_WINDOW", dlg.destroy)
 
     def _build_title_bar(self):
+        from pathlib import Path
+        from PIL import Image
+
         self.title_bar = ctk.CTkFrame(self, fg_color=self.COLORS['bg_card'],
-                                      corner_radius=0, height=42, border_width=0)
+                                     corner_radius=0, height=42, border_width=0)
         self.title_bar.pack(fill="x", side="top")
         self.title_bar.pack_propagate(False)
 
@@ -317,8 +320,24 @@ class NaChanceApp(ctk.CTk):
         )
         self.btn_toggle.pack(side="left", padx=6, pady=5)
 
-        ctk.CTkLabel(self.title_bar, text="📷 NACHANCE",
-                     font=self.F_LARGE, text_color=self.COLORS['accent']).pack(side="left", padx=8)
+        # Sử dụng file .png và tính toán tỷ lệ để tránh bị bóp dẹp ảnh
+        assets_path = Path(__file__).parent / "assets" / "logo_title_bar1.png"
+        if assets_path.exists():
+            pil_img = Image.open(assets_path)
+            
+            # Tính toán width tự động dựa theo chiều cao 30px để giữ nguyên tỷ lệ gốc
+            target_height = 30
+            orig_width, orig_height = pil_img.size
+            target_width = int(orig_width * (target_height / float(orig_height)))
+            
+            self.logo_image = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(target_width, target_height))
+            self.logo_label = ctk.CTkLabel(self.title_bar, text="", image=self.logo_image)
+            self.logo_label.pack(side="left", padx=8)
+        else:
+            # Fallback nếu chưa tìm thấy file png
+            self.logo_label = ctk.CTkLabel(self.title_bar, text="📷 NACHANCE",
+                                           font=self.F_LARGE, text_color=self.COLORS['accent'])
+            self.logo_label.pack(side="left", padx=8)
 
         self.btn_quick = ctk.CTkButton(
             self.title_bar, text="▶ RUN", width=65, height=28,
@@ -337,7 +356,7 @@ class NaChanceApp(ctk.CTk):
 
         self.title_bar.bind("<Button-1>", self._start_drag)
         self.title_bar.bind("<B1-Motion>", self._do_drag)
-
+        
     def _build_main_panel(self):
         self.main_frame = ctk.CTkScrollableFrame(
             self, fg_color=self.COLORS['bg_dark'],
