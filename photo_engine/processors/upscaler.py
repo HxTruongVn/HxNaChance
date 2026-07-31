@@ -19,6 +19,28 @@ class RealESRGANUpscaler:
             return
 
         try:
+            # FIX: torchvision >= 0.17 đã XOÁ hẳn module
+            # torchvision.transforms.functional_tensor — basicsr (dependency
+            # của realesrgan) vẫn import module này ở
+            # basicsr/data/degradations.py (`from
+            # torchvision.transforms.functional_tensor import
+            # rgb_to_grayscale`), gây "No module named
+            # 'torchvision.transforms.functional_tensor'" trên mọi máy có
+            # torchvision mới, BẤT KỂ NumPy có xung đột hay không (khác lỗi
+            # NumPy đã note ở except bên dưới — 2 lỗi khác nhau, cùng nằm ở
+            # bước import realesrgan/basicsr này). Hàm rgb_to_grayscale vẫn
+            # tồn tại y hệt ở torchvision.transforms.functional (chỉ đổi vị
+            # trí, không đổi API) — vá bằng cách đăng ký module cũ trỏ sang
+            # module mới trong sys.modules TRƯỚC khi basicsr import, không
+            # cần hạ cấp torchvision hay sửa code basicsr.
+            import sys
+            if "torchvision.transforms.functional_tensor" not in sys.modules:
+                try:
+                    import torchvision.transforms.functional_tensor  # noqa: F401 (còn tồn tại ở bản cũ -> không cần vá)
+                except ModuleNotFoundError:
+                    import torchvision.transforms.functional as _tv_functional
+                    sys.modules["torchvision.transforms.functional_tensor"] = _tv_functional
+
             from realesrgan import RealESRGANer
             from basicsr.archs.rrdbnet_arch import RRDBNet
             self.RealESRGANer = RealESRGANer
@@ -34,6 +56,11 @@ class RealESRGANUpscaler:
             # phải ImportError. Bắt rộng Exception để lỗi này chỉ tắt
             # tính năng RealESRGAN, không kéo sập toàn bộ Engine.
             print(f"[RealESRGAN] ⚠ Không dùng được: {e}")
+            if "functional_tensor" in str(e):
+                print("  Lỗi torchvision.transforms.functional_tensor này đáng lẽ đã được tự "
+                      "vá (xem shim ngay phía trên) — nếu vẫn thấy lỗi này, kiểm tra lại đã "
+                      "cài đúng torchvision (import torchvision.transforms.functional có "
+                      "chạy được không) trước khi cài realesrgan/basicsr.")
             print("  Nếu là lỗi liên quan NumPy: thử `pip install \"numpy<2\"`")
             print("  Hoặc cài lại: pip install git+https://github.com/xinntao/Real-ESRGAN.git")
 
