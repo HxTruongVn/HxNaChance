@@ -214,7 +214,7 @@ def _install_cuda_torch_if_windows_or_mac():
 def _ensure_numpy_below_2():
     """NumPy 2.x gây lỗi ABI với torch/torchvision/basicsr đã compile sẵn
     cho NumPy 1.x (RuntimeError: Numpy is not available — xem
-    photo_engine.py, đã gặp thật trên máy người dùng). requirements.txt
+    photo_engine/, đã gặp thật trên máy người dùng). requirements.txt
     đã ghim numpy<2.0.0, nhưng 1 dependency khác trong chuỗi cài có thể
     âm thầm nâng numpy lên lại — kiểm tra lại sau khi cài xong cho chắc."""
     try:

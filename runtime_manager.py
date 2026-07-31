@@ -3,7 +3,7 @@ Runtime / Environment Manager — NaChance
 =====================================================
 
 Tầng trung gian giữa (OS / Python / GPU / package / model weights) và
-Engine xử lý ảnh. Trước đây mỗi class trong photo_engine.py
+Engine xử lý ảnh. Trước đây mỗi class trong photo_engine.py (nay là package photo_engine/)
 (FaceParsingProcessor, CodeFormerRestorer, RealESRGANUpscaler...) tự
 `try: import torch`, tự kiểm tra file weights, tự quyết định
 `self.available` — logic bị lặp lại nhiều nơi và không có nơi tổng hợp

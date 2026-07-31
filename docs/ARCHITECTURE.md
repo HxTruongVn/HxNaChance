@@ -118,10 +118,21 @@ cho tính năng cân vai).
 8: "Registry không chứa logic xử lý ảnh") — `model_registry.py` có thể
 đọc/validate/tra cứu registry, đối chiếu chéo với
 `presets/weights_sources.json` để bắt lỗi lệch dữ liệu giữa 2 file,
-nhưng **CHƯA được nối vào `photo_engine.py`**. `NaChanceEngine` vẫn
-import và khởi tạo thẳng `CodeFormerRestorer`/`RealESRGANUpscaler`/
-`FaceParser`/`BackgroundProcessor` như trước — đúng tinh thần Giai đoạn
-2 của Plan ("PhotoEngine không thay đổi").
+nhưng **CHƯA được nối vào package `photo_engine/`**. `NaChanceEngine`
+vẫn import và khởi tạo thẳng `CodeFormerRestorer`/`RealESRGANUpscaler`/
+`FaceParsingProcessor`/`BackgroundProcessor` như trước — đúng tinh thần
+Giai đoạn 2 của Plan ("PhotoEngine không thay đổi").
+
+**Cập nhật**: `photo_engine.py` (monolith 1409 dòng) đã được tách thành
+package `photo_engine/` theo đúng chiến lược "Re-export Facade" của
+`docs/plan_refactor.md` — `photo_engine/__init__.py` export lại đúng
+API cũ (`NaChanceEngine`, `SPEC_PRESETS`, `PhotoSpec`,
+`DEFAULT_PRESET_NAME`, ...) nên `from photo_engine import ...` ở
+`main_ui.py`/`photo_agent.py`/`api/engine_wrapper.py` không cần sửa gì.
+Đây là bước CHUẨN BỊ MẶT BẰNG cho Giai đoạn 3-4 (mỗi capability giờ đã
+nằm ở file riêng, dễ thay bằng Adapter hơn nhiều so với sửa 1 file
+1409 dòng) — bản thân việc tách file KHÔNG phải là Giai đoạn 3-4, vẫn
+cần làm phần Interface/Adapter/ModelManager thật sự bên dưới.
 
 **Còn thiếu để hoàn thành Giai đoạn 3-4** (chưa làm):
 - `ModelManager`/`ModelLoader`/`ModelValidator` — lớp thật sự dùng
@@ -129,7 +140,10 @@ import và khởi tạo thẳng `CodeFormerRestorer`/`RealESRGANUpscaler`/
   chưa ai gọi tới ngoài test).
 - Interface `FaceParser`/`FaceRestorer`/`Upscaler`/`BackgroundRemover`
   (theo capability) + Adapter cho từng provider hiện có (BiSeNet nên
-  làm mẫu đầu tiên, theo đúng kết luận cuối `docs/Plan.md`).
-- Sửa `NaChanceEngine` gọi qua interface/Capability thay vì gọi thẳng
-  class cụ thể — đây là thay đổi có rủi ro, cần làm cẩn thận từng
-  capability một, bắt đầu từ BiSeNet.
+  làm mẫu đầu tiên, theo đúng kết luận cuối `docs/Plan.md`) — nhờ đã
+  tách thành `photo_engine/processors/face_parser.py` riêng, việc này
+  giờ chỉ cần sửa trong phạm vi 1 file nhỏ thay vì file lớn.
+- Sửa `NaChanceEngine` (`photo_engine/engine.py`) gọi qua
+  interface/Capability thay vì gọi thẳng class cụ thể — đây là thay
+  đổi có rủi ro, cần làm cẩn thận từng capability một, bắt đầu từ
+  BiSeNet.

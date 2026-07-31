@@ -19,12 +19,13 @@ import cv2
 from PIL import Image
 
 # api/ nằm trong 1 thư mục con — đưa project root vào sys.path để import
-# được các module ở root (photo_engine.py, runtime_manager.py, photo_agent.py).
+# được các module ở root (package photo_engine/, runtime_manager.py, photo_agent.py).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # FIX: tên module cũ trước khi đổi tên file (photo_engine_v2.py đã đổi
 # thành photo_engine.py) — import sai tên này sẽ ModuleNotFoundError
-# ngay khi khởi tạo server.
+# ngay khi khởi tạo server. (Ghi chú: photo_engine.py sau đó được tách
+# thành package photo_engine/ — tên import "photo_engine" không đổi.)
 from photo_engine import NaChanceEngine, SPEC_PRESETS
 from photo_agent import PhotoQAAgent
 from runtime_manager import RuntimeManager

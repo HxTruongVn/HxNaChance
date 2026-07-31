@@ -1,3 +1,17 @@
+> **Trạng thái: ĐÃ THỰC HIỆN** (xem `photo_engine/` — package hoàn
+> chỉnh). Lưu ý quan trọng phát hiện lúc làm thật: bước "Trong quá
+> trình refactor" mô tả bên dưới (giữ `photo_engine.py` làm facade
+> VÀ có `photo_engine/` package CÙNG TỒN TẠI song song) **không khả
+> thi trong Python** — không thể có đồng thời 1 module dạng file
+> `photo_engine.py` và 1 package dạng thư mục `photo_engine/` trùng
+> tên trong cùng vị trí (`import photo_engine` sẽ bị ambiguous/lỗi).
+> Vì vậy đã bỏ qua bước trung gian đó, làm thẳng tới trạng thái cuối
+> ("Sau refactor"): xoá hẳn `photo_engine.py`, chỉ còn `photo_engine/`
+> package, `__init__.py` làm facade re-export đúng API cũ. Nhánh Git
+> `tach-photo_engine` (thử theo đúng kế hoạch gốc, có bước trung gian)
+> bị vướng đúng vấn đề này nên tác giả tự ghi "cần nghiên cứu thêm" —
+> đã xoá nhánh đó sau khi hoàn thành theo cách này.
+
 Đây là kế hoạch refactor từng bước an toàn — không đụng vào logic xử lý, chỉ di chuyển code. Chiến lược chính là "Re-export Facade": giữ file photo_engine.py cũ làm "mặt tiền", bên trong dần chuyển sang package mới. Như vậy main_ui.py không bao giờ bị lỗi import trong suốt quá trình.
 
 🎯 Tổng quan chiến lược

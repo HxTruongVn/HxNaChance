@@ -908,7 +908,7 @@ class NaChanceApp(ctk.CTk):
         # đã bị đổi thành "13x18" (xem SPEC_PRESETS), nên dòng cũ sẽ
         # KeyError ngay khi preset_name không khớp gì trong dict. Dùng
         # DEFAULT_PRESET_NAME (đảm bảo luôn tồn tại trong SPEC_PRESETS,
-        # xem photo_engine.py) thay vì gõ tay tên preset ở đây.
+        # xem photo_engine/spec.py) thay vì gõ tay tên preset ở đây.
         preset = SPEC_PRESETS.get(preset_name, SPEC_PRESETS[DEFAULT_PRESET_NAME])
         try:
             dpi = int(self.entry_dpi.get())

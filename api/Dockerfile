@@ -34,7 +34,7 @@ RUN pip3 install --no-cache-dir -r api/requirements.txt
 
 # --- Copy source ---
 # Build context là thư mục gốc repo (xem lệnh build ở trên) nên copy
-# được cả code gốc (photo_engine.py, runtime_manager.py, photo_agent.py,
+# được cả code gốc (package photo_engine/, runtime_manager.py, photo_agent.py,
 # weights/) lẫn thư mục api/.
 COPY . .
 

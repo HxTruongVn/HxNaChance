@@ -11,7 +11,9 @@ nachance/
 │
 ├── main.py                       # Entry point (1-2 imports, call main function)
 ├── main_ui.py                 # UI application class
-├── photo_engine.py            # Core processing engine & classes
+├── photo_engine/                 # Core processing engine & classes (package —
+│                                  # tách từ photo_engine.py monolith cũ, xem
+│                                  # docs/plan_refactor.md)
 ├── runtime_manager.py            # Runtime detection & setup
 ├── print_layout.py               # Layout rendering
 │
@@ -297,7 +299,7 @@ from photo_engine.utils import PhotoSpec
 ```
 main.py
 ├── main_ui.py (NaChanceApp)
-│   ├── photo_engine.py (NaChanceEngine)
+│   ├── photo_engine/ (NaChanceEngine)
 │   ├── photo_agent.py (PhotoQAAgent)
 │   └── print_layout.py (LayoutSimulator, LayoutRenderer)
 ├── runtime_manager.py
