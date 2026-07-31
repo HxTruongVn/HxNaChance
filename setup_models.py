@@ -230,13 +230,11 @@ def _ensure_numpy_below_2():
 
 
 def install_github_deps():
-    """Luôn dùng `{sys.executable} -m pip` thay vì gọi thẳng lệnh `pip`,
-    để đảm bảo cài vào đúng Python đang chạy script (venv hoặc hệ
-    thống), không bị lệch sang 1 bản Python/pip khác đang có trên máy."""
+    """Cài đặt các phụ thuộc đặc thù. Xử lý riêng basicsr & realesrgan 
+    để tránh lỗi 'functional_tensor' do torchvision mới gây ra."""
     deps = [
         ("facexlib", "facexlib"),
         ("codeformer", "codeformer-pip"),
-        ("realesrgan", "realesrgan"),
     ]
     for name, pip_name in deps:
         try:
@@ -245,7 +243,35 @@ def install_github_deps():
         except ImportError:
             run_cmd(f'"{sys.executable}" -m pip install {pip_name}', f"Đang cài {name}...")
 
-
+    # Cài đặt & Patch lỗi basicsr / realesrgan
+    try:
+        __import__("realesrgan")
+        print("realesrgan đã có sẵn.")
+    except ImportError:
+        print("\nĐang xử lý cài đặt Real-ESRGAN & BasicSR...")
+        # 1. Cài basicsr không kèm deps để không bị đè torch
+        run_cmd(f'"{sys.executable}" -m pip install --no-deps basicsr', "Cài basicsr...")
+        run_cmd(f'"{sys.executable}" -m pip install realesrgan', "Cài realesrgan...")
+        
+        # 2. Tự động patch file degradations.py của basicsr nếu dính lỗi functional_tensor
+        try:
+            import site
+            import os
+            for site_p in site.getsitepackages():
+                target_file = os.path.join(site_p, "basicsr", "data", "degradations.py")
+                if os.path.exists(target_file):
+                    with open(target_file, "r", encoding="utf-8") as f:
+                        content = f.read()
+                    if "torchvision.transforms.functional_tensor" in content:
+                        new_content = content.replace(
+                            "torchvision.transforms.functional_tensor", 
+                            "torchvision.transforms.functional"
+                        )
+                        with open(target_file, "w", encoding="utf-8") as f:
+                            f.write(new_content)
+                        print("✓ Đã tự động patch sửa lỗi functional_tensor cho BasicSR!")
+        except Exception as e:
+            print(f"⚠ Không thể auto-patch BasicSR: {e}")
 # ------------------------------------------------------------------
 # TẢI WEIGHTS: thử Hugging Face trước, GitHub sau, gdown (Google
 # Drive) làm phương án cuối. Hỗ trợ resume nếu tải bị đứt giữa chừng.
