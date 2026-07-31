@@ -41,34 +41,47 @@ WEIGHTS_DIR.mkdir(exist_ok=True)
 # Dict dưới đây CHỈ còn vai trò fallback an toàn nếu file JSON bị
 # thiếu/hỏng — giữ đúng tinh thần graceful-degrade của các loader khác.
 _MODELS_FALLBACK = {
-    "codeformer.pth": {
-        "size_mb": 380,
-        "sources": [
-            {"method": "http", "url": "https://huggingface.co/sczhou/CodeFormer/resolve/main/codeformer.pth"},
-            {"method": "http", "url": "https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth"},
-        ],
-    },
-    "RealESRGAN_x2plus.pth": {
-        "size_mb": 70,
-        "sources": [
-            {"method": "http", "url": "https://huggingface.co/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x2plus.pth"},
-            {"method": "http", "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth"},
-        ],
-    },
-    "79999_iter.pth": {
-        "size_mb": 50,
-        "sources": [
-            {"method": "http", "url": "https://huggingface.co/spaces/ysharma/FaceParsing/resolve/main/79999_iter.pth"},
-            {"method": "gdown", "url": "https://drive.google.com/uc?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812"},
-        ],
-    },
-    "isnet-general-use.onnx": {
-        "size_mb": 180,
-        "sources": [
-            {"method": "http", "url": "https://huggingface.co/OzzyGT/REMBG/resolve/main/isnet-general-use.onnx"},
-            {"method": "http", "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx"},
-        ],
-    },
+  "codeformer.pth": {
+    "size_mb": 359,
+    "sources": [
+      {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/codeformer.pth"},
+      {"method": "http", "url": "https://huggingface.co/sczhou/CodeFormer/resolve/main/codeformer.pth"},
+      {"method": "http", "url": "https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth"}
+    ]
+  },
+  "RealESRGAN_x2plus.pth": {
+    "size_mb": 64,
+    "sources": [
+      {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/RealESRGAN_x2plus.pth"},
+      {"method": "http", "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth"},
+      {"method": "http", "url": "https://huggingface.co/2kpr/Real-ESRGAN/resolve/main/RealESRGAN_x2plus.pth"}
+    ]
+  },
+  "79999_iter.pth": {
+    "size_mb": 50,
+    "sources": [
+      {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/79999_iter.pth"},
+      {"method": "http", "url": "https://huggingface.co/spaces/ysharma/FaceParsing/resolve/main/79999_iter.pth"},
+      {"method": "gdown", "url": "https://drive.google.com/uc?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812"}
+    ]
+  },
+  "isnet-general-use.onnx": {
+    "size_mb": 170,
+    "sources": [
+      {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/isnet-general-use.onnx"},
+      {"method": "http", "url": "https://huggingface.co/OzzyGT/REMBG/resolve/main/isnet-general-use.onnx"},
+      {"method": "http", "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx"}
+    ]
+  },
+  "pose_landmarker_lite.task": {
+    "size_mb": 5,
+    "optional": true,
+    "_comment": "Dùng cho tính năng 'Cân vai theo sống mũi' (ShoulderAnalyzer). Tuỳ chọn — pipeline vẫn chạy bình thường nếu thiếu, tính năng tự tắt (.available=False).",
+    "sources": [
+      {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/pose_landmarker_lite.task"},
+      {"method": "http", "url": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"}
+    ]
+  }
 }
 
 _REQUIRED_MODEL_KEYS = ("size_mb", "sources")
