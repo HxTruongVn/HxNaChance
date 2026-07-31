@@ -230,7 +230,7 @@ class NaChanceApp(ctk.CTk):
         .xbm trên X11. Bọc try/except vì icon không phải chức năng cốt
         lõi — thiếu file/lỗi đọc ảnh không được làm sập cả app."""
         try:
-            icon_path = Path(__file__).parent / "assets" / "logo (1).ico"
+            icon_path = Path(__file__).parent / "assets" /"icons"/ "logo (1).ico"
             if not icon_path.exists():
                 return
             img = PILImage.open(icon_path)
