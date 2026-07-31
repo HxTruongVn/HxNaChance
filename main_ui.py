@@ -223,7 +223,7 @@ class NaChanceApp(ctk.CTk):
         self.destroy()
 
     def _set_app_icon(self):
-        """Đặt icon app (thanh tác vụ/Alt-Tab) từ assets/logo (1).ico
+        """Đặt icon app (thanh tác vụ/Alt-Tab) từ assets/icons/logo (1).ico
         (bản màu xanh, khớp theme mặc định 'Dark Blue'). Dùng iconphoto
         (qua PIL) thay vì iconbitmap vì iconphoto hoạt động được trên cả
         Windows/Linux/Mac — iconbitmap chỉ nhận .ico trên Windows và
@@ -261,7 +261,7 @@ class NaChanceApp(ctk.CTk):
         dlg.grab_set()
 
         try:
-            icon_path = Path(__file__).parent / "assets" / "logo (1).ico"
+            icon_path = Path(__file__).parent / "assets" /"icons"/ "logo (1).ico"
             img = PILImage.open(icon_path)
             if getattr(img, "n_frames", 1) > 1:
                 best_frame, best_size = img, 0
@@ -321,7 +321,7 @@ class NaChanceApp(ctk.CTk):
         self.btn_toggle.pack(side="left", padx=6, pady=5)
 
         # Chọn 1 trong 3 file phù hợp nhất, ví dụ "logo (3).ico"
-        icon_path = Path(__file__).parent / "assets" / "logo (3).ico"
+        icon_path = Path(__file__).parent / "assets" /"icons"/ "logo (3).ico"
         if icon_path.exists():
             pil_img = Image.open(icon_path)
             target_height = 26
