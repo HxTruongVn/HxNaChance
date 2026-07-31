@@ -41,34 +41,47 @@ WEIGHTS_DIR.mkdir(exist_ok=True)
 # Dict dưới đây CHỈ còn vai trò fallback an toàn nếu file JSON bị
 # thiếu/hỏng — giữ đúng tinh thần graceful-degrade của các loader khác.
 _MODELS_FALLBACK = {
-    "codeformer.pth": {
-        "size_mb": 380,
-        "sources": [
-            {"method": "http", "url": "https://huggingface.co/sczhou/CodeFormer/resolve/main/codeformer.pth"},
-            {"method": "http", "url": "https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth"},
-        ],
-    },
-    "RealESRGAN_x2plus.pth": {
-        "size_mb": 70,
-        "sources": [
-            {"method": "http", "url": "https://huggingface.co/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x2plus.pth"},
-            {"method": "http", "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth"},
-        ],
-    },
-    "79999_iter.pth": {
-        "size_mb": 50,
-        "sources": [
-            {"method": "http", "url": "https://huggingface.co/spaces/ysharma/FaceParsing/resolve/main/79999_iter.pth"},
-            {"method": "gdown", "url": "https://drive.google.com/uc?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812"},
-        ],
-    },
-    "isnet-general-use.onnx": {
-        "size_mb": 180,
-        "sources": [
-            {"method": "http", "url": "https://huggingface.co/OzzyGT/REMBG/resolve/main/isnet-general-use.onnx"},
-            {"method": "http", "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx"},
-        ],
-    },
+  "codeformer.pth": {
+    "size_mb": 359,
+    "sources": [
+      {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/codeformer.pth"},
+      {"method": "http", "url": "https://huggingface.co/sczhou/CodeFormer/resolve/main/codeformer.pth"},
+      {"method": "http", "url": "https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth"}
+    ]
+  },
+  "RealESRGAN_x2plus.pth": {
+    "size_mb": 64,
+    "sources": [
+      {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/RealESRGAN_x2plus.pth"},
+      {"method": "http", "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth"},
+      {"method": "http", "url": "https://huggingface.co/2kpr/Real-ESRGAN/resolve/main/RealESRGAN_x2plus.pth"}
+    ]
+  },
+  "79999_iter.pth": {
+    "size_mb": 50,
+    "sources": [
+      {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/79999_iter.pth"},
+      {"method": "http", "url": "https://huggingface.co/spaces/ysharma/FaceParsing/resolve/main/79999_iter.pth"},
+      {"method": "gdown", "url": "https://drive.google.com/uc?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812"}
+    ]
+  },
+  "isnet-general-use.onnx": {
+    "size_mb": 170,
+    "sources": [
+      {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/isnet-general-use.onnx"},
+      {"method": "http", "url": "https://huggingface.co/OzzyGT/REMBG/resolve/main/isnet-general-use.onnx"},
+      {"method": "http", "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx"}
+    ]
+  },
+  "pose_landmarker_lite.task": {
+    "size_mb": 5,
+    "optional": true,
+    "_comment": "Dùng cho tính năng 'Cân vai theo sống mũi' (ShoulderAnalyzer). Tuỳ chọn — pipeline vẫn chạy bình thường nếu thiếu, tính năng tự tắt (.available=False).",
+    "sources": [
+      {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/pose_landmarker_lite.task"},
+      {"method": "http", "url": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"}
+    ]
+  }
 }
 
 _REQUIRED_MODEL_KEYS = ("size_mb", "sources")
@@ -230,13 +243,11 @@ def _ensure_numpy_below_2():
 
 
 def install_github_deps():
-    """Luôn dùng `{sys.executable} -m pip` thay vì gọi thẳng lệnh `pip`,
-    để đảm bảo cài vào đúng Python đang chạy script (venv hoặc hệ
-    thống), không bị lệch sang 1 bản Python/pip khác đang có trên máy."""
+    """Cài đặt các phụ thuộc đặc thù. Xử lý riêng basicsr & realesrgan 
+    để tránh lỗi 'functional_tensor' do torchvision mới gây ra."""
     deps = [
         ("facexlib", "facexlib"),
         ("codeformer", "codeformer-pip"),
-        ("realesrgan", "realesrgan"),
     ]
     for name, pip_name in deps:
         try:
@@ -245,7 +256,35 @@ def install_github_deps():
         except ImportError:
             run_cmd(f'"{sys.executable}" -m pip install {pip_name}', f"Đang cài {name}...")
 
-
+    # Cài đặt & Patch lỗi basicsr / realesrgan
+    try:
+        __import__("realesrgan")
+        print("realesrgan đã có sẵn.")
+    except ImportError:
+        print("\nĐang xử lý cài đặt Real-ESRGAN & BasicSR...")
+        # 1. Cài basicsr không kèm deps để không bị đè torch
+        run_cmd(f'"{sys.executable}" -m pip install --no-deps basicsr', "Cài basicsr...")
+        run_cmd(f'"{sys.executable}" -m pip install realesrgan', "Cài realesrgan...")
+        
+        # 2. Tự động patch file degradations.py của basicsr nếu dính lỗi functional_tensor
+        try:
+            import site
+            import os
+            for site_p in site.getsitepackages():
+                target_file = os.path.join(site_p, "basicsr", "data", "degradations.py")
+                if os.path.exists(target_file):
+                    with open(target_file, "r", encoding="utf-8") as f:
+                        content = f.read()
+                    if "torchvision.transforms.functional_tensor" in content:
+                        new_content = content.replace(
+                            "torchvision.transforms.functional_tensor", 
+                            "torchvision.transforms.functional"
+                        )
+                        with open(target_file, "w", encoding="utf-8") as f:
+                            f.write(new_content)
+                        print("✓ Đã tự động patch sửa lỗi functional_tensor cho BasicSR!")
+        except Exception as e:
+            print(f"⚠ Không thể auto-patch BasicSR: {e}")
 # ------------------------------------------------------------------
 # TẢI WEIGHTS: thử Hugging Face trước, GitHub sau, gdown (Google
 # Drive) làm phương án cuối. Hỗ trợ resume nếu tải bị đứt giữa chừng.
