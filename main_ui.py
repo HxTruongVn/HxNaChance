@@ -548,18 +548,26 @@ class NaChanceApp(ctk.CTk):
         fa = ctk.CTkFrame(tab, fg_color="transparent")
         fa.pack(fill="x", pady=(0, 10))
 
-        self.btn_run = ctk.CTkButton(fa, text="▶ XỬ LÝ 1 ẢNH", command=self._run_single,
+        # Chọn file / Chọn thư mục ĐẶT CẠNH NHAU (trước đây xếp chồng dọc,
+        # 2 cách chọn nguồn ảnh khác nhau nên đặt ngang hàng cho dễ so
+        # sánh/chọn) — cả 2 đều nhận nhiều file/cả thư mục, immediate-run
+        # sau khi chọn xong (giữ nguyên hành vi cũ, chỉ đổi vị trí + cho
+        # chọn nhiều file thay vì 1 file duy nhất).
+        row_pick = ctk.CTkFrame(fa, fg_color="transparent")
+        row_pick.pack(fill="x", pady=(0, 8))
+
+        self.btn_run = ctk.CTkButton(row_pick, text="🖼 Chọn file", command=self._run_single,
                                       height=45, fg_color=self.COLORS['accent'],
                                       hover_color=self.COLORS['accent_hover'],
                                       font=self.F_LARGE, text_color="white", corner_radius=8)
-        self.btn_run.pack(fill="x", pady=(0, 8))
+        self.btn_run.pack(side="left", fill="x", expand=True, padx=(0, 4))
 
-        self.btn_batch = ctk.CTkButton(fa, text="📂 XỬ LÝ THƯ MỤC", command=self._run_batch,
-                                        height=38, fg_color=self.COLORS['bg_card'],
+        self.btn_batch = ctk.CTkButton(row_pick, text="📂 Chọn thư mục", command=self._run_batch,
+                                        height=45, fg_color=self.COLORS['bg_card'],
                                         hover_color=self.COLORS['bg_hover'], border_width=1,
                                         border_color=self.COLORS['accent'], font=self.F_MEDIUM,
                                         text_color=self.COLORS['accent'], corner_radius=8)
-        self.btn_batch.pack(fill="x", pady=(0, 8))
+        self.btn_batch.pack(side="left", fill="x", expand=True, padx=(4, 0))
 
         self.btn_to_layout = ctk.CTkButton(fa, text="➡ Đưa sang Xếp in", command=self._send_to_layout,
                                             height=35, fg_color=self.COLORS['bg_card'],
@@ -935,7 +943,7 @@ class NaChanceApp(ctk.CTk):
             btn.configure(state=state)
 
     def _reset_ui(self):
-        self.btn_run.configure(text="▶ XỬ LÝ 1 ẢNH", fg_color=self.COLORS['accent'])
+        self.btn_run.configure(text="🖼 Chọn file", fg_color=self.COLORS['accent'])
         self.btn_quick.configure(text="▶ RUN", fg_color=self.COLORS['accent'])
         self._set_busy(False)
 
@@ -1136,18 +1144,25 @@ class NaChanceApp(ctk.CTk):
         self._hide_side_panel()
 
     def _run_single(self):
-        file_path = filedialog.askopenfilename(title="Chọn ảnh",
-                                                filetypes=[("Ảnh", "*.jpg *.jpeg *.png *.bmp *.tiff"), ("Tất cả", "*.*")])
-        if not file_path:
+        # FIX: nâng cấp từ askopenfilename (1 file) lên askopenfilenames
+        # (chọn nhiều file cùng lúc) — vẫn giữ đúng hành vi cũ khi chỉ
+        # chọn 1 file, nhưng giờ chọn nhiều file cũng chạy được qua cùng
+        # 1 nút, không bắt buộc phải "Xử lý thư mục" nếu chỉ muốn xử lý
+        # vài ảnh cụ thể (không phải cả thư mục).
+        file_paths = filedialog.askopenfilenames(
+            title="Chọn ảnh (chọn được nhiều file)",
+            filetypes=[("Ảnh", "*.jpg *.jpeg *.png *.bmp *.tiff"), ("Tất cả", "*.*")])
+        if not file_paths:
             return
+        file_paths = list(file_paths)
 
         if self.chk_confirm_orientation.get():
             def _on_confirmed(confirmed_paths):
                 if confirmed_paths:
                     self._process_files(confirmed_paths)
-            self._start_orientation_queue([file_path], _on_confirmed)
+            self._start_orientation_queue(file_paths, _on_confirmed)
         else:
-            self._process_files([file_path])
+            self._process_files(file_paths)
 
     def _run_batch(self):
         folder = filedialog.askdirectory(title="Chọn thư mục chứa ảnh")
