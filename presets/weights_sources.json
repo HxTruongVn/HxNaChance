@@ -9,8 +9,8 @@
   "RealESRGAN_x2plus.pth": {
     "size_mb": 70,
     "sources": [
-      {"method": "http", "url": "https://huggingface.co/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x2plus.pth"},
-      {"method": "http", "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth"}
+      {"method": "http", "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth"},
+      {"method": "http", "url": "https://huggingface.co/2kpr/Real-ESRGAN/resolve/main/RealESRGAN_x2plus.pth"}
     ]
   },
   "79999_iter.pth": {
