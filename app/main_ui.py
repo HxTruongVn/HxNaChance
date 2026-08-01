@@ -368,7 +368,7 @@ class NaChanceApp(
     def _toggle_panel(self):
         if self.is_mini:
             self.main_frame.pack(fill="both", expand=True, padx=0, pady=0)
-            self.geometry("480x780")
+            self.geometry("600x1000")
             self.is_mini = False
         else:
             self.main_frame.pack_forget()
