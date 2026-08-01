@@ -4,18 +4,22 @@ Tích hợp: CodeFormer + Real-ESRGAN + BiSeNet Face Parsing + isnet RMBG
 
 Đã tách theo kế hoạch refactor: NaChanceApp giờ chỉ còn phần
 "lõi" (window/lifecycle) — phần còn lại nằm trong các Mixin ở ui/.
-File này là facade giữ nguyên `from main_ui import NaChanceApp` cho
-main.py, đúng nguyên lý đã dùng cho photo_engine/.
+File này là facade giữ nguyên `from app.main_ui import NaChanceApp` cho
+app/main.py, đúng nguyên lý đã dùng cho photo_engine/.
 """
 import os
+import sys
 from pathlib import Path
-
 from PIL import Image as PILImage, ImageTk
 import customtkinter as ctk
 from tkinter import messagebox
 
+# Get project root (app/../)
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
 from photo_engine import NaChanceEngine
-from photo_agent import PhotoQAAgent
+from app.photo_agent import PhotoQAAgent
 
 from ui.widget_helpers import WidgetHelpersMixin
 from ui.theme_mixin import ThemeMixin, THEMES

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from runtime_manager import (
+from setup.runtime_manager import (
     FEATURE_REQUIREMENTS,
     MODEL_FILES,
     RuntimeManager,

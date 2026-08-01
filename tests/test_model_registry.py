@@ -7,7 +7,7 @@ chéo với presets/weights_sources.json.
 import json
 import pytest
 
-import model_registry as mr
+from config import model_registry as mr
 
 
 def test_load_registry_reads_real_file():

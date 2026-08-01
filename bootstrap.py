@@ -124,20 +124,20 @@ def run_setup() -> bool:
 
 
 def run_main():
-    """Chạy main.py — ứng dụng chính."""
+    """Chạy app/main.py — ứng dụng chính."""
     try:
         project_root = locate_project_root()
-        main_path = project_root / "main.py"
+        main_path = project_root / "app" / "main.py"
         
         if not main_path.exists():
-            print(f"❌ main.py không tìm thấy tại {main_path}")
+            print(f"❌ app/main.py không tìm thấy tại {main_path}")
             sys.exit(1)
         
-        # Chạy main.py trong process con — nó sẽ tự xử lý venv + imports
+        # Chạy app/main.py trong process con — nó sẽ tự xử lý venv + imports
         subprocess.run([sys.executable, str(main_path)], cwd=str(project_root))
         
     except Exception as e:
-        print(f"❌ Lỗi khi chạy main.py: {e}")
+        print(f"❌ Lỗi khi chạy app/main.py: {e}")
         sys.exit(1)
 
 

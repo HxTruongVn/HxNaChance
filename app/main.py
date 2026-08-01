@@ -27,8 +27,11 @@ Kiểm tra môi trường không mở UI:
 import sys
 import os
 import traceback
+from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Get project root (app/../)
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 # FIX: main.py trước đây hoàn toàn không biết .venv/ tồn tại — nếu
 # người dùng chạy setup_models.py (tạo + cài vào .venv/) rồi sau đó
@@ -74,7 +77,7 @@ def _detect_runtime():
 
 try:
     RUNTIME_REPORT = _detect_runtime()
-    from main_ui import NaChanceApp
+    from app.main_ui import NaChanceApp
     import customtkinter as ctk
 except SystemExit:
     raise

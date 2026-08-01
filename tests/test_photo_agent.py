@@ -2,7 +2,7 @@
 
 import pytest
 
-from photo_agent import PhotoQAAgent, _classify
+from app.photo_agent import PhotoQAAgent, _classify
 
 
 def test_classify_fixable_non_fixable_info():
