@@ -1,6 +1,6 @@
 """ui.pipeline_mixin — PipelineMixin: chạy xử lý ảnh (đơn + batch) qua
-worker thread. NHÓM RỦI RO CAO NHẤT khi tách — xem mục 3 của
-docs/plan_split_main_ui.md (README có ghi nhận bug thread-safety cũ ở
+worker thread. NHÓM RỦI RO CAO NHẤT khi tách (README có ghi nhận bug
+thread-safety cũ ở
 đúng nhóm method này: "Config thu thập từ UI TRƯỚC khi chạy worker
 thread"). Test kỹ cả xử lý đơn lẻ lẫn batch sau khi merge.
 """

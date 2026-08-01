@@ -124,17 +124,26 @@ vẫn import và khởi tạo thẳng `CodeFormerRestorer`/`RealESRGANUpscaler`/
 Giai đoạn 2 của Plan ("PhotoEngine không thay đổi").
 
 **Cập nhật**: `photo_engine.py` (monolith 1409 dòng) đã được tách thành
-package `photo_engine/` theo đúng chiến lược "Re-export Facade" của
-`docs/plan_refactor.md` — `photo_engine/__init__.py` export lại đúng
-API cũ (`NaChanceEngine`, `SPEC_PRESETS`, `PhotoSpec`,
-`DEFAULT_PRESET_NAME`, ...) nên `from photo_engine import ...` ở
-`main_ui.py`/`photo_agent.py`/`api/engine_wrapper.py` không cần sửa gì.
+package `photo_engine/` theo chiến lược "Re-export Facade" —
+`photo_engine/__init__.py` export lại đúng API cũ (`NaChanceEngine`,
+`SPEC_PRESETS`, `PhotoSpec`, `DEFAULT_PRESET_NAME`, ...) nên
+`from photo_engine import ...` ở `main_ui.py`/`photo_agent.py`/
+`api/engine_wrapper.py` không cần sửa gì. Sau đó `main_ui.py` (1665
+dòng, 1 class 61 method) cũng được tách theo cùng triết lý — dùng
+Mixin thay vì package con vì các method đều thao tác chung 1 cửa sổ
+Tk — thành `ui/*.py` (9 file: `utils`, `widget_helpers`, `theme_mixin`,
+`process_tab_mixin`, `layout_tab_mixin`, `side_panel_mixin`,
+`orientation_mixin`, `pipeline_mixin`, `config_mixin`), `main_ui.py`
+giờ chỉ còn phần lõi (window/lifecycle) + facade `NaChanceApp` kế thừa
+tất cả Mixin. Cả 2 việc tách đã xong, kế hoạch chi tiết (đã hoàn thành)
+không giữ lại trong `docs/` nữa — chỉ giữ tài liệu còn việc cần làm.
 Đây là bước CHUẨN BỊ MẶT BẰNG cho Giai đoạn 3-4 (mỗi capability giờ đã
-nằm ở file riêng, dễ thay bằng Adapter hơn nhiều so với sửa 1 file
-1409 dòng) — bản thân việc tách file KHÔNG phải là Giai đoạn 3-4, vẫn
-cần làm phần Interface/Adapter/ModelManager thật sự bên dưới.
+nằm ở file riêng, dễ thay bằng Adapter hơn nhiều so với sửa 1 file lớn)
+— bản thân việc tách file KHÔNG phải là Giai đoạn 3-4, vẫn cần làm phần
+Interface/Adapter/ModelManager thật sự bên dưới.
 
-**Còn thiếu để hoàn thành Giai đoạn 3-4** (chưa làm):
+**Còn thiếu để hoàn thành Giai đoạn 3-4** (chưa làm — kế hoạch chi tiết,
+đã kiểm tra đúng theo code thật, xem `docs/plan_model_manager.md`):
 - `ModelManager`/`ModelLoader`/`ModelValidator` — lớp thật sự dùng
   registry này để load model lúc runtime (hiện registry chỉ nằm đó,
   chưa ai gọi tới ngoài test).

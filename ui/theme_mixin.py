@@ -1,7 +1,8 @@
 """ui.theme_mixin — ThemeMixin + THEMES (module-level).
 THEMES phải có sẵn TRƯỚC khi class NaChanceApp được định nghĩa (dùng
-làm class attribute NaChanceApp.THEMES = THEMES) — xem mục 4.4 của
-docs/plan_split_main_ui.md. Import cả class lẫn biến THEMES từ đây.
+làm class attribute NaChanceApp.THEMES = THEMES), nên load ở module-level
+file này thay vì trong 1 method như các Mixin khác. Import cả class lẫn
+biến THEMES từ đây.
 """
 import json
 from pathlib import Path

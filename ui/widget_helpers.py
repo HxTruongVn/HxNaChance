@@ -1,6 +1,6 @@
 """ui.widget_helpers — WidgetHelpersMixin: _section_header/_chk/_slider,
 dùng chung bởi cả ProcessTabMixin và LayoutTabMixin (đã xác nhận qua
-grep trước khi tách — xem docs/plan_split_main_ui.md mục 1).
+grep trước khi tách).
 """
 import customtkinter as ctk
 

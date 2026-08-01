@@ -1,5 +1,6 @@
 """ui.utils — hàm dùng chung nhiều Mixin (không phụ thuộc self/widget).
-Tách khỏi main_ui.py theo Bước 1 + 4.3 của docs/plan_split_main_ui.md.
+Tách khỏi main_ui.py — cross-cutting, dùng chung nhiều Mixin nên không
+thuộc riêng nhóm nào.
 _safe_float/_safe_int vốn là @staticmethod trong NaChanceApp — giữ đúng
 logic gốc, chỉ bỏ decorator + tham số self không dùng.
 _imwrite_unicode/_open_folder vốn đã là hàm module-level trong

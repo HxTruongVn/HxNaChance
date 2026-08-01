@@ -1,7 +1,7 @@
 """ui.layout_tab_mixin — LayoutTabMixin: tab "Xếp in".
 Phụ thuộc WidgetHelpersMixin. LAYOUT_PRESETS cũng được ConfigMixin dùng
-riêng (import lại ở config_mixin.py) — xem mục 4.2 của
-docs/plan_split_main_ui.md.
+riêng (import lại ở config_mixin.py), vì 2 Mixin đó cùng cần nhưng
+không phụ thuộc lẫn nhau.
 """
 import os
 import platform

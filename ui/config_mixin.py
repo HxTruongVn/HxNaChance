@@ -1,8 +1,8 @@
 """ui.config_mixin — ConfigMixin: đọc/ghi ~/.nachance_ai.json.
 KHÔNG tách được thành hàm thuần (không phụ thuộc self) — 2 method này
 đọc/ghi trực tiếp hơn 10 widget khác nhau (self.layout_cfg_vars,
-self.caf_mode, self.chk_layout_stroke...), xem mục 1 của
-docs/plan_split_main_ui.md. LAYOUT_PRESETS import riêng ở đây, tách
+self.caf_mode, self.chk_layout_stroke... — đã grep xác nhận trước khi
+tách). LAYOUT_PRESETS import riêng ở đây, tách
 khỏi layout_tab_mixin.py (cùng phụ thuộc, xem mục 4.2).
 """
 import json

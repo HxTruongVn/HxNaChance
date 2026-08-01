@@ -10,10 +10,15 @@ Hướng dẫn cấu trúc thư mục, module organization để maintain consis
 nachance/
 │
 ├── main.py                       # Entry point (1-2 imports, call main function)
-├── main_ui.py                 # UI application class
+├── main_ui.py                    # NaChanceApp — phần lõi (window/lifecycle),
+│                                  # kế thừa các Mixin ở ui/ (đã tách khỏi bản
+│                                  # monolith 1665 dòng cũ)
+├── ui/                            # Mixin cho main_ui.py: utils, widget_helpers,
+│                                  # theme_mixin, process_tab_mixin,
+│                                  # layout_tab_mixin, side_panel_mixin,
+│                                  # orientation_mixin, pipeline_mixin, config_mixin
 ├── photo_engine/                 # Core processing engine & classes (package —
-│                                  # tách từ photo_engine.py monolith cũ, xem
-│                                  # docs/plan_refactor.md)
+│                                  # tách từ photo_engine.py monolith cũ)
 ├── runtime_manager.py            # Runtime detection & setup
 ├── print_layout.py               # Layout rendering
 │

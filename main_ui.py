@@ -2,7 +2,7 @@
 NaChance — Main UI
 Tích hợp: CodeFormer + Real-ESRGAN + BiSeNet Face Parsing + isnet RMBG
 
-Đã tách theo docs/plan_split_main_ui.md: NaChanceApp giờ chỉ còn phần
+Đã tách theo kế hoạch refactor: NaChanceApp giờ chỉ còn phần
 "lõi" (window/lifecycle) — phần còn lại nằm trong các Mixin ở ui/.
 File này là facade giữ nguyên `from main_ui import NaChanceApp` cho
 main.py, đúng nguyên lý đã dùng cho photo_engine/.
