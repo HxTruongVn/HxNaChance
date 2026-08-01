@@ -50,7 +50,7 @@ class NaChanceApp(
     def __init__(self, runtime_report=None):
         super().__init__()  
         
-        self.title("NACHANCE")
+        self.title("NaChance")
         self._set_app_icon()
         self.overrideredirect(True)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -62,7 +62,7 @@ class NaChanceApp(
         self.configure(fg_color=self.COLORS['bg_dark'])
 
         
-        self.FONT_FAMILY = "Segoe UI"
+        self.FONT_FAMILY = "Montserrat"
         self.FONT_SCALE = 1.4
         
         self.F_SMALL  = (self.FONT_FAMILY, int(9  * self.FONT_SCALE))
@@ -70,6 +70,9 @@ class NaChanceApp(
         self.F_MEDIUM = (self.FONT_FAMILY, int(11 * self.FONT_SCALE))
         self.F_LARGE  = (self.FONT_FAMILY, int(13 * self.FONT_SCALE), "bold")
         self.F_HEADER = (self.FONT_FAMILY, int(10 * self.FONT_SCALE), "bold")
+        self.FONT_FAMILY_BRAND = "Orbitron"  # dùng riêng cho chữ thương hiệu "NaChance"
+        self.F_BRAND = (self.FONT_FAMILY_BRAND, int(13 * self.FONT_SCALE), "bold")
+        self.F_BRAND_LARGE = (self.FONT_FAMILY_BRAND, 20, "bold")
         # =========================================================================
         self.is_mini = True
         self.save_dir = str(Path.home() / "Pictures" / "ANHTHE")
@@ -234,7 +237,7 @@ class NaChanceApp(
         except Exception:
             pass  # thiếu icon không ngăn hiện phần thông tin còn lại
 
-        ctk.CTkLabel(dlg, text="NaChance", font=("Segoe UI", 20, "bold"),
+        ctk.CTkLabel(dlg, text="NaChance", font=self.F_BRAND_LARGE,
                      text_color=self.COLORS['accent']).pack(pady=(0, 4))
         ctk.CTkLabel(dlg, text="Xử lý ảnh thẻ tự động cho tiệm ảnh / studio",
                      font=self.F_MEDIUM, text_color=self.COLORS['text_secondary'],
@@ -272,7 +275,7 @@ class NaChanceApp(
         self.btn_toggle = ctk.CTkButton(
             self.title_bar, text="☰", width=32, height=32,
             fg_color="transparent", hover_color=self.COLORS['bg_hover'],
-            font=("Segoe UI", 14), command=self._toggle_panel
+            font=(self.FONT_FAMILY, 14), command=self._toggle_panel
         )
         self.btn_toggle.pack(side="left", padx=6, pady=5)
 
@@ -293,8 +296,8 @@ class NaChanceApp(
 
         # Phần chữ thương hiệu dạng Text chuẩn để tự thích ứng màu sắc theo mọi theme
         self.title_text_label = ctk.CTkLabel(
-            self.title_bar, text="NACHANCE",
-            font=self.F_LARGE, text_color=self.COLORS['accent']
+            self.title_bar, text="NaChance",
+            font=self.F_BRAND, text_color=self.COLORS['accent']
         )
         self.title_text_label.pack(side="left", padx=4)
         self.title_text_label.bind("<Button-1>", self._start_drag)
@@ -309,11 +312,11 @@ class NaChanceApp(
 
         ctk.CTkButton(self.title_bar, text="✕", width=32, height=28,
                       fg_color="transparent", hover_color=self.COLORS['danger'],
-                      font=("Segoe UI", 12), command=self._on_close).pack(side="right", padx=6)
+                      font=(self.FONT_FAMILY, 12), command=self._on_close).pack(side="right", padx=6)
 
         ctk.CTkButton(self.title_bar, text="ℹ", width=32, height=28,
                       fg_color="transparent", hover_color=self.COLORS['bg_hover'],
-                      font=("Segoe UI", 13), command=self._show_about).pack(side="right", padx=2)
+                      font=(self.FONT_FAMILY, 13), command=self._show_about).pack(side="right", padx=2)
 
         self.title_bar.bind("<Button-1>", self._start_drag)
         self.title_bar.bind("<B1-Motion>", self._do_drag)

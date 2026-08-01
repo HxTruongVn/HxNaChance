@@ -242,6 +242,34 @@ def _ensure_numpy_below_2():
                 "Hạ numpy xuống <2.0.0...")
 
 
+def install_fonts():
+    """Cài font trong assets/font/ cho user hiện tại — không cần quyền
+    admin (Windows 10 1809+). Idempotent. Bỏ qua nếu không phải Windows
+    hoặc không có font nào trong assets/font/."""
+    if platform.system() != "Windows":
+        return
+    fonts_dir = Path(__file__).parent / "assets" / "font"
+    ttf_files = sorted(fonts_dir.rglob("*.ttf"))
+    if not ttf_files:
+        return
+    import winreg
+    user_fonts_dir = Path(os.environ["LOCALAPPDATA"]) / "Microsoft" / "Windows" / "Fonts"
+    user_fonts_dir.mkdir(parents=True, exist_ok=True)
+    reg_key = winreg.CreateKeyEx(
+        winreg.HKEY_CURRENT_USER,
+        r"Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts",
+        0, winreg.KEY_SET_VALUE,
+    )
+    for ttf in ttf_files:
+        dest = user_fonts_dir / ttf.name
+        if not dest.exists():
+            shutil.copy(ttf, dest)
+        winreg.SetValueEx(reg_key, ttf.stem.replace("-", " ") + " (TrueType)",
+                           0, winreg.REG_SZ, str(dest))
+    winreg.CloseKey(reg_key)
+    print(f"[Fonts] Đã cài {len(ttf_files)} font cho user hiện tại.")
+
+
 def install_github_deps():
     """Cài đặt các phụ thuộc đặc thù. Xử lý riêng basicsr & realesrgan 
     để tránh lỗi 'functional_tensor' do torchvision mới gây ra."""
@@ -422,6 +450,7 @@ def setup_weights(cpu_only: bool = False):
 
     install_requirements(cpu_only=cpu_only)
     install_github_deps()
+    install_fonts()
     failed = download_all_weights()
 
     print("\nKiểm tra rembg models...")

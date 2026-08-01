@@ -25,7 +25,7 @@ class ProcessTabMixin:
             border_color=self.COLORS['border'], dropdown_fg_color=self.COLORS['bg_card'],
             dropdown_hover_color=self.COLORS['bg_hover']
         )
-        self.combo_preset.set("13x18 (In ấn)")
+        self.combo_preset.set("13x18")
         self.combo_preset.pack(padx=10, pady=10, fill="x")
 
         self.lbl_preset_info = ctk.CTkLabel(fp, text="", font=self.F_SMALL,
