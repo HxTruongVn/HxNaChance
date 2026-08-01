@@ -30,7 +30,9 @@ _LAYOUT_PRESETS_FALLBACK = {
 
 
 def _load_layout_presets():
-    presets_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "presets", "layout_presets.json")
+    presets_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "config", "presets", "layout_presets.json")
     try:
         with open(presets_path, "r", encoding="utf-8") as f:
             raw = json.load(f)

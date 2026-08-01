@@ -24,7 +24,7 @@ _REQUIRED_THEME_KEYS = (
 
 
 def _load_themes() -> dict:
-    themes_path = Path(__file__).parent.parent / "presets" / "themes.json"
+    themes_path = Path(__file__).parent.parent / "config" / "presets" / "themes.json"
     try:
         with open(themes_path, "r", encoding="utf-8") as f:
             raw = json.load(f)

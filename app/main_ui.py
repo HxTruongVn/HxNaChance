@@ -193,7 +193,7 @@ class NaChanceApp(
         .xbm trên X11. Bọc try/except vì icon không phải chức năng cốt
         lõi — thiếu file/lỗi đọc ảnh không được làm sập cả app."""
         try:
-            icon_path = Path(__file__).parent / "assets" /"icons"/ "logo (1).ico"
+            icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo (1).ico"
             if not icon_path.exists():
                 return
             img = PILImage.open(icon_path)
@@ -224,7 +224,7 @@ class NaChanceApp(
         dlg.grab_set()
 
         try:
-            icon_path = Path(__file__).parent / "assets" /"icons"/ "logo (1).ico"
+            icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo (1).ico"
             img = PILImage.open(icon_path)
             if getattr(img, "n_frames", 1) > 1:
                 best_frame, best_size = img, 0
@@ -284,7 +284,7 @@ class NaChanceApp(
         self.btn_toggle.pack(side="left", padx=6, pady=5)
 
         # Chọn 1 trong 3 file phù hợp nhất, ví dụ "logo (3).ico"
-        icon_path = Path(__file__).parent / "assets" /"icons"/ "logo (3).ico"
+        icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo (3).ico"
         if icon_path.exists():
             pil_img = Image.open(icon_path)
             target_height = 26

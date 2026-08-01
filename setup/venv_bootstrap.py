@@ -23,7 +23,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).parent.parent
 VENV_DIR = PROJECT_ROOT / ".venv"
 
 

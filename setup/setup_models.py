@@ -75,7 +75,7 @@ _MODELS_FALLBACK = {
   },
   "pose_landmarker_lite.task": {
     "size_mb": 5,
-    "optional": true,
+    "optional": True,
     "_comment": "Dùng cho tính năng 'Cân vai theo sống mũi' (ShoulderAnalyzer). Tuỳ chọn — pipeline vẫn chạy bình thường nếu thiếu, tính năng tự tắt (.available=False).",
     "sources": [
       {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/pose_landmarker_lite.task"},
@@ -88,7 +88,7 @@ _REQUIRED_MODEL_KEYS = ("size_mb", "sources")
 
 
 def _load_models() -> dict:
-    models_path = PROJECT_ROOT / "presets" / "weights_sources.json"
+    models_path = PROJECT_ROOT / "config" / "presets" / "weights_sources.json"
     try:
         with open(models_path, "r", encoding="utf-8") as f:
             raw = json.load(f)
@@ -250,7 +250,7 @@ def install_fonts():
     hoặc không có font nào trong assets/font/."""
     if platform.system() != "Windows":
         return
-    fonts_dir = Path(__file__).parent / "assets" / "font"
+    fonts_dir = Path(__file__).parent.parent / "assets" / "font"
     ttf_files = sorted(fonts_dir.rglob("*.ttf"))
     if not ttf_files:
         return

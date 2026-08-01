@@ -32,7 +32,7 @@ _BUILTIN_SPEC_PRESETS_FALLBACK = {
 
 
 def _load_spec_presets() -> Dict[str, "PhotoSpec"]:
-    presets_path = Path(__file__).parent.parent / "presets" / "spec_presets.json"
+    presets_path = Path(__file__).parent.parent / "config" / "presets" / "spec_presets.json"
     try:
         with open(presets_path, "r", encoding="utf-8") as f:
             raw = json.load(f)
