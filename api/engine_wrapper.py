@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # thành package photo_engine/ — tên import "photo_engine" không đổi.)
 from photo_engine import NaChanceEngine, SPEC_PRESETS
 from photo_agent import PhotoQAAgent
-from runtime_manager import RuntimeManager
+from setup.runtime_manager import RuntimeManager
 
 
 class ThreadSafeEngine:

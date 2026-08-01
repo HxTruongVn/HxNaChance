@@ -16,11 +16,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Cùng lý do với main.py: tự chuyển vào .venv/ nếu đã có, tránh chạy
 # nhầm bằng Python hệ thống khi người dùng quên activate.
-from venv_bootstrap import reexec_into_venv_if_exists
+from .venv_bootstrap import reexec_into_venv_if_exists
 reexec_into_venv_if_exists(__file__)
 
 try:
-    from runtime_manager import RuntimeManager
+    from .runtime_manager import RuntimeManager
 except Exception as e:
     print("LỖI: không import được runtime_manager.py")
     print(f"  {e}")

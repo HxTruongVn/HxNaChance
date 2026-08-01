@@ -23,7 +23,7 @@ import sys
 import subprocess
 from pathlib import Path
 
-from venv_bootstrap import PROJECT_ROOT, VENV_DIR, in_venv, ensure_venv_and_reexec
+from .venv_bootstrap import PROJECT_ROOT, VENV_DIR, in_venv, ensure_venv_and_reexec
 
 WEIGHTS_DIR = PROJECT_ROOT / "weights"
 WEIGHTS_DIR.mkdir(exist_ok=True)
