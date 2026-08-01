@@ -147,13 +147,15 @@ def install_requirements(cpu_only: bool = False):
     Với --cpu-only: cài requirements-cpu.txt TRƯỚC (ép version cụ thể +
     --index-url CPU-only cho torch/torchvision), rồi mới cài
     requirements.txt SAU."""
-    req_file = PROJECT_ROOT / "requirements.txt"
+    # Requirements files nằm ở setup/ (cùng thư mục với setup_models.py)
+    setup_dir = Path(__file__).parent
+    req_file = setup_dir / "requirements.txt"
     if not req_file.exists():
         print(f"Không thấy {req_file.name}, bỏ qua bước này.")
         return
 
     if cpu_only:
-        cpu_file = PROJECT_ROOT / "requirements-cpu.txt"
+        cpu_file = setup_dir / "requirements-cpu.txt"
         if cpu_file.exists():
             run_cmd(f'"{sys.executable}" -m pip install -r "{cpu_file}"',
                     "Đang cài torch CPU-only (requirements-cpu.txt)...")

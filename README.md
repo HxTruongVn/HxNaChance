@@ -36,11 +36,23 @@ chi tiết tại [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 ## 🚀 Cài đặt nhanh
 
-### Bước 0: Kiểm tra môi trường (khuyến nghị)
+### Bước 0: Kiểm tra môi trường (tự động)
 
+**Bootstrap sẽ tự làm tất cả — người dùng chỉ cần chạy:**
 ```bash
-python debug.py
-# hoặc: python runtime_manager.py
+python bootstrap.py
+```
+
+Bootstrap tự:
+1. Kiểm tra môi trường
+2. Nếu chưa sẵn sàng → gọi setup tự động
+3. Tạo .venv + cài dependencies + tải weights
+4. Khởi động ứng dụng
+
+**Hoặc kiểm tra thủ công:**
+```bash
+python setup/debug.py
+# hoặc: python setup/runtime_manager.py
 ```
 
 Script này kiểm tra tất cả dependencies và weights, báo ✓/✗ rõ ràng.
@@ -48,16 +60,16 @@ Script này kiểm tra tất cả dependencies và weights, báo ✓/✗ rõ rà
 Xem chi tiết kiến trúc (RuntimeManager → Engine → UI) tại
 [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
-### Bước 1: Cài đặt + tải weights
+### Bước 1: Cài đặt + tải weights (nếu bootstrap chưa làm)
 
 ```bash
-python setup_models.py
+python setup/setup_models.py
 ```
 
 Script sẽ hỏi xác nhận trước khi tạo virtualenv (`.venv/`) — gõ Enter
 hoặc `y` để đồng ý, `n` để bỏ qua và cài thẳng vào Python hiện tại.
 Chạy tự động/không tương tác (script, CI): thêm `-y`/`--yes` để bỏ qua
-hỏi. Sau đó tự cài dependencies (`requirements.txt`) và tải weights —
+hỏi. Sau đó tự cài dependencies (`setup/requirements.txt`) và tải weights —
 thử Hugging Face trước, GitHub sau, Google Drive (gdown) làm phương án
 cuối, hỗ trợ resume nếu tải bị đứt giữa chừng.
 
@@ -73,7 +85,7 @@ PyPI mặc định ở đó đã là bản có CUDA).
 torch CPU-only (tránh tải nhầm wheel bundle CUDA runtime, nặng hơn
 nhiều và không cần thiết nếu không có GPU):
 ```bash
-python setup_models.py --cpu-only
+python setup/setup_models.py --cpu-only
 ```
 
 **Hoặc tải từng file bằng trình duyệt (nếu máy không chạy được script):**
@@ -90,6 +102,13 @@ Tải xong đặt vào thư mục `weights/`.
 ### Bước 2: Chạy
 
 ```bash
+python bootstrap.py
+```
+
+Bootstrap sẽ tự kiểm tra môi trường, chạy setup nếu cần, rồi khởi động ứng dụng.
+
+Hoặc chạy trực tiếp (giả sử setup đã hoàn tất):
+```bash
 python main.py
 ```
 
@@ -100,7 +119,8 @@ cùng cơ chế tự thử lại (agent Cấp 1, xem `photo_agent.py`), khác m�
 lớp giao diện.
 
 ```bash
-pip install -r api/requirements.txt
+pip install -r setup/api/requirements.txt
+# hoặc từ root: pip install -r setup/requirements.txt -r api/requirements.txt
 uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
@@ -119,7 +139,7 @@ Test thủ công API (server phải đang chạy):
 ## 🧪 Phát triển & CI
 
 ```bash
-pip install -r requirements.txt -r requirements-dev.txt
+pip install -r setup/requirements.txt -r setup/requirements-dev.txt
 python -m pytest -q
 ```
 
@@ -190,14 +210,14 @@ python main.py
 Xem [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) (đầy đủ). Tóm tắt:
 **App khởi động rồi tắt ngay:**
 ```bash
-python debug.py      # xem thiếu gì
-python main.py       # đọc lỗi in ra console
+python setup/debug.py      # xem thiếu gì
+python bootstrap.py        # tự kiểm tra + setup + chạy app
 ```
 
 **Lỗi "No module named 'codeformer'":**
 ```bash
 pip install codeformer-pip
-# hoặc chạy lại: python setup_models.py
+# hoặc chạy lại: python setup/setup_models.py
 ```
 
 **Lỗi "No module named 'realesrgan'":**

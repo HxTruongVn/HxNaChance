@@ -20,9 +20,9 @@ jobs:
       - name: Install dependencies (CPU torch for CI)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-cpu.txt
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+          pip install -r setup/requirements-cpu.txt
+          pip install -r setup/requirements.txt
+          pip install -r setup/requirements-dev.txt
 
       - name: Run pytest
         run: python -m pytest -q
