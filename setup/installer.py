@@ -8,7 +8,7 @@ Nhiệm vụ:
 - Kiểm tra lại sau khi setup
 - Return trạng thái success/fail cho bootstrap
 
-File này gọi bởi bootstrap.py khi môi trường chưa sẵn sàng.
+File này gọi bởi NaChance.py khi môi trường chưa sẵn sàng.
 Sau khi hoàn tất, bootstrap sẽ re-run để kiểm tra lại + chạy main.py.
 """
 
@@ -137,7 +137,7 @@ def main():
     print("\n" + "=" * 60)
     if success:
         print("✅ Cài đặt hoàn thành")
-        print("Chạy: python bootstrap.py")
+        print("Chạy: python NaChance.py")
     else:
         print(f"❌ Cài đặt thất bại: {message}")
         sys.exit(1)

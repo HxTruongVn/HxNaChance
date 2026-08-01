@@ -40,7 +40,7 @@ chi tiết tại [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 **Bootstrap sẽ tự làm tất cả — người dùng chỉ cần chạy:**
 ```bash
-python bootstrap.py
+python NaChance.py
 ```
 
 Bootstrap tự:
@@ -102,7 +102,7 @@ Tải xong đặt vào thư mục `weights/`.
 ### Bước 2: Chạy
 
 ```bash
-python bootstrap.py
+python NaChance.py
 ```
 
 Bootstrap sẽ tự kiểm tra môi trường, chạy setup nếu cần, rồi khởi động ứng dụng.
@@ -211,7 +211,7 @@ Xem [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) (đầy đủ). Tóm t�
 **App khởi động rồi tắt ngay:**
 ```bash
 python setup/debug.py      # xem thiếu gì
-python bootstrap.py        # tự kiểm tra + setup + chạy app
+python NaChance.py        # tự kiểm tra + setup + chạy app
 ```
 
 **Lỗi "No module named 'codeformer'":**

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-NaChance Bootstrap — Điểm khởi động duy nhất của toàn bộ ứng dụng
+NaChance — Điểm khởi động duy nhất của toàn bộ ứng dụng
 
 Luồng:
-    User chạy: python bootstrap.py
+    User chạy: python NaChance.py
                 ↓
         Locate Repository Root
                 ↓
@@ -22,10 +22,16 @@ Nguyên tắc Bootstrap:
 - Chỉ làm công việc điều phối (Dispatcher)
 - Không chứa logic cài đặt — chỉ gọi setup/installer.py
 - Kiểm tra trạng thái môi trường, quyết định hành động tiếp theo
+
+Roadmap mở rộng (khi đóng gói .exe — xem docs/tài liệu định hướng.md):
+đã có kiểm tra môi trường + ghi log khởi động; còn thiếu UI tiến trình
+thật (progress bar, quan trọng vì .exe --windowed không có console),
+tự sửa lỗi môi trường sâu hơn, kiểm tra/so sánh version, chế độ cập nhật.
 """
 
 import sys
 import os
+import logging
 import importlib.util
 from pathlib import Path
 import subprocess
@@ -34,6 +40,44 @@ import subprocess
 def locate_project_root() -> Path:
     """Xác định thư mục gốc của repository."""
     return Path(__file__).parent.absolute()
+
+
+def setup_logging(project_root: Path) -> logging.Logger:
+    """Ghi log khởi động ra file, đồng thời vẫn in ra console như cũ.
+
+    Quan trọng nhất khi đóng gói .exe dạng --windowed (không có cửa sổ
+    console): lúc đó print() không ai thấy được — log file là cách DUY
+    NHẤT để biết vì sao app không khởi động được trên máy người dùng
+    cuối. Không đổi trải nghiệm khi chạy `python NaChance.py` từ
+    terminal — console vẫn in y hệt như trước, chỉ thêm việc GHI THÊM
+    ra file.
+
+    Log ghi nối tiếp (append) vào 1 file duy nhất, có dòng phân cách +
+    timestamp đầu mỗi phiên chạy để dễ phân biệt — chưa cần rotate/giới
+    hạn dung lượng vì log khởi động rất ngắn (vài chục dòng/lần chạy);
+    nếu sau này thấy file quá lớn có thể đổi sang RotatingFileHandler."""
+    log_dir = project_root / "logs"
+    log_dir.mkdir(exist_ok=True)
+    log_path = log_dir / "nachance_boot.log"
+
+    logger = logging.getLogger("nachance_boot")
+    logger.setLevel(logging.INFO)
+    logger.handlers.clear()  # tránh nhân đôi handler nếu setup_logging() bị gọi lại
+
+    file_handler = logging.FileHandler(log_path, encoding="utf-8")
+    file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    logger.addHandler(file_handler)
+
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(logging.Formatter("%(message)s"))  # console giữ nguyên định dạng cũ
+    logger.addHandler(console_handler)
+
+    logger.info("=" * 60)
+    logger.info(f"Phiên khởi động mới — {os.name} — Python {sys.version.split()[0]}")
+    return logger
+
+
+log = logging.getLogger("nachance_boot")  # cấu hình thật sự ở setup_logging(), gọi 1 lần trong main()
 
 
 def check_environment() -> dict:
@@ -68,7 +112,7 @@ def check_environment() -> dict:
                 else:
                     raise ImportError("Could not load runtime_manager")
             except Exception as e:
-                print(f"⚠️  Không thể import RuntimeManager: {e}")
+                log.warning(f"⚠️  Không thể import RuntimeManager: {e}")
                 return {
                     "can_run": False,
                     "can_run_lite": False,
@@ -86,10 +130,8 @@ def check_environment() -> dict:
             "can_run_full_ai": report.can_run_full_ai,
             "report": report,
         }
-    except Exception as e:
-        print(f"⚠️  Không thể kiểm tra môi trường: {e}")
-        import traceback
-        traceback.print_exc()
+    except Exception:
+        log.exception("⚠️  Không thể kiểm tra môi trường")
         return {
             "can_run": False,
             "can_run_lite": False,
@@ -113,13 +155,11 @@ def run_setup() -> bool:
         installer = SetupInstaller(project_root)
         success, message = installer.run()
         
-        print(f"\n📝 Setup Result: {message}")
+        log.info(f"\n📝 Setup Result: {message}")
         return success
         
-    except Exception as e:
-        print(f"❌ Setup failed with exception: {e}")
-        import traceback
-        traceback.print_exc()
+    except Exception:
+        log.exception("❌ Setup failed with exception")
         return False
 
 
@@ -130,76 +170,79 @@ def run_main():
         main_path = project_root / "app" / "main.py"
         
         if not main_path.exists():
-            print(f"❌ app/main.py không tìm thấy tại {main_path}")
+            log.error(f"❌ app/main.py không tìm thấy tại {main_path}")
             sys.exit(1)
         
         # Chạy app/main.py trong process con — nó sẽ tự xử lý venv + imports
         subprocess.run([sys.executable, str(main_path)], cwd=str(project_root))
         
     except Exception as e:
-        print(f"❌ Lỗi khi chạy app/main.py: {e}")
+        log.error(f"❌ Lỗi khi chạy app/main.py: {e}")
         sys.exit(1)
 
 
 def print_banner():
     """In banner khởi động."""
-    print("\n" + "=" * 60)
-    print("🚀 NaChance Bootstrap")
-    print("=" * 60)
+    log.info("\n" + "=" * 60)
+    log.info("🚀 NaChance Bootstrap")
+    log.info("=" * 60)
 
 
 def print_status(status: dict):
     """In trạng thái môi trường."""
     if status["report"]:
-        print(status["report"].summary_text())
+        log.info(status["report"].summary_text())
     else:
-        print("⚠️  Không lấy được thông tin môi trường")
+        log.warning("⚠️  Không lấy được thông tin môi trường")
 
 
 def main():
     """Luồng chính bootstrap."""
+    global log
+    log = setup_logging(locate_project_root())
+
     print_banner()
     
     # Bước 1: Kiểm tra môi trường
-    print("\n🔍 Kiểm tra môi trường...")
+    log.info("\n🔍 Kiểm tra môi trường...")
     env_status = check_environment()
     print_status(env_status)
     
     # Bước 2: Quyết định hành động
-    print("\n" + "=" * 60)
+    log.info("\n" + "=" * 60)
     if env_status["can_run"]:
-        print("✅ Môi trường sẵn sàng")
+        log.info("✅ Môi trường sẵn sàng")
         if env_status["can_run_full_ai"]:
-            print("   Full AI Mode — all features available")
+            log.info("   Full AI Mode — all features available")
         else:
-            print("   Lite Mode — AI features disabled")
-        print("\n▶️  Khởi động ứng dụng...")
-        print("=" * 60 + "\n")
+            log.info("   Lite Mode — AI features disabled")
+        log.info("\n▶️  Khởi động ứng dụng...")
+        log.info("=" * 60 + "\n")
         run_main()
     else:
-        print("⚠️  Môi trường chưa sẵn sàng — cần cài đặt")
-        print("=" * 60)
+        log.warning("⚠️  Môi trường chưa sẵn sàng — cần cài đặt")
+        log.info("=" * 60)
         
         # Bước 3: Chạy setup
         if run_setup():
             # Bước 4: Re-check environment
-            print("\n" + "=" * 60)
-            print("🔄 Kiểm tra lại après setup...")
+            log.info("\n" + "=" * 60)
+            log.info("🔄 Kiểm tra lại sau khi setup...")
             env_status = check_environment()
             print_status(env_status)
             
             if env_status["can_run"]:
-                print("\n✅ Setup hoàn thành thành công")
-                print("▶️  Khởi động ứng dụng...")
-                print("=" * 60 + "\n")
+                log.info("\n✅ Setup hoàn thành thành công")
+                log.info("▶️  Khởi động ứng dụng...")
+                log.info("=" * 60 + "\n")
                 run_main()
             else:
-                print("\n❌ Sau setup vẫn thiếu dependencies — không thể chạy")
-                print("=" * 60)
+                log.error("\n❌ Sau setup vẫn thiếu dependencies — không thể chạy")
+                log.info("=" * 60)
                 sys.exit(1)
         else:
-            print("\n❌ Setup thất bại")
-            print("=" * 60)
+            log.error("\n❌ Setup thất bại")
+            log.info("=" * 60)
             sys.exit(1)
 
 
@@ -207,10 +250,8 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n⏹️  Bootstrap interrupted by user")
+        log.info("\n\n⏹️  Bootstrap interrupted by user")
         sys.exit(0)
-    except Exception as e:
-        print(f"\n\n❌ Bootstrap failed: {e}")
-        import traceback
-        traceback.print_exc()
+    except Exception:
+        log.exception("\n\n❌ Bootstrap failed")
         sys.exit(1)
