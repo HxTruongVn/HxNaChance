@@ -7,7 +7,7 @@ khỏi layout_tab_mixin.py (cùng phụ thuộc, xem mục 4.2).
 """
 import json
 
-from print_layout import LAYOUT_PRESETS
+from layout.print_layout import LAYOUT_PRESETS
 from ui.utils import safe_float, safe_int
 
 

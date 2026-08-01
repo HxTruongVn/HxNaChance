@@ -12,7 +12,7 @@ from tkinter import filedialog, messagebox
 import customtkinter as ctk
 from PIL import Image as PILImage
 
-from print_layout import build_layout_canvas, save_layout, LAYOUT_PRESETS
+from layout.print_layout import build_layout_canvas, save_layout, LAYOUT_PRESETS
 from ui.utils import safe_float, safe_int
 
 
