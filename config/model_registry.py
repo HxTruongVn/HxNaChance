@@ -1,5 +1,5 @@
 """
-Model Registry — Giai đoạn 2 (theo docs/Plan.md).
+Model Registry — Giai đoạn 2 (theo docs/roadmap/roadmap.md).
 
 Đây CHỈ là lớp đọc/validate dữ liệu mô tả model — như một quyển từ điển
 tra cứu "capability nào đang dùng provider/adapter/weight nào", KHÔNG

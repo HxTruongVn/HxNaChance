@@ -32,7 +32,7 @@ tuỳ chọn file khổ in đã xếp sẵn nhiều ảnh, sẵn sàng gửi má
 App có thể chạy ở 2 chế độ tuỳ máy có đủ tài nguyên/model hay không —
 xem [⚡ Chạy KHÔNG cần weights (Lite Mode)](#-chạy-không-cần-weights-lite-mode)
 bên dưới. Kiến trúc nội bộ (RuntimeManager → Engine → UI) được mô tả
-chi tiết tại [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+chi tiết tại [ARCHITECTURE.md](./docs/architecture/architecture.md).
 
 ## 🚀 Cài đặt nhanh
 
@@ -58,7 +58,7 @@ python setup/debug.py
 Script này kiểm tra tất cả dependencies và weights, báo ✓/✗ rõ ràng.
 `main.py` cũng tự chạy bước này mỗi lần khởi động, trước khi mở UI.
 Xem chi tiết kiến trúc (RuntimeManager → Engine → UI) tại
-[ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+[ARCHITECTURE.md](./docs/architecture/architecture.md).
 
 ### Bước 1: Cài đặt + tải weights (nếu bootstrap chưa làm)
 
@@ -144,7 +144,7 @@ python -m pytest -q
 ```
 
 GitHub Actions (`.github/workflows/tests.yml`) chạy pytest trên mỗi push/PR.
-Chi tiết khắc phục sự cố: [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md).
+Chi tiết khắc phục sự cố: [docs/development/troubleshooting.md](./docs/development/troubleshooting.md).
 
 ## ⚡ Chạy KHÔNG cần weights (Lite Mode)
 
@@ -207,7 +207,7 @@ python main.py
 
 ## 🆘 Khắc phục sự cố
 
-Xem [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) (đầy đủ). Tóm tắt:
+Xem [docs/development/troubleshooting.md](./docs/development/troubleshooting.md) (đầy đủ). Tóm tắt:
 **App khởi động rồi tắt ngay:**
 ```bash
 python setup/debug.py      # xem thiếu gì

@@ -1,5 +1,5 @@
 """
-Test cho model_registry.py — Giai đoạn 2 (docs/Plan.md): registry chỉ
+Test cho model_registry.py — Giai đoạn 2 (docs/roadmap/roadmap.md): registry chỉ
 mô tả data (capability/provider/version/adapter/weight), không có logic
 xử lý ảnh. Test load thật, fallback khi thiếu/hỏng file, và đối chiếu
 chéo với presets/weights_sources.json.
