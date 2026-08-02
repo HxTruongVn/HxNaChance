@@ -23,6 +23,7 @@ from app.photo_agent import PhotoQAAgent
 
 from ui.widget_helpers import WidgetHelpersMixin
 from ui.theme_mixin import ThemeMixin, THEMES
+from ui.menu_bar_mixin import MenuBarMixin
 from ui.process_tab_mixin import ProcessTabMixin
 from ui.layout_tab_mixin import LayoutTabMixin
 from ui.side_panel_mixin import SidePanelMixin
@@ -35,6 +36,7 @@ class NaChanceApp(
     ctk.CTk,
     WidgetHelpersMixin,
     ThemeMixin,
+    MenuBarMixin,
     ProcessTabMixin,
     LayoutTabMixin,
     SidePanelMixin,
@@ -113,6 +115,7 @@ class NaChanceApp(
         self._orient_active = False  # dùng để chặn đổi theme khi đang xác nhận chiều ảnh
 
         self._build_title_bar()
+        self._build_menu_bar()
         self._build_main_panel()
         self._lock_unavailable_features()
         if self.is_mini:

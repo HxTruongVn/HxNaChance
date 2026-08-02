@@ -61,40 +61,26 @@ class ProcessTabMixin:
         self.color_preview.pack(side="left")
         self.entry_hex.bind("<KeyRelease>", lambda e: self._update_color_preview())
 
-        # Nâng cao ảnh (thay thế các checkbox cũ)
-        self._section_header(tab, "Nâng cao ảnh")
-        fe = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'], corner_radius=8,
-                          border_width=1, border_color=self.COLORS['border'])
-        fe.pack(fill="x", pady=(0, 10))
+        # Nâng cao ảnh — chia theo đúng nhóm capability trong
+        # config/presets/model_registry.json (face_parser/face_restorer
+        # ~ Khuôn mặt, upscaler/background_remover ~ Độ phân giải & Hậu
+        # kỳ, pose_estimator ~ Tư thế & Bố cục). Mỗi checkbox GIỮ NGUYÊN
+        # tên self.chk_xxx như cũ — chỉ đổi layout hiển thị, không đổi
+        # _get_options()/engine, không đổi hành vi.
 
-        grid = ctk.CTkFrame(fe, fg_color="transparent")
-        grid.pack(padx=10, pady=10, fill="x")
+        # --- Nhóm 1: Khuôn mặt ---
+        self._section_header(tab, "🧑 KHUÔN MẶT")
+        fe1 = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'], corner_radius=8,
+                           border_width=1, border_color=self.COLORS['border'])
+        fe1.pack(fill="x", pady=(0, 10))
+        grid1 = ctk.CTkFrame(fe1, fg_color="transparent")
+        grid1.pack(padx=10, pady=10, fill="x")
+        self.chk_face_restore = self._chk(grid1, "Face Restore", 0, 0, True)
+        self.chk_skin = self._chk(grid1, "Làm mịn da", 0, 1, True)
+        self.chk_eye = self._chk(grid1, "Sáng mắt", 1, 0, True)
+        self.chk_teeth = self._chk(grid1, "Trắng răng", 1, 1, False)
 
-        # Row 0
-        self.chk_face_restore = self._chk(grid, "Face Restore", 0, 0, True)
-        self.chk_upscale = self._chk(grid, "Upscale 2x", 0, 1, False)
-        # Row 1
-        self.chk_skin = self._chk(grid, "Làm mịn da", 1, 0, True)
-        self.chk_eye = self._chk(grid, "Sáng mắt", 1, 1, True)
-        # Row 2
-        self.chk_teeth = self._chk(grid, "Trắng răng", 2, 0, False)
-        self.chk_remove_bg = self._chk(grid, "Tách nền", 2, 1, True)
-        # Row 3
-        self.chk_validate = self._chk(grid, "Kiểm tra chuẩn", 3, 0, True)
-        self.chk_preview = self._chk(grid, "Xem trước", 3, 1, True)
-        # Row 4
-        self.chk_auto_rotate = self._chk(grid, "Tự dò hướng ảnh", 4, 0, True)
-        # FIX: nhãn cũ "Xoay ảnh thủ công" mô tả sai chức năng thật —
-        # checkbox này bật/tắt CẢ khung xác nhận trước khi xử lý (hiện
-        # ảnh + tự dò hướng + tuỳ chọn xoay tay + bỏ qua/huỷ), không
-        # phải chỉ riêng việc xoay tay. Đổi lại đúng chức năng, vẫn gọn.
-        self.chk_confirm_orientation = self._chk(grid, "Xác nhận trước khi xử lý", 4, 1, True)
-        # Row 5
-        self.chk_shoulder_warp = self._chk(
-            grid, "Cân vai", 5, 0, False)
-
-        # Face Restore Fidelity slider
-        fs = ctk.CTkFrame(fe, fg_color="transparent")
+        fs = ctk.CTkFrame(fe1, fg_color="transparent")
         fs.pack(fill="x", padx=10, pady=(0, 10))
         ctk.CTkLabel(fs, text="Fidelity (0=đẹp, 1=giữ gốc):", width=180, font=self.F_SMALL,
                       text_color=self.COLORS['text_secondary']).pack(side="left")
@@ -107,8 +93,7 @@ class ProcessTabMixin:
         self.lbl_fidelity = ctk.CTkLabel(fs, text="70%", width=35, font=self.F_SMALL)
         self.lbl_fidelity.pack(side="left")
 
-        # Skin Smooth Strength
-        fs2 = ctk.CTkFrame(fe, fg_color="transparent")
+        fs2 = ctk.CTkFrame(fe1, fg_color="transparent")
         fs2.pack(fill="x", padx=10, pady=(0, 10))
         ctk.CTkLabel(fs2, text="Mịn da:", width=60, font=self.F_SMALL,
                       text_color=self.COLORS['text_secondary']).pack(side="left")
@@ -120,6 +105,41 @@ class ProcessTabMixin:
         self.sld_skin.pack(side="left", fill="x", expand=True, padx=5)
         self.lbl_skin = ctk.CTkLabel(fs2, text="50%", width=35, font=self.F_SMALL)
         self.lbl_skin.pack(side="left")
+
+        # --- Nhóm 2: Tư thế & Bố cục ---
+        self._section_header(tab, "🧍 TƯ THẾ & BỐ CỤC")
+        fe2 = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'], corner_radius=8,
+                           border_width=1, border_color=self.COLORS['border'])
+        fe2.pack(fill="x", pady=(0, 10))
+        grid2 = ctk.CTkFrame(fe2, fg_color="transparent")
+        grid2.pack(padx=10, pady=10, fill="x")
+        self.chk_auto_rotate = self._chk(grid2, "Tự dò hướng ảnh", 0, 0, True)
+        # FIX: nhãn cũ "Xoay ảnh thủ công" mô tả sai chức năng thật —
+        # checkbox này bật/tắt CẢ khung xác nhận trước khi xử lý (hiện
+        # ảnh + tự dò hướng + tuỳ chọn xoay tay + bỏ qua/huỷ), không
+        # phải chỉ riêng việc xoay tay. Đổi lại đúng chức năng, vẫn gọn.
+        self.chk_confirm_orientation = self._chk(grid2, "Xác nhận trước khi xử lý", 0, 1, True)
+        self.chk_shoulder_warp = self._chk(grid2, "Cân vai", 1, 0, False)
+
+        # --- Nhóm 3: Độ phân giải & Hậu kỳ ---
+        self._section_header(tab, "🖼 ĐỘ PHÂN GIẢI & HẬU KỲ")
+        fe3 = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'], corner_radius=8,
+                           border_width=1, border_color=self.COLORS['border'])
+        fe3.pack(fill="x", pady=(0, 10))
+        grid3 = ctk.CTkFrame(fe3, fg_color="transparent")
+        grid3.pack(padx=10, pady=10, fill="x")
+        self.chk_upscale = self._chk(grid3, "Upscale 2x", 0, 0, False)
+        self.chk_remove_bg = self._chk(grid3, "Tách nền", 0, 1, True)
+
+        # --- Nhóm 4: Kiểm tra & An toàn ---
+        self._section_header(tab, "✅ KIỂM TRA & AN TOÀN")
+        fe4 = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'], corner_radius=8,
+                           border_width=1, border_color=self.COLORS['border'])
+        fe4.pack(fill="x", pady=(0, 10))
+        grid4 = ctk.CTkFrame(fe4, fg_color="transparent")
+        grid4.pack(padx=10, pady=10, fill="x")
+        self.chk_validate = self._chk(grid4, "Kiểm tra chuẩn", 0, 0, True)
+        self.chk_preview = self._chk(grid4, "Xem trước", 0, 1, True)
 
         # Advanced
         self.btn_adv = ctk.CTkButton(tab, text="⚙ Cài đặt nâng cao ▼",

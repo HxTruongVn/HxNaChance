@@ -93,6 +93,7 @@ class ThemeMixin:
             child.destroy()
 
         self.configure(fg_color=self.COLORS['bg_dark'])
+        self._build_menu_bar()
         self._build_title_bar()
         self._build_main_panel()
         self._lock_unavailable_features()
