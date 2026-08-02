@@ -770,7 +770,7 @@ HuggingFace
 GitHub
 Mirror
 
-Có fallback và retry.
+Có fallback, retry và resume (tải dở bị đứt thì tiếp tục, không tải lại từ đầu).
 
 Giai đoạn 7 — Xây Compatibility Engine
 
@@ -805,6 +805,8 @@ Load Test
 Install
 ↓
 Manifest
+
+Nếu Checksum sai: Xoá → Tải lại (không cài file nghi hỏng).
 Giai đoạn 9 — Tách Runtime
 
 Runtime chỉ:
@@ -918,3 +920,120 @@ Pipeline không phụ thuộc vào model cụ thể.
 Setup có thể thông minh và linh hoạt, nhưng Runtime phải ổn định và độc lập.
 
 Theo mình, đây là hướng phù hợp nhất cho repo pipeline hiện tại. Không nên viết lại toàn bộ từ đầu. Nên giữ photo_engine.py, print_layout.py và UI hiện có, sau đó rút dần phần hard-code model ra thành Model Registry → Model Manager → Adapter → Capability. BiSeNet nên là model đầu tiên được tách ra để làm mẫu kiến trúc; sau khi BiSeNet chạy qua lớp Adapter ổn định thì áp dụng cùng mô hình cho CodeFormer, Real-ESRGAN và ISNet.
+
+Ví dụ Capability không phụ thuộc model cụ thể: Restore → CodeFormer hoặc GFPGAN; Inpainting (bù vùng ảnh mở rộng khi mở khung/canvas) → LaMa hoặc MAT. NaChance chỉ cần biết "Inpainting", không cần biết đang chạy model nào — đúng nguyên tắc Capability ở trên. Hiện `layout/print_layout.py` đã có `inpaint_extend_cv2()` dùng OpenCV cổ điển (`cv2.INPAINT_TELEA`) cho việc này — chưa phải model AI, nhưng đã hoạt động, giữ làm fallback khi/nếu thêm model LaMa/MAT thật sau này.
+
+21. Giai đoạn 11 — Document & Pipeline Composition
+
+Điều kiện tiên quyết: Giai đoạn 3-5 đã xong (mọi model gọi được qua Adapter thống nhất — không có Adapter thì không tổ hợp an toàn được).
+
+Mục tiêu:
+
+Chạy 1 capability riêng lẻ
+↓
+Hoặc tự sắp thứ tự nhiều capability
+↓
+Thành 1 pipeline tuỳ chỉnh
+
+Không còn cố định:
+
+Upscale → Face Restore
+
+Tạo:
+
+Document
+↓
+1 ảnh + danh sách PipelineStep đã áp dụng (thứ tự, capability, tham số, kết quả)
+↓
+Con trỏ vị trí hiện tại trong danh sách
+
+PipelineComposer
+↓
+Nhận danh sách capability theo thứ tự tuỳ chọn
+↓
+Gọi ModelManager.get(capability) cho từng bước
+↓
+Thay cho đoạn code cứng hiện tại trong engine.py
+
+Undo / Redo:
+
+Lùi/tiến con trỏ Document 1 bước
+↓
+Hiển thị lại kết quả tại bước đó
+
+(không phải undo từng pixel như Photoshop — undo theo bước xử lý, mỗi bước là 1 lần gọi capability)
+
+Vấn đề cần quyết định trước khi code, chưa chốt:
+
+Lưu trạng thái từng bước bằng cách nào —
+RAM (nhanh, tốn bộ nhớ khi batch nhiều ảnh + nhiều bước)
+hoặc
+File tạm (chậm hơn, không phụ thuộc RAM khi batch)
+
+Nguyên tắc: Pipeline mặc định (tự động hoàn toàn, dùng cho tiệm ảnh) vẫn giữ nguyên hành vi cũ. Document/PipelineComposer là lớp bổ sung, không thay thế — người dùng không tự tổ hợp pipeline vẫn dùng app y như trước.
+
+22. Giai đoạn 12 — License Manager
+
+> Hợp nhất từ `docs/architecture/model_management.md` (đã archive —
+> xem `docs/archive/model_management.md`) — tài liệu đó tự đánh số
+> "Giai đoạn 1-12" riêng, trùng số với chính roadmap này nhưng khác nội
+> dung. Phần nào trùng ý đã gộp vào Giai đoạn 2/6/8 ở trên; phần dưới
+> đây là nội dung mới, không có ở Giai đoạn nào trước đó.
+
+Mỗi model đăng ký trong Model Registry (Giai đoạn 2) có thêm metadata:
+
+Tên
+License (VD: Apache-2.0)
+Nguồn
+Tác giả
+Commercial: Yes/No
+Redistribution: Allowed/Not allowed
+
+Người dùng xem được điều kiện license **trước khi tải**, không phải sau khi đã dùng.
+
+23. Giai đoạn 13 — Plugin Architecture
+
+Sau khi Giai đoạn 3-5 (Model Manager + Adapter) ổn định:
+
+Photo Engine
+↓
+Plugin
+↓
+Model
+
+Cấu trúc:
+
+plugins/
+    restore/
+    upscale/
+    inpainting/
+    segmentation/
+
+Thêm model mới = thêm 1 plugin — không sửa lõi Photo Engine (đúng tiêu chí "Thêm model" đã nêu ở mục 19).
+
+24. Giai đoạn 14 — Auto Update
+
+Kiểm tra:
+
+Current Version
+↓
+Latest Version
+↓
+Hỏi người dùng
+↓
+Cập nhật (nếu đồng ý)
+
+Không tự động cập nhật ngầm — luôn hỏi trước.
+
+25. Giai đoạn 15 — Diagnostics
+
+1 màn hình "Model Health", đọc từ Manifest (Giai đoạn 8) + Runtime (Giai đoạn 9):
+
+✔ Installed
+✔ Version
+✔ SHA256
+✔ License
+✔ GPU Compatible
+✔ Runtime OK
+
+Cùng tinh thần với mục 19 "Tiêu chí hoàn thành" — Diagnostics là nơi hiển thị trực quan các tiêu chí đó cho người dùng cuối, không phải khái niệm mới.

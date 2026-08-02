@@ -1,3 +1,11 @@
+> **Đã archive** — nội dung đã được hợp nhất vào
+> `docs/roadmap/roadmap.md` (Giai đoạn 12-15, cộng bổ sung nhỏ vào
+> Giai đoạn 2/6/8) để tránh 2 tài liệu cùng đánh số "Giai đoạn 1-N"
+> nhưng khác nội dung. Giữ nguyên văn bản gốc dưới đây để tham khảo
+> lịch sử — không phải nguồn cập nhật, xem `roadmap.md` cho bản mới nhất.
+
+---
+
 AI Model Management Roadmap
 Giai đoạn 1 – Tách ứng dụng và AI Models ⭐⭐⭐⭐⭐
 

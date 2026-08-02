@@ -13,7 +13,7 @@
 - [command_system.md](architecture/command_system.md) — thanh menu & nền tảng cho CLI
 - [setup.md](architecture/setup.md) — package `setup/` *(chưa viết)*
 - [photo_engine.md](architecture/photo_engine.md) — package `photo_engine/` *(chưa viết)*
-- [document_manager.md](architecture/document_manager.md) — *(chưa rõ phạm vi, cần xác nhận)*
+- [document_manager.md](architecture/document_manager.md) — Document & Pipeline Composition (kế hoạch, Giai đoạn 11)
 
 ## 🔧 Phát triển (`development/`)
 - [conventions.md](development/conventions.md) — quy ước code
@@ -22,7 +22,7 @@
 - [testing.md](development/testing.md) — cách chạy test *(chưa viết)*
 
 ## 🗺 Kế hoạch (`roadmap/`)
-- [roadmap.md](roadmap/roadmap.md) — kế hoạch tổng (Model Manager, Giai đoạn 1-N)
+- [roadmap.md](roadmap/roadmap.md) — kế hoạch tổng, Giai đoạn 1-15 (đã hợp nhất `docs/archive/model_management.md` vào Giai đoạn 12-15, tránh trùng số)
 - [model_manager_plan.md](roadmap/model_manager_plan.md) — chi tiết Bước 7-9 (Model Manager, chưa làm)
 - [action_items.md](roadmap/action_items.md) — danh sách việc cần làm đã hiệu đính
 - [milestones.md](roadmap/milestones.md) — mốc release *(chưa viết)*
