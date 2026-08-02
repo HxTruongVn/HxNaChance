@@ -8,6 +8,7 @@ khỏi layout_tab_mixin.py (cùng phụ thuộc, xem mục 4.2).
 import json
 
 from layout.print_layout import LAYOUT_PRESETS
+from photo_engine import SPEC_PRESETS
 from ui.utils import safe_float, safe_int
 
 
@@ -20,6 +21,49 @@ class ConfigMixin:
                 self.save_dir = cfg.get("save_dir", self.save_dir)
                 if hasattr(self, "lbl_save_dir"):
                     self.lbl_save_dir.configure(text=self.save_dir)
+
+                # Tab "Xử lý ảnh" — trước đây CHỈ save_dir/theme/layout được
+                # nhớ giữa các lần mở app, mọi checkbox/slider/preset ở tab
+                # Xử lý ảnh reset về mặc định code mỗi lần khởi động lại.
+                pc = cfg.get("process", {})
+                if "preset" in pc and hasattr(self, "combo_preset") and pc["preset"] in SPEC_PRESETS:
+                    self.combo_preset.set(pc["preset"])
+                    self._update_preset_info()  # set() không tự bắn command=, phải gọi tay
+                if "bg_mode" in pc and hasattr(self, "bg_mode"):
+                    self.bg_mode.set(pc["bg_mode"])
+                    self._on_bg_change(pc["bg_mode"])  # tương tự — cần để hiện/ẩn ô HEX tuỳ chỉnh
+                if "bg_hex" in pc and hasattr(self, "entry_hex"):
+                    self.entry_hex.delete(0, "end")
+                    self.entry_hex.insert(0, pc["bg_hex"])
+                    self._update_color_preview()
+
+                def _restore_chk(attr, val):
+                    if hasattr(self, attr) and val is not None:
+                        (getattr(self, attr).select() if val else getattr(self, attr).deselect())
+
+                def _restore_slider(attr, val):
+                    if hasattr(self, attr) and val is not None:
+                        getattr(self, attr).set(val)
+
+                opts = pc.get("options", {})
+                _restore_chk("chk_face_restore", opts.get("face_restore"))
+                _restore_chk("chk_upscale", opts.get("upscale"))
+                _restore_chk("chk_skin", opts.get("skin_smooth"))
+                _restore_chk("chk_eye", opts.get("eye_enhance"))
+                _restore_chk("chk_teeth", opts.get("teeth_whiten"))
+                _restore_chk("chk_remove_bg", opts.get("remove_bg"))
+                _restore_chk("chk_shoulder_warp", opts.get("shoulder_warp"))
+                _restore_chk("chk_auto_rotate", opts.get("auto_rotate_detect"))
+                _restore_chk("chk_confirm_orientation", opts.get("confirm_orientation"))
+                _restore_chk("chk_validate", opts.get("validate"))
+                _restore_chk("chk_preview", opts.get("preview"))
+                _restore_slider("sld_fidelity", opts.get("fidelity"))
+                if hasattr(self, "lbl_fidelity") and opts.get("fidelity") is not None:
+                    self.lbl_fidelity.configure(text=f"{int(opts['fidelity'])}%")
+                _restore_slider("sld_skin", opts.get("skin_strength"))
+                if hasattr(self, "lbl_skin") and opts.get("skin_strength") is not None:
+                    self.lbl_skin.configure(text=f"{int(opts['skin_strength'])}%")
+
                 lc = cfg.get("layout", {})
                 for key in ("vungInW", "vungInH", "marginLeft", "marginRight",
                             "marginTop", "marginBottom", "gapY", "res"):
@@ -61,6 +105,38 @@ class ConfigMixin:
 
     def _save_config(self):
         try:
+            # Tab "Xử lý ảnh" — dùng CHUNG self._get_options() (nguồn dữ
+            # liệu thật engine đọc) thay vì liệt kê lại từng self.chk_xxx
+            # ở đây — tránh 2 danh sách lệch nhau nếu sau này thêm/bớt
+            # tuỳ chọn mà quên cập nhật 1 trong 2 chỗ.
+            pc = {}
+            if hasattr(self, "_get_options"):
+                opts = self._get_options()
+                pc = {
+                    "preset": self.combo_preset.get() if hasattr(self, "combo_preset") else None,
+                    "bg_mode": self.bg_mode.get() if hasattr(self, "bg_mode") else None,
+                    "bg_hex": self.entry_hex.get() if hasattr(self, "entry_hex") else None,
+                    "options": {
+                        "face_restore": opts.get("face_restore"),
+                        "fidelity": round(opts.get("face_restore_fidelity", 0.7) * 100),
+                        "upscale": opts.get("upscale"),
+                        "skin_smooth": opts.get("skin_smooth"),
+                        "skin_strength": round(opts.get("skin_strength", 0.5) * 100),
+                        "eye_enhance": opts.get("eye_enhance"),
+                        "teeth_whiten": opts.get("teeth_whiten"),
+                        "remove_bg": opts.get("remove_bg"),
+                        "validate": opts.get("validate"),
+                        "preview": opts.get("preview"),
+                        "auto_rotate_detect": opts.get("auto_rotate_detect"),
+                        "shoulder_warp": opts.get("shoulder_warp"),
+                        # _get_options() không có confirm_orientation (đọc
+                        # riêng lúc chọn file, không phải tham số engine) —
+                        # lưu thêm riêng ở đây để nhớ đúng cả lựa chọn này.
+                        "confirm_orientation": self.chk_confirm_orientation.get()
+                        if hasattr(self, "chk_confirm_orientation") else None,
+                    },
+                }
+
             presets = {}
             if hasattr(self, "layout_preset_vars"):
                 for key, v in self.layout_preset_vars.items():
@@ -88,7 +164,8 @@ class ConfigMixin:
                 "presets": presets,
             }
             with open(self.config_path, "w", encoding="utf-8") as f:
-                json.dump({"save_dir": self.save_dir, "theme": self.theme_name, "layout": lc},
+                json.dump({"save_dir": self.save_dir, "theme": self.theme_name,
+                           "process": pc, "layout": lc},
                           f, ensure_ascii=False)
         except Exception:
             pass
