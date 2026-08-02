@@ -23,7 +23,7 @@ Nguyên tắc Bootstrap:
 - Không chứa logic cài đặt — chỉ gọi setup/installer.py
 - Kiểm tra trạng thái môi trường, quyết định hành động tiếp theo
 
-Roadmap mở rộng (khi đóng gói .exe — xem docs/tài liệu định hướng.md):
+Roadmap mở rộng (khi đóng gói .exe — xem docs/architecture/bootstrap.md):
 đã có kiểm tra môi trường + ghi log khởi động; còn thiếu UI tiến trình
 thật (progress bar, quan trọng vì .exe --windowed không có console),
 tự sửa lỗi môi trường sâu hơn, kiểm tra/so sánh version, chế độ cập nhật.
