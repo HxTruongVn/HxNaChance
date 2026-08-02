@@ -71,23 +71,27 @@ class ProcessTabMixin:
         grid.pack(padx=10, pady=10, fill="x")
 
         # Row 0
-        self.chk_face_restore = self._chk(grid, "Face Restore ", 0, 0, True)
-        self.chk_upscale = self._chk(grid, "Upscale 2x ", 0, 1, False)
+        self.chk_face_restore = self._chk(grid, "Face Restore", 0, 0, True)
+        self.chk_upscale = self._chk(grid, "Upscale 2x", 0, 1, False)
         # Row 1
-        self.chk_skin = self._chk(grid, "Làm mịn da ", 1, 0, True)
-        self.chk_eye = self._chk(grid, "Sáng mắt ", 1, 1, True)
+        self.chk_skin = self._chk(grid, "Làm mịn da", 1, 0, True)
+        self.chk_eye = self._chk(grid, "Sáng mắt", 1, 1, True)
         # Row 2
         self.chk_teeth = self._chk(grid, "Trắng răng", 2, 0, False)
-        self.chk_remove_bg = self._chk(grid, "Tách nền ", 2, 1, True)
+        self.chk_remove_bg = self._chk(grid, "Tách nền", 2, 1, True)
         # Row 3
         self.chk_validate = self._chk(grid, "Kiểm tra chuẩn", 3, 0, True)
         self.chk_preview = self._chk(grid, "Xem trước", 3, 1, True)
         # Row 4
-        self.chk_auto_rotate = self._chk(grid, "Tự dò hướng ảnh ", 4, 0, True)
-        self.chk_confirm_orientation = self._chk(grid, "Xoay ảnh thủ công", 4, 1, True)
+        self.chk_auto_rotate = self._chk(grid, "Tự dò hướng ảnh", 4, 0, True)
+        # FIX: nhãn cũ "Xoay ảnh thủ công" mô tả sai chức năng thật —
+        # checkbox này bật/tắt CẢ khung xác nhận trước khi xử lý (hiện
+        # ảnh + tự dò hướng + tuỳ chọn xoay tay + bỏ qua/huỷ), không
+        # phải chỉ riêng việc xoay tay. Đổi lại đúng chức năng, vẫn gọn.
+        self.chk_confirm_orientation = self._chk(grid, "Xác nhận trước khi xử lý", 4, 1, True)
         # Row 5
         self.chk_shoulder_warp = self._chk(
-            grid, "Cân vai ", 5, 0, False)
+            grid, "Cân vai", 5, 0, False)
 
         # Face Restore Fidelity slider
         fs = ctk.CTkFrame(fe, fg_color="transparent")
@@ -273,6 +277,7 @@ class ProcessTabMixin:
 
     def _get_spec(self):
         preset_name = self.combo_preset.get()
+        # FIX: trước đây fallback cứng "13x18 (In ấn)" — tên preset này
         # đã bị đổi thành "13x18" (xem SPEC_PRESETS), nên dòng cũ sẽ
         # KeyError ngay khi preset_name không khớp gì trong dict. Dùng
         # DEFAULT_PRESET_NAME (đảm bảo luôn tồn tại trong SPEC_PRESETS,
