@@ -10,17 +10,22 @@ logic dò riêng, dễ lệch với engine thực tế theo thời gian).
 """
 
 import sys
-import os
+from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# FIX: dòng cũ chỉ đưa setup/ (thư mục chứa chính file này) vào
+# sys.path — không đủ để import tương đối hoạt động (import tương đối
+# cần "parent package" thật, không phải sys.path). Cũng như
+# setup_models.py: đưa PROJECT ROOT vào sys.path rồi dùng import
+# tuyệt đối `from setup.xxx import ...`.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Cùng lý do với main.py: tự chuyển vào .venv/ nếu đã có, tránh chạy
 # nhầm bằng Python hệ thống khi người dùng quên activate.
-from .venv_bootstrap import reexec_into_venv_if_exists
+from setup.venv_bootstrap import reexec_into_venv_if_exists
 reexec_into_venv_if_exists(__file__)
 
 try:
-    from .runtime_manager import RuntimeManager
+    from setup.runtime_manager import RuntimeManager
 except Exception as e:
     print("LỖI: không import được runtime_manager.py")
     print(f"  {e}")

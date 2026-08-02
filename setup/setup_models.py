@@ -23,7 +23,15 @@ import sys
 import subprocess
 from pathlib import Path
 
-from .venv_bootstrap import PROJECT_ROOT, VENV_DIR, in_venv, ensure_venv_and_reexec
+# FIX: import tương đối (from .venv_bootstrap) chỉ hoạt động khi file
+# này được import NHƯ MỘT PHẦN của package setup (qua bootstrap.py).
+# README lại hướng dẫn chạy trực tiếp `python setup/setup_models.py`
+# — lúc đó Python không có "parent package", import tương đối crash
+# ngay dòng đầu (ImportError: attempted relative import with no known
+# parent package). Thêm project root vào sys.path rồi dùng import
+# tuyệt đối, đúng pattern đã dùng ở app/main.py.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from setup.venv_bootstrap import PROJECT_ROOT, VENV_DIR, in_venv, ensure_venv_and_reexec
 
 WEIGHTS_DIR = PROJECT_ROOT / "weights"
 WEIGHTS_DIR.mkdir(exist_ok=True)
