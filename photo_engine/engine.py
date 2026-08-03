@@ -142,7 +142,7 @@ class NaChanceEngine:
         print(f"[Engine] CodeFormer: {'✓' if self.codeformer.available else '✗'}")
         print(f"[Engine] RealESRGAN: {'✓' if self.upscaler.available else '✗'}")
         print(f"[Engine] MediaPipe:  {'✓' if self.face_analyzer is not None else '✗'}")
-        print(f"[Engine] rembg:      {'✓' if self.bg_processor is not None else '✗'}")
+        print(f"[Engine] rembg:      {'✓' if (self.bg_processor and self.bg_processor.available) else '✗'}")
         print(f"[Engine] Shoulder:   {'✓' if self.shoulder_analyzer.available else '✗ (chưa có pose_landmarker_lite.task — chạy setup_models.py để tải)'}")
 
     def process(self, image_path: str, spec: PhotoSpec,

@@ -49,6 +49,20 @@ Ghi nhận để không lặp lại việc đã có, và để bản danh sách 
   thường; test riêng trường hợp checkpoint có numpy array lạ để xác
   nhận đường fallback cũng hoạt động đúng (log cảnh báo + vẫn load
   được, không crash cứng).
+- **`BackgroundProcessor` thiếu `self.available`** — phát hiện lúc audit
+  toàn bộ tính năng (không nằm trong danh sách gốc): khác 3 processor
+  kia (CodeFormerRestorer/RealESRGANUpscaler/FaceParsingProcessor đều
+  tự test import lúc khởi tạo), lớp này không có `.available` — cơ chế
+  khoá checkbox trong UI (`avail()` ở `app/main_ui.py`, mặc định `True`
+  khi thiếu `.available`) luôn coi "Tách nền" sẵn sàng dù rembg chưa
+  cài. Đã test THẬT trước khi sửa: `remove_background()` crash
+  `ModuleNotFoundError` giữa chừng khi dùng — `engine.process()` bắt
+  lỗi nên không sập app, nhưng người dùng nhận ảnh KHÔNG tách nền mà
+  không có cảnh báo trước khi bấm xử lý. Đã sửa + verify qua Xvfb:
+  checkbox tự khoá đúng, banner console báo `rembg: ✗` chính xác (trước
+  đây luôn báo `✓`). Thêm `tests/test_bg_processor.py` (3 test, dùng
+  monkeypatch mô phỏng thiếu rembg — đúng cả khi máy chạy test có cài
+  rembg thật hay không).
 
 ---
 

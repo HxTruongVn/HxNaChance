@@ -11,6 +11,22 @@ class BackgroundProcessor:
     def __init__(self, model_name: str = "isnet-general-use"):
         self.model_name = model_name
         self._session = None
+        # FIX: các processor khác (CodeFormerRestorer, RealESRGANUpscaler,
+        # FaceParsingProcessor) đều tự test import lúc khởi tạo, có cờ
+        # self.available — lớp này trước đây KHÔNG có, khiến cơ chế khoá
+        # checkbox trong UI (avail() ở app/main_ui.py, mặc định True khi
+        # thiếu .available) luôn coi "Tách nền" là sẵn sàng dù rembg chưa
+        # cài. Hậu quả thật đã test: người dùng tick chọn, xử lý xong nhận
+        # ảnh KHÔNG tách nền (remove_background() lỗi ModuleNotFoundError
+        # giữa chừng, engine.process() bắt lỗi rồi âm thầm bỏ qua bước
+        # này) mà không có cảnh báo trước khi bắt đầu xử lý.
+        self.available = False
+        try:
+            import rembg  # noqa: F401 — chỉ test import, chưa tạo session (session nặng hơn, để lazy ở _ensure_session)
+            self.available = True
+        except ImportError as e:
+            print(f"[Background] ⚠ rembg chưa cài: {e}")
+            print("  Chạy: pip install rembg")
 
     def _ensure_session(self):
         if self._session is None:
@@ -23,6 +39,8 @@ class BackgroundProcessor:
                 self._session = new_session("u2net")
 
     def remove_background(self, image_bgr: np.ndarray) -> np.ndarray:
+        if not self.available:
+            return image_bgr
         from PIL import Image
         from rembg import remove
         pil_img = Image.fromarray(cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB))
