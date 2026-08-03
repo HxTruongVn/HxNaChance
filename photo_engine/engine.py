@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
 from photo_engine.utils import _ensure_rgb, _imread_unicode
 from photo_engine.spec import PhotoSpec
+from config.model_manager import ModelManager
 from photo_engine.processors.face_parser import FaceParsingProcessor
 from photo_engine.processors.face_restorer import CodeFormerRestorer
 from photo_engine.processors.upscaler import RealESRGANUpscaler
@@ -61,6 +62,17 @@ class NaChanceEngine:
                 pass
 
         wdir = Path(weights_dir)
+        # Giai đoạn 3 (docs/roadmap/roadmap.md) + P1 #3 (action_items.md):
+        # tên file weight giờ tra qua ModelManager -> Registry
+        # (config/presets/model_registry.json), không ghi cứng chuỗi
+        # "79999_iter.pth"/"codeformer.pth"/"RealESRGAN_x2plus.pth" trực
+        # tiếp ở đây nữa — đúng nguyên tắc "Metadata quan trọng hơn
+        # Hard-code" của Vision. Đổi weight/provider sau này chỉ cần sửa
+        # JSON, không đụng file này. mm.weight_path() trả None nếu
+        # capability không có trong registry — str(None) = "None" khiến
+        # os.path.exists("None") trả False, processor tự báo "không tìm
+        # thấy weights" như bình thường, không silent-fail khác lạ.
+        mm = ModelManager(wdir)
 
         def _safe_init(label, factory):
             """Mỗi processor tự đứng riêng — nếu 1 cái khởi tạo lỗi
@@ -77,20 +89,29 @@ class NaChanceEngine:
 
         # Lazy init: chỉ tạo object, không load weights ngay
         self.face_parser = _safe_init(
-            "FaceParser", lambda: FaceParsingProcessor(str(wdir / "79999_iter.pth"), device=self.device))
+            "FaceParser", lambda: FaceParsingProcessor(str(mm.weight_path("face_parser")), device=self.device))
         self.codeformer = _safe_init(
-            "CodeFormer", lambda: CodeFormerRestorer(str(wdir / "codeformer.pth"), device=self.device))
+            "CodeFormer", lambda: CodeFormerRestorer(str(mm.weight_path("face_restorer")), device=self.device))
         self.upscaler = _safe_init(
-            "RealESRGAN", lambda: RealESRGANUpscaler(str(wdir / "RealESRGAN_x2plus.pth"), device=self.device))
+            "RealESRGAN", lambda: RealESRGANUpscaler(str(mm.weight_path("upscaler")), device=self.device))
         self.enhancer = _safe_init(
             "SmartEnhancer",
             lambda: SmartEnhancer(self.face_parser if (self.face_parser and self.face_parser.available) else None))
         self.face_analyzer = _safe_init("FaceAnalyzer (MediaPipe)", lambda: FaceAnalyzer())
+        # BackgroundProcessor CHƯA qua ModelManager: tham số nó nhận là
+        # model_name (tên session rembg tự quản lý cache), không phải
+        # đường dẫn file weight trong wdir — rembg tự tải/cache riêng
+        # ngoài weights_dir của project (registry vẫn khai
+        # "isnet-general-use.onnx" cho mục đích tham chiếu/đối chiếu
+        # metadata, nhưng giá trị đó không dùng được trực tiếp ở đây).
         self.bg_processor = _safe_init(
             "BackgroundProcessor", lambda: BackgroundProcessor(model_name="isnet-general-use"))
         self.transformer = _safe_init("PhotoTransformer", lambda: PhotoTransformer())
         # ShoulderAnalyzer: tiện ích thêm — lazy-load, chỉ chạy khi
-        # options['shoulder_warp']=True VÀ model đã download.
+        # options['shoulder_warp']=True VÀ model đã download. CHƯA qua
+        # ModelManager: constructor nhận nguyên weights_dir (tự nối tên
+        # file MODEL_FILE bên trong class), không nhận 1 đường dẫn file
+        # đơn lẻ như 3 loại phía trên.
         self.shoulder_analyzer = _safe_init(
             "ShoulderAnalyzer", lambda: ShoulderAnalyzer(wdir))
 

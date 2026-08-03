@@ -65,7 +65,33 @@ Ghi nhận để không lặp lại việc đã có, và để bản danh sách 
 
 ## 🟡 P1 — Việc nhiều bước thật sự, cần test kỹ trước khi merge
 
-### 3. Tích hợp Model Manager — engine gọi qua registry, không hardcode path
+### 3. ✅ Tích hợp Model Manager — engine gọi qua registry, không hardcode path
+
+**Đã xong.** Thêm `config/model_manager.py` — `ModelManager.weight_path(capability)`
+tra `config/model_registry.py` ra đúng tên file, trả `Path` đầy đủ
+trong `weights_dir`. Phạm vi CHỦ ĐÍCH HẸP đúng ghi chú dưới đây: chỉ
+3/5 capability (`face_parser`, `face_restorer`, `upscaler`) đi qua
+`ModelManager` vì đây là 3 loại constructor nhận thẳng `weights_path: str`;
+`background_remover` (nhận `model_name`, không phải path — rembg tự
+tải/cache riêng ngoài `weights_dir`) và `pose_estimator`
+(`ShoulderAnalyzer` nhận nguyên `weights_dir`, tự nối tên file bên
+trong) vẫn khởi tạo trực tiếp như cũ, có ghi rõ lý do tại chỗ gọi trong
+`engine.py`.
+
+`photo_engine/engine.py` không còn ghi cứng `"79999_iter.pth"`/
+`"codeformer.pth"`/`"RealESRGAN_x2plus.pth"` — đổi weight/provider sau
+này chỉ cần sửa `config/presets/model_registry.json`.
+
+Đã verify bằng chứng minh tương đương (không chỉ đọc code): so sánh
+trực tiếp path resolve qua `ModelManager` với path hardcode cũ — khớp
+100% ký tự; khởi tạo `CodeFormerRestorer`/`RealESRGANUpscaler` qua
+đường mới, so `.weights_path` (thuộc tính thật lưu lại) với bản
+hardcode — khớp đúng. Thêm `tests/test_model_manager.py` (6 test) bảo
+vệ tương đương này về lâu dài. Test thật qua Xvfb: `NaChanceApp()` khởi
+tạo đúng, `engine.face_parser`/`codeformer`/`upscaler` đều là instance
+thật, không lỗi.
+
+**Bên dưới giữ lại làm hồ sơ tham chiếu (mô tả gốc trước khi làm):**
 
 **File liên quan (đúng theo cấu trúc hiện tại)**: `config/model_registry.py`
 (đã có, chỉ đọc/validate — chưa bị dùng ở đâu, đúng nghĩa dead code) +
@@ -141,10 +167,10 @@ ghi app này **target Windows** — CI hiện tại không kiểm chứng đúng
 tảng người dùng thật sự chạy. Thêm `windows-latest` vào matrix trước
 khi coi CI là đủ tin cậy, không chỉ thêm nhiều OS cho có.
 
-### 11. Kích hoạt `config/model_registry.py` (sẽ tự hết dead code khi làm #3)
+### 11. ✅ Kích hoạt `config/model_registry.py` (tự hết dead code khi làm #3)
 
-Không phải việc riêng — làm xong #3 thì mục này tự động giải quyết,
-không cần thêm task riêng biệt.
+Đã tự giải quyết khi làm xong #3 — `config/model_manager.py` gọi
+`config/model_registry.py` thật, không còn là dead code.
 
 ---
 
