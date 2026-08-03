@@ -2,6 +2,7 @@
 import os
 import numpy as np
 import cv2
+from photo_engine.utils import _torch_load_safe
 
 # ------------------------------------------------------------------
 # 3. CODEFORMER WRAPPER (lazy import)
@@ -55,7 +56,7 @@ class CodeFormerRestorer:
                     dim_embd=512, codebook_size=1024, n_head=8, n_layers=9,
                     connect_list=["32", "64", "128", "256"],
                 ).to(self.device)
-                ckpt = torch.load(self.weights_path, map_location=self.device, weights_only=False)["params_ema"]
+                ckpt = _torch_load_safe(torch, self.weights_path, self.device, "[CodeFormer]")["params_ema"]
                 self.net.load_state_dict(ckpt)
                 self.net.eval()
 

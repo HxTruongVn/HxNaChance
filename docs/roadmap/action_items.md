@@ -36,10 +36,25 @@ Ghi nhận để không lặp lại việc đã có, và để bản danh sách 
 - **`weights_sources.json` đã có đủ `pose_landmarker_lite.task`** — mục
   này trong bản đánh giá gốc ghi sai (nói thiếu), thực tế đã đầy đủ
   size/optional/comment/2 nguồn tải.
+- **P0 #1+#2: `weights_only=True`** ở `photo_engine/processors/face_parser.py`
+  và `face_restorer.py` — thêm `_torch_load_safe()` dùng chung (đặt ở
+  `photo_engine/utils.py`, nhận `torch` module qua tham số thay vì
+  import top-level, giữ đúng nguyên tắc lazy-import): thử
+  `weights_only=True` trước, chỉ fallback `False` khi checkpoint có
+  object khác Tensor thuần, kèm log cảnh báo RÕ RÀNG (không lùi âm
+  thầm). Đã verify thật bằng cách cài torch, tạo checkpoint giả lập
+  đúng 2 cấu trúc thật (BiSeNet: dict phẳng {str: Tensor} có prefix
+  "module."; CodeFormer: dict có key "params_ema") — cả 2 load thành
+  công với `weights_only=True`, không cần fallback ở trường hợp bình
+  thường; test riêng trường hợp checkpoint có numpy array lạ để xác
+  nhận đường fallback cũng hoạt động đúng (log cảnh báo + vẫn load
+  được, không crash cứng).
 
 ---
 
 ## 🔴 P0 — Sửa ngay, việc nhỏ, không cần bàn thêm
+
+✅ **Đã xong** (xem mục ở trên) — giữ bảng lại làm hồ sơ tham chiếu.
 
 | # | Việc | File | Ghi chú |
 |---|---|---|---|

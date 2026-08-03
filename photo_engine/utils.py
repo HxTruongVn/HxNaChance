@@ -39,3 +39,29 @@ def _imread_unicode(path: str) -> np.ndarray:
             return None
 
 
+def _torch_load_safe(torch_module, weights_path: str, device, log_prefix: str):
+    """torch.load() với weights_only=True làm mặc định (an toàn — chặn
+    thực thi code tuỳ ý nếu file .pth bị thay đổi/nhiễm độc, đúng
+    khuyến nghị bảo mật của PyTorch từ 2.6+). torch_module truyền vào
+    thay vì import torch ở top-level file này, giữ đúng nguyên tắc lazy
+    import đã dùng xuyên suốt codebase (utils.py phải nhẹ, không ép
+    cài torch chỉ để dùng _ensure_rgb/_imread_unicode).
+
+    Một số checkpoint HỢP LỆ (không độc hại) có thể chứa object khác
+    Tensor thuần (numpy array, config object...) mà weights_only=True
+    từ chối load — KHÔNG lùi về weights_only=False ÂM THẦM (mất hết ý
+    nghĩa bảo mật), mà báo lỗi RÕ RÀNG ra console trước, để người
+    dùng/dev tự quyết định có tin file đó không, đúng hướng dẫn đã ghi
+    trong action_items.md: dùng torch.serialization.add_safe_globals([...])
+    khai đúng class cần thiết, không phải tắt hẳn kiểm tra."""
+    try:
+        return torch_module.load(weights_path, map_location=device, weights_only=True)
+    except Exception as e:
+        print(f"{log_prefix} ⚠ weights_only=True thất bại ({type(e).__name__}: {e})")
+        print(f"{log_prefix} ⚠ File checkpoint có object khác Tensor thuần — nếu BẠN TỰ TIN "
+              f"file này (tải từ nguồn chính thức, không bị chỉnh sửa), có thể khai rõ class "
+              f"qua torch.serialization.add_safe_globals([...]) thay vì tắt hẳn kiểm tra. "
+              f"Đang thử lại với weights_only=False (ít an toàn hơn) để không chặn hẳn tính năng...")
+        return torch_module.load(weights_path, map_location=device, weights_only=False)
+
+

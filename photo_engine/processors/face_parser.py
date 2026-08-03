@@ -5,6 +5,7 @@ import numpy as np
 import cv2
 from pathlib import Path
 from typing import Optional, List
+from photo_engine.utils import _torch_load_safe
 
 # ------------------------------------------------------------------
 # 1. BISENET FACE PARSING (self-contained, lazy torch import)
@@ -245,7 +246,7 @@ class FaceParsingProcessor:
 
         try:
             self.net = _build_bisenet()
-            state = torch.load(weights_path, map_location=device, weights_only=False)
+            state = _torch_load_safe(torch, weights_path, device, "[FaceParsing]")
             # Fix: weights từ DataParallel có tiền tố 'module.'
             if isinstance(state, dict):
                 new_state = {}
