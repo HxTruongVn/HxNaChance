@@ -1,5 +1,7 @@
 # Document Manager
 
+> `Document`/`PipelineComposer` thuộc khu vực **Production Line** trong mô hình tổng — xem [`meta_architecture.md`](meta_architecture.md).
+
 > Trạng thái: **kế hoạch (Giai đoạn 11 trong `../roadmap/roadmap.md`),
 > chưa code.** Tài liệu này mô tả thiết kế dự kiến để bàn bạc trước khi
 > viết, không phải mô tả code đã có.

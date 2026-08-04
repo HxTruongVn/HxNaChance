@@ -1,3 +1,7 @@
+> Kế hoạch này chủ yếu thuộc khu vực **Infrastructure** và **Production
+> Line** trong mô hình tổng — xem
+> [`../architecture/meta_architecture.md`](../architecture/meta_architecture.md).
+
 Dưới đây là bản kế hoạch mình viết theo hướng có thể dùng làm tài liệu kiến trúc để xây dựng lại repo pipeline, tập trung vào việc tách hoàn toàn Setup / Model Acquisition / Runtime / Processing Pipeline, đồng thời cho phép thay model, thay weight, thêm nguồn tải mà không phải sửa code lõi.
 
 KẾ HOẠCH XÂY DỰNG HỆ THỐNG QUẢN LÝ MODEL VÀ PIPELINE ẢNH

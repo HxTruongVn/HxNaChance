@@ -1,5 +1,9 @@
 # Kiến trúc NaChance
 
+> Đây là kiến trúc **hiện tại** (những gì đã chạy thật). Mô hình mục
+> tiêu (Production Complex — Bootstrap/Reception/Workshop/Warehouse)
+> xem [`meta_architecture.md`](meta_architecture.md).
+
 ```
                 NACHANCE
                        │

@@ -6,7 +6,9 @@
 - [faq.md](getting_started/faq.md) — câu hỏi thường gặp *(chưa viết)*
 
 ## 🏗 Kiến trúc (`architecture/`)
-- [architecture.md](architecture/architecture.md) — tổng quan kiến trúc, tiến độ Model Manager
+- [meta_architecture.md](architecture/meta_architecture.md) — **mô hình tổng** (Production Complex: Bootstrap/Reception/Workshop/Warehouse) — đọc trước các file dưới đây
+- [NaChance Architecture Vision.md](architecture/NaChance%20Architecture%20Vision.md) — triết lý riêng cho khu vực AI/Model
+- [architecture.md](architecture/architecture.md) — tổng quan kiến trúc hiện tại, tiến độ Model Manager
 - [structure.md](architecture/structure.md) — cây thư mục hiện tại + định hướng
 - [bootstrap.md](architecture/bootstrap.md) — đặc tả `NaChance.py` (entry point)
 - [ui.md](architecture/ui.md) — cấu trúc `ui/` (Mixin), thanh menu

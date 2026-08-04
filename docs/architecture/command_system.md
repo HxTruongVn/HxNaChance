@@ -1,5 +1,7 @@
 # Command System — Thanh menu & nền tảng cho CLI
 
+> Thanh menu (`MenuBarMixin`) hiện là 1 phần của **Reception** trong mô hình tổng, nhưng vẫn hardcode danh sách thay vì tự đọc từ Workshop — xem [`meta_architecture.md`](meta_architecture.md).
+
 ## Hiện trạng
 
 `ui/menu_bar_mixin.py` (`MenuBarMixin`) — 1 hàng nút mở `tk.Menu` qua

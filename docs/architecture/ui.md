@@ -1,5 +1,7 @@
 # Kiến trúc `ui/`
 
+> `ui/*_mixin.py` (`ProcessTabMixin`, `LayoutTabMixin`...) đang đóng vai **Workshop** trong mô hình tổng, nhưng chưa có Department Contract riêng (WorkshopManifest) — xem [`meta_architecture.md`](meta_architecture.md).
+
 `app/main_ui.py` từng là 1 file 1665 dòng, 1 class `NaChanceApp` với 61
 method ("God Object"). Đã tách theo chiến lược **Mixin** (không phải
 package con độc lập kiểu `photo_engine/`) — vì mọi method đều thao tác

@@ -1,5 +1,7 @@
 # Kế hoạch tiếp theo cho `photo_engine` — Bước 7–9
 
+> `model_manager.py`/Adapter thuộc khu vực **Infrastructure** trong mô hình tổng — xem [`../architecture/meta_architecture.md`](../architecture/meta_architecture.md).
+
 > Bước 0–6 (tách `photo_engine.py` monolith thành package, dựng facade) —
 > **đã hoàn thành và xác nhận đúng trên repo**, không nhắc lại chi tiết ở
 > đây. Tài liệu này chỉ tập trung vào phần **chưa làm**.
@@ -192,7 +194,7 @@ từng chỗ dùng `is None` trong `engine.py` xem còn hợp lệ không sau kh
 ```bash
 python tests/test_smoke.py   # nếu đã có, xem Bước 0
 python -m pytest tests/ -v
-python main.py                # mở app thật, xử lý 1 ảnh mẫu, xem log
+python app/main.py            # mở app thật, xử lý 1 ảnh mẫu, xem log
                                # "[Engine] FaceParser/CodeFormer/..." khớp
                                # với trước khi swap
 ```

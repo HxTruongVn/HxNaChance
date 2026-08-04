@@ -54,8 +54,8 @@ bảng link đầy đủ trong `README.md`, đặt file vào thư mục `weights
 
 ```bash
 python NaChance.py
-# hoặc, nếu chắc chắn setup đã xong:
-python main.py
+# hoặc, nếu chắc chắn setup đã xong (bỏ qua bước Bootstrap dò môi trường):
+python app/main.py
 ```
 
 ## Chạy không cần weights (Lite Mode)
