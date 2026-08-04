@@ -78,6 +78,7 @@ class PipelineMixin:
         def process(spec, bg_color, options, quality):
             results = []
             self.last_results = []
+            self.current_document = None  # reset — Document của lô mới, ảnh cuối cùng xử lý thành công sẽ được giữ lại
             try:
                 for i, path in enumerate(files):
                     try:
@@ -103,6 +104,11 @@ class PipelineMixin:
                             if _imwrite_unicode(save_path, result['image'], [cv2.IMWRITE_JPEG_QUALITY, quality]):
                                 result['save_path'] = save_path
                                 self.last_results.append(result['image'])
+                                # Chỉ giữ Document của ảnh xử lý gần nhất trong
+                                # RAM (đã xác nhận phạm vi — không giữ cả lô).
+                                # File đã lưu ra đĩa ở trên không bị ảnh hưởng
+                                # dù Document của ảnh trước đó bị thay thế.
+                                self.current_document = agent_result.document
                             else:
                                 result['validation_errors'].append(f"Không lưu được ảnh: {save_path}")
 
@@ -190,4 +196,29 @@ class PipelineMixin:
 
         self.tabview.set("🖨 Xếp in")
         self.status.configure(text="✓ Đã chuyển sang tab Xếp in", text_color=self.COLORS['success'])
+
+    def _undo(self):
+        """Lùi 1 bước trên Document đang active (ảnh xử lý gần nhất) —
+        Giai đoạn 11. Không undo được nếu chưa xử lý ảnh nào, hoặc đã ở
+        bước đầu tiên (ảnh gốc)."""
+        if self.current_document is None or not self.current_document.can_undo():
+            self.status.configure(text="Không còn bước nào để Undo", text_color=self.COLORS['text_secondary'])
+            return
+        self.current_document.undo()
+        self.last_result = self.current_document.current_image
+        self._show_preview()
+        self.status.configure(
+            text=f"↶ Undo — đang ở bước {self.current_document.cursor + 1}/{len(self.current_document.steps)}",
+            text_color=self.COLORS['warning'])
+
+    def _redo(self):
+        if self.current_document is None or not self.current_document.can_redo():
+            self.status.configure(text="Không còn bước nào để Redo", text_color=self.COLORS['text_secondary'])
+            return
+        self.current_document.redo()
+        self.last_result = self.current_document.current_image
+        self._show_preview()
+        self.status.configure(
+            text=f"↷ Redo — đang ở bước {self.current_document.cursor + 1}/{len(self.current_document.steps)}",
+            text_color=self.COLORS['warning'])
 

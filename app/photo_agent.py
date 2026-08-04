@@ -85,6 +85,13 @@ class AgentResult:
         return self.engine_result.get("image")
 
     @property
+    def document(self):
+        """Document (Giai đoạn 11) — theo dõi từng bước pipeline đã áp
+        dụng cho ảnh này, dùng để Undo/Redo. None nếu process() thất bại
+        trước khi tạo Document (vd không đọc được ảnh)."""
+        return self.engine_result.get("document")
+
+    @property
     def save_path(self):
         return self.engine_result.get("save_path")
 

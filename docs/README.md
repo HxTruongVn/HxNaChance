@@ -15,7 +15,7 @@
 - [command_system.md](architecture/command_system.md) — thanh menu & nền tảng cho CLI
 - [setup.md](architecture/setup.md) — package `setup/` *(chưa viết)*
 - [photo_engine.md](architecture/photo_engine.md) — package `photo_engine/` *(chưa viết)*
-- [document_manager.md](architecture/document_manager.md) — Document & Pipeline Composition (kế hoạch, Giai đoạn 11)
+- [document_manager.md](architecture/document_manager.md) — Document & Undo/Redo (đã code, Giai đoạn 11); PipelineComposer (kế hoạch)
 
 ## 🔧 Phát triển (`development/`)
 - [conventions.md](development/conventions.md) — quy ước code

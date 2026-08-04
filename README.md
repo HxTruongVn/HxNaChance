@@ -56,9 +56,11 @@ python setup/debug.py
 ```
 
 Script này kiểm tra tất cả dependencies và weights, báo ✓/✗ rõ ràng.
-`main.py` cũng tự chạy bước này mỗi lần khởi động, trước khi mở UI.
-Xem chi tiết kiến trúc (RuntimeManager → Engine → UI) tại
-[ARCHITECTURE.md](./docs/architecture/architecture.md).
+`app/main.py` (được `NaChance.py` gọi) cũng tự chạy bước dò môi trường
+này mỗi lần khởi động, trước khi mở UI. Kiến trúc hiện tại xem
+[architecture.md](./docs/architecture/architecture.md); mô hình mục
+tiêu (Bootstrap/Reception/Workshop/Warehouse) xem
+[meta_architecture.md](./docs/architecture/meta_architecture.md).
 
 ### Bước 1: Cài đặt + tải weights (nếu bootstrap chưa làm)
 
@@ -107,9 +109,10 @@ python NaChance.py
 
 Bootstrap sẽ tự kiểm tra môi trường, chạy setup nếu cần, rồi khởi động ứng dụng.
 
-Hoặc chạy trực tiếp (giả sử setup đã hoàn tất):
+Hoặc chạy trực tiếp (giả sử setup đã hoàn tất, bỏ qua bước Bootstrap
+dò môi trường):
 ```bash
-python main.py
+python app/main.py
 ```
 
 ## 🌐 Chạy dưới dạng API (tuỳ chọn)
@@ -119,8 +122,8 @@ cùng cơ chế tự thử lại (agent Cấp 1, xem `photo_agent.py`), khác m�
 lớp giao diện.
 
 ```bash
-pip install -r setup/api/requirements.txt
-# hoặc từ root: pip install -r setup/requirements.txt -r api/requirements.txt
+pip install -r api/requirements.txt
+# hoặc cả 2: pip install -r setup/requirements.txt -r api/requirements.txt
 uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
@@ -129,8 +132,8 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
 Chạy bằng Docker (build từ thư mục gốc repo):
 ```bash
-docker build -f api/Dockerfile -t photo-master-api .
-docker run --gpus all -p 8000:8000 -v $(pwd)/weights:/app/weights photo-master-api
+docker build -f api/Dockerfile -t nachance-api .
+docker run --gpus all -p 8000:8000 -v $(pwd)/weights:/app/weights nachance-api
 ```
 
 Test thủ công API (server phải đang chạy):
@@ -156,7 +159,7 @@ Nếu bạn không muốn tải ~680MB weights, engine vẫn chạy được —
 - ✅ Face detection (MediaPipe)
 
 ```bash
-python main.py
+python app/main.py
 # Trong UI: tắt "Face Restore", "Upscale", "Skin Smooth", "Eye Enhance", "Teeth Whiten"
 ```
 
@@ -203,7 +206,7 @@ python main.py
 5. **`_send_to_layout`**: Luôn cập nhật ảnh mới nhất.
 6. **Xoay align**: Đã fix `-angle` trong `getRotationMatrix2D`.
 7. **Lazy loading**: Engine không crash khi thiếu weights/dependencies — tự chuyển Lite Mode.
-8. **Global exception handler**: `main.py` bắt lỗi toàn cục, log chi tiết ra console.
+8. **Global exception handler**: `app/main.py` bắt lỗi toàn cục, log chi tiết ra console.
 
 ## 🆘 Khắc phục sự cố
 

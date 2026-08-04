@@ -929,7 +929,14 @@ Ví dụ Capability không phụ thuộc model cụ thể: Restore → CodeForme
 
 21. Giai đoạn 11 — Document & Pipeline Composition
 
-Điều kiện tiên quyết: Giai đoạn 3-5 đã xong (mọi model gọi được qua Adapter thống nhất — không có Adapter thì không tổ hợp an toàn được).
+**Cập nhật trạng thái**: phần `Document`/`PipelineStep`/Undo-Redo bên
+dưới **đã code xong** (`photo_engine/document.py` +
+`ui/menu_bar_mixin.py` + `ui/pipeline_mixin.py`) — chi tiết thật xem
+[`../architecture/document_manager.md`](../architecture/document_manager.md).
+Phần **PipelineComposer** (tự sắp thứ tự capability tuỳ ý) vẫn giữ
+nguyên điều kiện tiên quyết dưới đây, chưa xây.
+
+Điều kiện tiên quyết (cho PipelineComposer): Giai đoạn 3-5 đã xong (mọi model gọi được qua Adapter thống nhất — không có Adapter thì không tổ hợp an toàn được).
 
 Mục tiêu:
 

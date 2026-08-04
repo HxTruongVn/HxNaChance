@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
 from photo_engine.utils import _ensure_rgb, _imread_unicode
 from photo_engine.spec import PhotoSpec
+from photo_engine.document import Document
 from config.model_manager import ModelManager
 from photo_engine.processors.face_parser import FaceParsingProcessor
 from photo_engine.processors.face_restorer import CodeFormerRestorer
@@ -199,11 +200,18 @@ class NaChanceEngine:
             errors = self.face_analyzer.validate(face_data, spec)
             result['validation_errors'].extend(errors)
 
+        # Document — theo dõi từng bước pipeline để Undo/Redo (Giai đoạn
+        # 11). Tạo NGAY SAU khi ảnh đã đọc + xoay đúng hướng (không tính
+        # bước xoay-tự-động là 1 "bước pipeline" cần undo — đó là bước
+        # chuẩn hoá đầu vào, không phải bước xử lý AI người dùng bật/tắt).
+        doc = Document(source_path=image_path, original_image=image.copy())
+
         # ========== PIPELINE AI ==========
 
         # 1. Upscale (optional)
         if options.get('upscale', False) and self.upscaler.available:
             image = self.upscaler.upscale(image, outscale=2.0)
+            doc.apply("upscale", {"outscale": 2.0}, image.copy())
             # FIX: upscale/restore có thể khiến MediaPipe không còn nhận ra
             # mặt (analyze() trả None). Trước đây face_data bị ghi đè vô
             # điều kiện, và align_face() ở bước 7 phía dưới không check
@@ -222,6 +230,7 @@ class NaChanceEngine:
         if options.get('face_restore', True) and self.codeformer.available:
             fidelity = options.get('face_restore_fidelity', 0.7)
             image = self.codeformer.enhance(image, fidelity=fidelity)
+            doc.apply("face_restore", {"fidelity": fidelity}, image.copy())
             # FIX: cùng lý do với bước upscale ở trên.
             new_face_data = self.face_analyzer.analyze(image)
             if new_face_data is not None:
@@ -243,16 +252,19 @@ class NaChanceEngine:
         if options.get('skin_smooth', True) and parsing_map is not None:
             strength = options.get('skin_strength', 0.5)
             image = self.enhancer.skin_smoothing(image, parsing_map, strength=strength)
+            doc.apply("skin_smooth", {"strength": strength}, image.copy())
 
         # 5. Eye Enhancement
         if options.get('eye_enhance', True) and parsing_map is not None:
             strength = options.get('eye_strength', 0.3)
             image = self.enhancer.eye_enhancement(image, parsing_map, strength=strength)
+            doc.apply("eye_enhance", {"strength": strength}, image.copy())
 
         # 6. Teeth Whitening
         if options.get('teeth_whiten', False) and parsing_map is not None:
             strength = options.get('teeth_strength', 0.3)
             image = self.enhancer.teeth_whitening(image, parsing_map, strength=strength)
+            doc.apply("teeth_whiten", {"strength": strength}, image.copy())
 
         # 6b. Shoulder Warp (tiện ích thêm — KHÔNG thay đổi logic align cũ)
         # Warp vai vuông góc với sống mũi, giữ cố định vùng đầu/mặt.
@@ -270,6 +282,8 @@ class NaChanceEngine:
                     image = warp_shoulders(image, face_data, shoulder_data)
                     result['quality_report']['shoulder_angle'] = (
                         shoulder_data['shoulder_angle'])
+                    doc.apply("shoulder_warp",
+                              {"shoulder_angle": shoulder_data['shoulder_angle']}, image.copy())
                 else:
                     result['validation_errors'].append(
                         "Shoulder warp: không detect được vai (vai bị che "
@@ -279,12 +293,14 @@ class NaChanceEngine:
 
         # 7. Face Align (logic gốc — không thay đổi)
         aligned = self.transformer.align_face(image, face_data, spec)
+        doc.apply("align", {}, aligned.copy())
 
         # 8. Background
         if options.get('remove_bg', True):
             try:
                 rgba = self.bg_processor.remove_background(aligned)
                 final = self.bg_processor.replace_background(rgba, bg_color)
+                doc.apply("remove_bg", {"bg_color": bg_color}, final.copy())
             except Exception as e:
                 result['validation_errors'].append(str(e))
                 final = aligned
@@ -293,6 +309,7 @@ class NaChanceEngine:
 
         result['success'] = True
         result['image'] = final
+        result['document'] = doc
         gc.collect()
         return result
 

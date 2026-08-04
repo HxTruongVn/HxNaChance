@@ -85,6 +85,7 @@ class NaChanceApp(
         os.makedirs(self.save_dir, exist_ok=True)
         self.last_result = None
         self.last_results = []
+        self.current_document = None  # Document (Giai đoạn 11) của ảnh xử lý gần nhất — cho Undo/Redo
         self.last_layout = None
         self.config_path = Path.home() / ".nachance_ai.json"
 
