@@ -1,17 +1,26 @@
-"""photo_engine.processors.enhancer — SmartEnhancer (skin/eye/teeth)."""
+"""photo_engine.processors.enhancer — SmartEnhancer (skin/eye/teeth).
+
+Giai đoạn 4 (docs/roadmap/roadmap.md): nhận FaceParseResult (Capability
+Interface, photo_engine/capabilities/face_parser.py) thay vì tự hỏi
+ngược `parser.get_mask()`/`parser.LABELS` — SmartEnhancer không còn
+phụ thuộc provider face-parsing cụ thể nào."""
 import numpy as np
 import cv2
 from typing import Tuple, Optional
 
-from photo_engine.processors.face_parser import FaceParsingProcessor
+from photo_engine.capabilities.face_parser import FaceParseResult
 
 # ------------------------------------------------------------------
 # 5. SMART ENHANCER
 # ------------------------------------------------------------------
 
 class SmartEnhancer:
-    def __init__(self, face_parser: Optional[FaceParsingProcessor] = None):
-        self.parser = face_parser
+    def __init__(self, face_parser_available: bool = False):
+        # Chỉ cần biết CÓ parser khả dụng hay không (để early-return
+        # giữ đúng hành vi cũ) — không giữ reference tới parser/adapter
+        # nữa, vì mọi thao tác mask giờ đi qua FaceParseResult được
+        # truyền thẳng vào từng method, không cần hỏi ngược provider.
+        self._parser_available = face_parser_available
         self._has_ximg = self._check_ximgproc()
 
     def _check_ximgproc(self) -> bool:
@@ -21,12 +30,12 @@ class SmartEnhancer:
         except:
             return False
 
-    def skin_smoothing(self, image_bgr: np.ndarray, parsing_map: Optional[np.ndarray],
+    def skin_smoothing(self, image_bgr: np.ndarray, face_parse_result: Optional[FaceParseResult],
                        strength: float = 0.5) -> np.ndarray:
-        if self.parser is None or parsing_map is None:
+        if not self._parser_available or face_parse_result is None:
             return image_bgr
 
-        skin_mask = self.parser.get_mask(parsing_map, [self.parser.LABELS["skin"]], dilate=5)
+        skin_mask = face_parse_result.get_mask(["skin"], dilate=5)
         if np.count_nonzero(skin_mask) == 0:
             return image_bgr
 
@@ -41,13 +50,12 @@ class SmartEnhancer:
         result = image_bgr * (1 - mask_3ch * strength) + smooth * (mask_3ch * strength)
         return result.astype(np.uint8)
 
-    def eye_enhancement(self, image_bgr: np.ndarray, parsing_map: Optional[np.ndarray],
+    def eye_enhancement(self, image_bgr: np.ndarray, face_parse_result: Optional[FaceParseResult],
                         strength: float = 0.3) -> np.ndarray:
-        if self.parser is None or parsing_map is None:
+        if not self._parser_available or face_parse_result is None:
             return image_bgr
 
-        eye_mask = self.parser.get_mask(parsing_map,
-            [self.parser.LABELS["left_eye"], self.parser.LABELS["right_eye"]], dilate=3)
+        eye_mask = face_parse_result.get_mask(["left_eye", "right_eye"], dilate=3)
         if np.count_nonzero(eye_mask) == 0:
             return image_bgr
 
@@ -57,14 +65,13 @@ class SmartEnhancer:
         result = image_bgr * (1 - mask_3ch) + bright * mask_3ch
         return result.astype(np.uint8)
 
-    def teeth_whitening(self, image_bgr: np.ndarray, parsing_map: Optional[np.ndarray],
+    def teeth_whitening(self, image_bgr: np.ndarray, face_parse_result: Optional[FaceParseResult],
                         strength: float = 0.3) -> np.ndarray:
-        if self.parser is None or parsing_map is None:
+        if not self._parser_available or face_parse_result is None:
             return image_bgr
 
-        mouth_mask = self.parser.get_mask(parsing_map, [self.parser.LABELS["mouth"]], dilate=0)
-        lip_mask = self.parser.get_mask(parsing_map,
-            [self.parser.LABELS["upper_lip"], self.parser.LABELS["lower_lip"]], dilate=2)
+        mouth_mask = face_parse_result.get_mask(["mouth"], dilate=0)
+        lip_mask = face_parse_result.get_mask(["upper_lip", "lower_lip"], dilate=2)
         teeth_mask = cv2.subtract(mouth_mask, lip_mask)
 
         if np.count_nonzero(teeth_mask) == 0:

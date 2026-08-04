@@ -13,7 +13,8 @@ api/engine_wrapper.py lúc chạy thật.
 from photo_engine import (
     NaChanceEngine, SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME,
     _imread_unicode, _ensure_rgb,
-    FaceParsingProcessor, CodeFormerRestorer, RealESRGANUpscaler,
+    FaceParsingProcessor, BiSeNetFaceParserAdapter, FaceParser, FaceParseResult,
+    CodeFormerRestorer, RealESRGANUpscaler,
     SmartEnhancer, BackgroundProcessor, PhotoTransformer,
     FaceAnalyzer, ShoulderAnalyzer,
 )
@@ -42,6 +43,13 @@ def test_engine_initializes_without_crashing():
     # (đối tượng thật hoặc _Unavailable() thay thế) — không bao giờ None,
     # nhờ cơ chế graceful-degrade sẵn có trong __init__.
     assert engine.face_parser is not None
+    # Giai đoạn 4: face_parser giờ PHẢI đi qua Capability Interface
+    # (BiSeNetFaceParserAdapter implement FaceParser) — nếu ai đó lỡ
+    # đổi engine.py về gọi thẳng FaceParsingProcessor, assert này báo
+    # lỗi ngay (trừ khi engine chạy fallback _Unavailable(), lúc đó bỏ
+    # qua check này vì _Unavailable() không implement interface).
+    if engine.face_parser.available or type(engine.face_parser).__name__ != "_Unavailable":
+        assert isinstance(engine.face_parser, FaceParser)
     assert engine.codeformer is not None
     assert engine.upscaler is not None
     assert engine.shoulder_analyzer is not None
