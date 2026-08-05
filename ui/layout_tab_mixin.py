@@ -139,13 +139,19 @@ class LayoutTabMixin:
         self._section_header(tab, "📏 VÙNG IN")
         fcfg = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'], corner_radius=8,
                              border_width=1, border_color=self.COLORS['border'])
-        fcfg.pack(fill="x", pady=(0, 10))
+        fcfg.pack(fill="x", pady=(0, 10), padx=5)
+
+        for c in range(6):
+            if c % 2 == 1:
+                fcfg.grid_columnconfigure(c, weight=1)  # Kéo giãn ô Entry
+            else:
+                fcfg.grid_columnconfigure(c, weight=0)  # Giữ nguyên kích thước nhãn (Label)
 
         self.layout_cfg_vars = {}
         fields = [
             ("vungInW", "Rộng vùng in", "12.4"),
             ("vungInH", "Cao vùng in", "30.5"),
-            ("valF", "Chiều cao F", "30.5"),  # Đã thêm ô nhập chiều cao F
+            ("valF", "Chiều cao Fix", "30.5"),
             ("marginLeft", "Lề trái", "0"),
             ("marginRight", "Lề phải", "0"),
             ("marginTop", "Lề trên", "0"),
@@ -153,18 +159,23 @@ class LayoutTabMixin:
             ("gapY", "Khoảng cách", "0.1974"),
             ("res", "DPI", "300"),
         ]
+
         for i, (key, label, default) in enumerate(fields):
-            r = i // 2
-            c = (i % 2) * 2
-            if c == 0:
-                row = ctk.CTkFrame(fcfg, fg_color="transparent")
-                row.pack(fill="x", padx=10, pady=2)
-            ctk.CTkLabel(row, text=label + ":", font=self.F_SMALL,
-                          text_color=self.COLORS['text_secondary']).grid(row=0, column=c, sticky="e", padx=2)
-            var = ctk.CTkEntry(row, width=60, font=self.F_SMALL,
+            r = i // 3       # 3 mục trên 1 hàng -> Dòng 0, 1, 2
+            c = (i % 3) * 2  # Vị trí cột Label tương ứng: 0, 2, 4
+
+            # 1. Vẽ Label (Nhãn)
+            lbl = ctk.CTkLabel(fcfg, text=label + ":", font=self.F_SMALL,
+                               text_color=self.COLORS['text_secondary'])
+            lbl.grid(row=r, column=c, sticky="e", padx=(8, 2), pady=4)
+
+            # 2. Vẽ Entry (Ô nhập liệu)
+            var = ctk.CTkEntry(fcfg, width=50, font=self.F_SMALL,
                                fg_color=self.COLORS['bg_hover'], border_color=self.COLORS['border'])
             var.insert(0, default)
-            var.grid(row=0, column=c + 1, sticky="w", padx=2)
+            # sticky="ew" giúp ô Entry co giãn lấp đầy cột grid được cấp
+            var.grid(row=r, column=c + 1, sticky="ew", padx=(0, 8), pady=4)
+
             self.layout_cfg_vars[key] = var
 
         self.chk_append = ctk.CTkCheckBox(tab, text="Xếp tiếp vào file có sẵn",
