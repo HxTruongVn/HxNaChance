@@ -63,24 +63,13 @@ class LayoutTabMixin:
                 entry.insert(0, str(value))
                 return value
 
-            # entry=spin và chk=var truyền làm default arg (không phải free
-            # variable trong lambda) để mỗi hàng đóng đúng biến của riêng
-            # mình — tránh lỗi Python closure "muộn" (late binding) khi định
-            # nghĩa hàm bên trong vòng lặp, do row/spin/var bị gán đè ở mỗi
-            # lần lặp tiếp theo.
             def _on_check_toggle(entry=spin, chk=var):
-                # FIX: mô phỏng thói quen ở bản standalone cũ — vừa tích
-                # chọn preset thì ô số lượng tự nhảy về 1 nếu đang trống/0,
-                # để không quên nhập số lượng rồi báo lỗi "chưa chọn bố cục".
                 if chk.get() and _get_int(entry) <= 0:
                     _clamp_and_set(entry, 1)
                 self._layout_live_refresh()
 
             def _step(entry=spin, chk=var, delta=0):
                 new_val = _clamp_and_set(entry, _get_int(entry) + delta)
-                # Bấm +/- để tăng số lượng thì coi như đã chọn preset này
-                # luôn, khỏi phải tích thêm ô checkbox riêng; giảm về 0 thì
-                # tự bỏ chọn.
                 if new_val > 0:
                     chk.select()
                 else:
@@ -89,9 +78,6 @@ class LayoutTabMixin:
 
             var.configure(command=_on_check_toggle)
 
-            # Nút +/- để tăng giảm số lượng bằng chuột, đỡ phải gõ tay.
-            # Pack theo thứ tự ngược (phải->trái) để hiển thị đúng thứ tự
-            # trực quan trái->phải: [-][số lượng][+].
             btn_plus = ctk.CTkButton(row, text="+", width=22, height=22, font=self.F_MEDIUM,
                                       fg_color=self.COLORS['bg_hover'], hover_color=self.COLORS['bg_card'],
                                       text_color=self.COLORS['text_secondary'],
@@ -159,6 +145,7 @@ class LayoutTabMixin:
         fields = [
             ("vungInW", "Rộng vùng in", "12.4"),
             ("vungInH", "Cao vùng in", "30.5"),
+            ("valF", "Chiều cao F", "30.5"),  # Đã thêm ô nhập chiều cao F
             ("marginLeft", "Lề trái", "0"),
             ("marginRight", "Lề phải", "0"),
             ("marginTop", "Lề trên", "0"),
@@ -234,6 +221,7 @@ class LayoutTabMixin:
         return {
             "vungInW": safe_float(self.layout_cfg_vars["vungInW"].get()),
             "vungInH": safe_float(self.layout_cfg_vars["vungInH"].get()),
+            "valF": safe_float(self.layout_cfg_vars["valF"].get()),  # Thu thập giá trị F từ UI
             "marginLeft": safe_float(self.layout_cfg_vars["marginLeft"].get()),
             "marginRight": safe_float(self.layout_cfg_vars["marginRight"].get()),
             "marginTop": safe_float(self.layout_cfg_vars["marginTop"].get()),
@@ -270,9 +258,6 @@ class LayoutTabMixin:
             return None, None
 
     def _render_layout_preview(self, canvas):
-        """Vẽ canvas bản in vào side panel — dùng chung cho cả bấm nút
-        'Xem trước' (_layout_preview) lẫn tự động làm mới khi đổi tuỳ
-        chọn (_layout_live_refresh), tránh trùng lặp code vẽ."""
         self._side_panel_mode = 'layout'
         self.last_layout = canvas
         self.side_panel_title.configure(text="Xem trước bản in")
@@ -305,27 +290,18 @@ class LayoutTabMixin:
         self.status.configure(text=f"✓ Preview: {w}x{h}px", text_color=self.COLORS['success'])
 
     def _layout_live_refresh(self):
-        """Tự động render lại xem trước bản in ngay khi người dùng đổi
-        tuỳ chọn (tick preset, bấm +/- số lượng...) — theo yêu cầu 'lắng
-        nghe thay đổi tuỳ chọn để tự render lại'. KHÁC với _layout_preview()
-        (gọi khi bấm nút tay): hàm này KHÔNG được tự bật popup/dialog —
-        _build_layout() vốn mở dialog chọn file khi bật 'nối thêm' và
-        hiện messagebox khi lỗi, cả 2 đều không chấp nhận được nếu tự
-        động kích hoạt mỗi lần tick checkbox. Vì vậy im lặng bỏ qua khi
-        chưa đủ điều kiện, không làm phiền người dùng giữa lúc họ đang
-        thao tác liên tục."""
         if self._side_panel_mode != 'layout':
-            return  # panel đang đóng hoặc đang hiển thị nội dung khác — không cần tính
+            return
         src = getattr(self, 'layout_src_path', None)
         if not src or not os.path.exists(src):
             return
         if self.chk_append.get():
-            return  # chế độ nối thêm cần chọn file thủ công, không tự refresh được
+            return
         try:
             cfg = self._get_layout_config()
             canvas, _ = build_layout_canvas(src, cfg, False, None)
         except Exception:
-            return  # công thức đang gõ dở/tạm thời không hợp lệ — bỏ qua êm, không báo lỗi
+            return
         self._render_layout_preview(canvas)
 
     def _layout_save(self):
@@ -342,7 +318,6 @@ class LayoutTabMixin:
             return
 
         try:
-            # FIX: save_layout chỉ nhận 3 tham số
             save_layout(canvas, payload, out_path)
             self.status.configure(text=f"✓ Đã lưu: {os.path.basename(out_path)}", text_color=self.COLORS['success'])
         except Exception as e:
@@ -367,5 +342,3 @@ class LayoutTabMixin:
                 self.status.configure(text="✓ Đã gửi lệnh in (lpr)", text_color=self.COLORS['success'])
         except Exception as e:
             messagebox.showerror("Lỗi in", f"Không thể in: {e}\nFile tạm: {tmp}")
-
-    # ===== CONFIG =====
