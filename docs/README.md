@@ -6,14 +6,16 @@
 - [faq.md](getting_started/faq.md) — câu hỏi thường gặp *(chưa viết)*
 
 ## 🏗 Kiến trúc (`architecture/`)
-- [architecture.md](architecture/architecture.md) — tổng quan kiến trúc, tiến độ Model Manager
+- [meta_architecture.md](architecture/meta_architecture.md) — **mô hình tổng** (Production Complex: Bootstrap/Reception/Workshop/Warehouse) — đọc trước các file dưới đây
+- [NaChance Architecture Vision.md](architecture/NaChance%20Architecture%20Vision.md) — triết lý riêng cho khu vực AI/Model
+- [architecture.md](architecture/architecture.md) — tổng quan kiến trúc hiện tại, tiến độ Model Manager
 - [structure.md](architecture/structure.md) — cây thư mục hiện tại + định hướng
 - [bootstrap.md](architecture/bootstrap.md) — đặc tả `NaChance.py` (entry point)
 - [ui.md](architecture/ui.md) — cấu trúc `ui/` (Mixin), thanh menu
 - [command_system.md](architecture/command_system.md) — thanh menu & nền tảng cho CLI
 - [setup.md](architecture/setup.md) — package `setup/` *(chưa viết)*
 - [photo_engine.md](architecture/photo_engine.md) — package `photo_engine/` *(chưa viết)*
-- [document_manager.md](architecture/document_manager.md) — Document & Pipeline Composition (kế hoạch, Giai đoạn 11)
+- [document_manager.md](architecture/document_manager.md) — Document & Undo/Redo (đã code, Giai đoạn 11); PipelineComposer (kế hoạch)
 
 ## 🔧 Phát triển (`development/`)
 - [conventions.md](development/conventions.md) — quy ước code

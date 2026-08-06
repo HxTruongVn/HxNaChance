@@ -1,8 +1,14 @@
 # Document Manager
 
-> Trạng thái: **kế hoạch (Giai đoạn 11 trong `../roadmap/roadmap.md`),
-> chưa code.** Tài liệu này mô tả thiết kế dự kiến để bàn bạc trước khi
-> viết, không phải mô tả code đã có.
+> `Document`/`PipelineComposer` thuộc khu vực **Production Line** trong mô hình tổng — xem [`meta_architecture.md`](meta_architecture.md).
+
+> Trạng thái: **`Document`/`PipelineStep`/Undo-Redo đã code và hoạt
+> động** (`photo_engine/document.py`, gọi từ `photo_engine/engine.py`,
+> nút Undo/Redo trong `ui/menu_bar_mixin.py` + `ui/pipeline_mixin.py`).
+> `PipelineComposer` (tự sắp thứ tự capability tuỳ ý) **vẫn chưa xây**
+> — đúng như điều kiện tiên quyết ghi ở cuối file này (cần Giai đoạn
+> 3-5 xong trước). Phần "Document là gì" và "Undo/Redo" bên dưới mô tả
+> đúng code thật; phần "PipelineComposer" vẫn là thiết kế dự kiến.
 
 ## Vì sao cần
 
@@ -21,12 +27,24 @@ Không phải file trên đĩa — là 1 đối tượng trong bộ nhớ đại
 **1 ảnh đang được xử lý**, gồm:
 
 ```
-Document
-├── ảnh gốc
-├── danh sách PipelineStep đã áp dụng (theo thứ tự)
-│     mỗi step = (capability, tham số, kết quả)
-└── con trỏ vị trí hiện tại trong danh sách
+Document                                    (photo_engine/document.py)
+├── ảnh gốc                                  original_image
+├── danh sách PipelineStep đã áp dụng         steps: List[PipelineStep]
+│     mỗi step = (capability, tham số, ảnh sau bước đó)
+└── con trỏ vị trí hiện tại trong danh sách   cursor
 ```
+
+**Phạm vi thật đang chạy** (khác 1 chút so với mô tả gốc ở trên, ghi
+lại cho khớp code): mỗi lần chỉ **1 Document đang active** được giữ
+trong RAM — ảnh xử lý gần nhất (`self.current_document` ở
+`app/main_ui.py`/`ui/pipeline_mixin.py`), không giữ Document của cả lô
+khi chạy hàng loạt. File đã lưu ra đĩa không bị ảnh hưởng; chỉ mất khả
+năng undo ảnh đã xử lý xong sau khi đã chuyển sang xử lý ảnh tiếp theo.
+Lịch sử giới hạn `MAX_HISTORY = 10` bước, bước cũ nhất tự rơi khỏi danh
+sách khi vượt ngưỡng (không xoá file, chỉ bỏ tham chiếu ảnh trung gian
+để GC dọn RAM) — vì vậy câu hỏi "RAM hay file tạm" ở mục *Vấn đề kỹ
+thuật chưa chốt* bên dưới đã được trả lời trên thực tế: **RAM**, với
+giới hạn lịch sử để chặn phình bộ nhớ.
 
 ## PipelineComposer
 
@@ -43,17 +61,13 @@ Lùi/tiến con trỏ của `Document` 1 bước, hiển thị lại kết quả
 lý (mỗi bước = 1 lần gọi capability), phù hợp với cách app hoạt động
 (pipeline tự động, không phải vẽ tay).
 
-## Vấn đề kỹ thuật chưa chốt
-
-Lưu kết quả từng bước để undo được — bằng cách nào:
-
-| Cách | Ưu | Nhược |
-|---|---|---|
-| Giữ trong RAM | Nhanh, undo tức thì | Tốn bộ nhớ khi batch nhiều ảnh + nhiều bước |
-| Ghi file tạm | Không phụ thuộc RAM khi batch | Chậm hơn, cần dọn file tạm sau khi xong |
-
-Chưa quyết định — cần chọn trước khi bắt đầu code, vì ảnh hưởng thiết
-kế `PipelineStep` (giữ reference ảnh trong RAM hay giữ path file tạm).
+Đã có trong menu **Xử lý** (`ui/menu_bar_mixin.py`): mục **↶ Undo** /
+**↷ Redo**, tự khoá (`state="disabled"`) khi không còn bước để lùi/tiến
+— đọc lại trạng thái `self.current_document` mỗi lần mở menu, đúng
+nguyên tắc "không giữ state riêng" đã áp dụng cho checkbutton
+([command_system.md](command_system.md)). Chạy 1 bước mới sau khi đã
+undo vài bước sẽ cắt bỏ nhánh cũ phía sau con trỏ — hành vi chuẩn của
+mọi hệ undo/redo, không riêng `Document` này.
 
 ## Điều kiện tiên quyết
 

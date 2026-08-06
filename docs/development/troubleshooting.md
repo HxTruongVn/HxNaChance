@@ -36,7 +36,7 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000
 Docker cần mount weights:
 
 ```bash
-docker run -p 8000:8000 -v $(pwd)/weights:/app/weights photo-master-api
+docker run -p 8000:8000 -v $(pwd)/weights:/app/weights nachance-api
 ```
 
 Test thủ công: `python scripts/manual_api_test.py --image photo.jpg`

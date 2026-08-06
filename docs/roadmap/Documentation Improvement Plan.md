@@ -33,6 +33,13 @@ Tăng tính nhất quán của hệ thống tài liệu NaChance, giúp tài li�
 
 ## 2. Chuẩn hóa trách nhiệm từng module
 
+> Bảng dưới đây đã có mô hình chính thức hơn ở
+> [`../architecture/meta_architecture.md`](../architecture/meta_architecture.md)
+> (Bootstrap/Reception/Workshop/Warehouse/Infrastructure) — "MainApp" ở
+> đây tương ứng gộp chung Reception + Workshop, chưa tách theo đúng mô
+> hình đó. Khi viết ADR (mục 3 bên dưới), dùng tên trong
+> `meta_architecture.md`, không dùng "MainApp".
+
 Tạo bảng trách nhiệm.
 
 | Module | Responsibility |

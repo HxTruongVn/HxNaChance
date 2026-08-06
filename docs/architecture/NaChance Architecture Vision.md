@@ -2,6 +2,10 @@
 
 **Version: 1.0**
 
+> Tài liệu này là triết lý cho khu vực **Production Line** (AI/Model)
+> trong mô hình tổng — xem [`meta_architecture.md`](meta_architecture.md)
+> để biết Vision.md khớp vào đâu trong toàn bộ Production Complex.
+
 
 
 **Mục đích**

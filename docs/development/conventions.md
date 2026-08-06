@@ -22,16 +22,13 @@ Hướng dẫn chuẩn hóa tên file, hàm, biến, class trong repo NaChance.
   giữ song song 2 tên.
 - ✅ **Thứ tự logic**: `main.py` → engine → utils
 
-### Ví dụ hiện tại (✓ đúng)
-```
-main.py                          # Entry point
-main_ui.py                       # UI
-photo_engine.py                  # Processing engine
-runtime_manager.py               # Runtime detection & management
-setup_models.py                  # Model downloading & setup (venv, pip, weights)
-print_layout.py                  # Print layout rendering
-requirements.txt                 # Dependencies
-```
+### Ví dụ hiện tại
+Xem [`structure.md`](../architecture/structure.md) cho cây thư mục thật
+đầy đủ — không lặp lại ở đây để tránh 2 tài liệu cùng mô tả cấu trúc
+rồi lệch nhau theo thời gian (đã từng xảy ra: bản cũ của cả
+`conventions.md` và `structure.md` đều mô tả cấu trúc phẳng trước khi
+tái cấu trúc thành `app/`/`config/`/`layout/`/`setup/`/`ui/`, không ai
+cập nhật cả 2 khi đổi).
 
 ### ❌ Tránh
 ```
@@ -347,41 +344,10 @@ def detect_blur(image: np.ndarray, threshold: float = 100.0) -> Tuple[bool, floa
 
 ## 8. 📍 Package Structure & Modules
 
-### Recommended future structure (không bắt buộc ngay)
-```
-nachance/
-├── photo_engine/
-│   ├── __init__.py
-│   ├── engine.py              # Main NaChanceEngine
-│   ├── processors/
-│   │   ├── face_parser.py     # FaceParsingProcessor
-│   │   ├── face_restorer.py   # CodeFormerRestorer
-│   │   ├── bg_processor.py    # BackgroundProcessor
-│   │   └── upscaler.py        # RealESRGANUpscaler
-│   └── utils/
-│       ├── validators.py      # FaceAnalyzer, PhotoSpec
-│       └── transformers.py    # PhotoTransformer
-├── ui/
-│   ├── main_app.py            # NaChanceApp
-│   └── components.py          # UI helpers
-├── runtime/
-│   ├── manager.py             # RuntimeManager
-│   └── setup.py               # setup_models
-├── layout/
-│   └── renderer.py            # LayoutSimulator, LayoutRenderer
-└── main.py                    # Entry point
-```
-
-### Hiện tại (acceptable cho repo nhỏ)
-```
-.
-├── main.py
-├── main_ui.py
-├── photo_engine.py
-├── runtime_manager.py
-├── print_layout.py
-└── [setup & download scripts]
-```
+### Cấu trúc thư mục
+Xem [`../architecture/structure.md`](../architecture/structure.md) —
+cây thư mục thật, cập nhật theo đúng trạng thái repo hiện tại (không
+lặp lại ở đây, cùng lý do đã nêu ở mục 1).
 
 ---
 

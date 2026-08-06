@@ -85,6 +85,19 @@ class MenuBarMixin:
         menu.add_command(label="Xử lý hàng loạt...", command=self._run_batch)
         menu.add_separator()
 
+        # Undo/Redo (Giai đoạn 11) — thao tác trên Document của ảnh xử lý
+        # gần nhất (self.current_document). Xám đi khi không còn bước nào
+        # để lùi/tiến — đọc trạng thái MỚI mỗi lần mở menu (đúng nguyên
+        # tắc "dựng lại menu mỗi lần bấm" đã áp dụng cho checkbutton).
+        doc = self.current_document
+        can_undo = doc is not None and doc.can_undo()
+        can_redo = doc is not None and doc.can_redo()
+        menu.add_command(label="↶ Undo", command=self._undo,
+                          state="normal" if can_undo else "disabled")
+        menu.add_command(label="↷ Redo", command=self._redo,
+                          state="normal" if can_redo else "disabled")
+        menu.add_separator()
+
         # Checkbutton phản ánh + điều khiển ĐÚNG checkbox thật trên tab
         # Xử lý ảnh (không tạo trạng thái riêng) — chia đúng 4 nhóm như
         # đã tổ chức lại trong process_tab_mixin.py.

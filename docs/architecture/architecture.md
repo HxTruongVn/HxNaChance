@@ -1,5 +1,9 @@
 # Kiến trúc NaChance
 
+> Đây là kiến trúc **hiện tại** (những gì đã chạy thật). Mô hình mục
+> tiêu (Production Complex — Bootstrap/Reception/Workshop/Warehouse)
+> xem [`meta_architecture.md`](meta_architecture.md).
+
 ```
                 NACHANCE
                        │
@@ -144,17 +148,29 @@ nằm ở file riêng, dễ thay bằng Adapter hơn nhiều so với sửa 1 fi
 — bản thân việc tách file KHÔNG phải là Giai đoạn 3-4, vẫn cần làm phần
 Interface/Adapter/ModelManager thật sự bên dưới.
 
-**Còn thiếu để hoàn thành Giai đoạn 3-4** (chưa làm — kế hoạch chi tiết,
-đã kiểm tra đúng theo code thật, xem `../roadmap/model_manager_plan.md`):
-- `ModelManager`/`ModelLoader`/`ModelValidator` — lớp thật sự dùng
-  registry này để load model lúc runtime (hiện registry chỉ nằm đó,
-  chưa ai gọi tới ngoài test).
-- Interface `FaceParser`/`FaceRestorer`/`Upscaler`/`BackgroundRemover`
-  (theo capability) + Adapter cho từng provider hiện có (BiSeNet nên
-  làm mẫu đầu tiên, theo đúng kết luận cuối `../roadmap/roadmap.md`) — nhờ đã
-  tách thành `photo_engine/processors/face_parser.py` riêng, việc này
-  giờ chỉ cần sửa trong phạm vi 1 file nhỏ thay vì file lớn.
-- Sửa `NaChanceEngine` (`photo_engine/engine.py`) gọi qua
-  interface/Capability thay vì gọi thẳng class cụ thể — đây là thay
-  đổi có rủi ro, cần làm cẩn thận từng capability một, bắt đầu từ
-  BiSeNet.
+**Giai đoạn 4 (BiSeNet) đã xong** — xem
+`docs/architecture/document_manager.md`-style ghi chú trực tiếp trong
+`meta_architecture.md` (mục Infrastructure). `photo_engine/capabilities/
+face_parser.py` (interface `FaceParser`/`FaceParseResult`) +
+`BiSeNetFaceParserAdapter` (`photo_engine/processors/face_parser.py`) +
+`NaChanceEngine`/`SmartEnhancer` gọi qua interface — cả 3 việc liệt kê
+bên dưới đã làm xong **cho riêng BiSeNet**, đã có test
+(`tests/test_face_parser_adapter.py`, 45/45 test pass).
+
+**Còn thiếu để hoàn thành Giai đoạn 5** (4 capability còn lại — chưa
+làm, cùng khuôn mẫu BiSeNet đã đặt, xem `../roadmap/model_manager_plan.md`):
+- `ModelManager`/`ModelLoader`/`ModelValidator` — vẫn **chỉ resolver
+  đường dẫn** (`config/model_manager.py`), chưa có lớp nào đọc field
+  `"adapter"` trong registry rồi tự khởi tạo đúng Adapter tương ứng —
+  hiện `engine.py` vẫn **chỉ định thẳng tên class** Adapter
+  (`BiSeNetFaceParserAdapter`) khi khởi tạo, không tra registry để
+  chọn động. Việc "registry-driven" thật sự vẫn chưa có — mới có 1
+  Adapter nên chưa đủ lý do làm factory tổng quát.
+- Interface `FaceRestorer`/`Upscaler`/`BackgroundRemover`/`PoseEstimator`
+  (theo capability) + Adapter cho từng provider hiện có
+  (`CodeFormerRestorer`/`RealESRGANUpscaler`/`BackgroundProcessor`/
+  `ShoulderAnalyzer`) — làm đúng khuôn mẫu `capabilities/face_parser.py`
+  đã có, từng cái một, không gộp.
+- Sửa `NaChanceEngine` gọi qua interface cho 4 capability còn lại —
+  vẫn thay đổi có rủi ro, cần làm cẩn thận từng capability một.
+
