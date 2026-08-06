@@ -336,21 +336,6 @@ class NaChanceApp(
             scrollbar_button_hover_color=self.COLORS['bg_hover']
         )
 
-        theme_row = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        theme_row.pack(fill="x", padx=10, pady=(6, 0))
-        ctk.CTkLabel(theme_row, text="🎨 Giao diện:", font=self.F_NORMAL,
-                     text_color=self.COLORS['text_secondary']).pack(side="left", padx=(0, 6))
-        self.theme_menu = ctk.CTkOptionMenu(
-            theme_row, values=list(self.THEMES.keys()), width=170, height=24,
-            font=self.F_NORMAL,
-            fg_color=self.COLORS['bg_hover'], button_color=self.COLORS['accent'],
-            button_hover_color=self.COLORS['accent_hover'], text_color=self.COLORS['text_primary'],
-            dropdown_fg_color=self.COLORS['bg_card'], dropdown_text_color=self.COLORS['text_primary'],
-            command=self._on_theme_change
-        )
-        self.theme_menu.set(self.theme_name)
-        self.theme_menu.pack(side="left")
-
         self.tabview = ctk.CTkTabview(self.main_frame, fg_color=self.COLORS['bg_card'],
                                        segmented_button_fg_color=self.COLORS['bg_hover'],
                                        segmented_button_selected_color=self.COLORS['accent'],

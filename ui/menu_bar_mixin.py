@@ -143,7 +143,10 @@ class MenuBarMixin:
 
     # ===== GIAO DIỆN =====
     def _menu_theme(self, menu: tk.Menu):
-        current = self.theme_menu.get() if hasattr(self, "theme_menu") else self.theme_name
+        # Trước đây có thêm nhánh đọc self.theme_menu (dropdown ở tab Xử
+        # lý ảnh) — dropdown đó đã bị xóa (đổi giao diện giờ CHỈ qua menu
+        # này), self.theme_name luôn là nguồn sự thật duy nhất.
+        current = self.theme_name
         for name in self.THEMES:
             menu.add_radiobutton(
                 label=name, value=name,
