@@ -86,6 +86,7 @@ class NaChanceApp(
         self.last_result = None
         self.last_results = []
         self.current_document = None  # Document (Giai đoạn 11) của ảnh xử lý gần nhất — cho Undo/Redo
+        self._about_dialog = None  # CTkToplevel dialog "Giới thiệu" đang mở, None nếu đang đóng — nút ℹ toggle theo cờ này
         self.last_layout = None
         self.config_path = Path.home() / ".nachance_ai.json"
 
@@ -218,8 +219,24 @@ class NaChanceApp(
 
     def _show_about(self):
         """Dialog 'Giới thiệu' — logo + mô tả ngắn các tính năng chính,
-        cho người dùng cuối biết app làm gì mà không cần đọc README."""
+        cho người dùng cuối biết app làm gì mà không cần đọc README.
+
+        Toggle: nút ℹ (title bar) gọi đúng hàm này để MỞ dialog — bấm lần
+        nữa khi đang mở thì ĐÓNG luôn, không mở chồng thêm 1 dialog mới
+        (trước đây mỗi lần bấm luôn tạo Toplevel mới, không kiểm tra đã
+        có dialog mở sẵn hay chưa)."""
+        if self._about_dialog is not None and self._about_dialog.winfo_exists():
+            self._about_dialog.destroy()
+            self._about_dialog = None
+            return
+
         dlg = ctk.CTkToplevel(self)
+        self._about_dialog = dlg
+
+        def _close():
+            self._about_dialog = None
+            dlg.destroy()
+
         dlg.title("Giới thiệu")
         dlg.geometry("420x520")
         dlg.resizable(False, False)
@@ -268,8 +285,8 @@ class NaChanceApp(
 
         ctk.CTkButton(dlg, text="Đóng", fg_color=self.COLORS['accent'],
                       hover_color=self.COLORS['accent_hover'],
-                      command=dlg.destroy).pack(pady=(5, 20), padx=25, fill="x")
-        dlg.protocol("WM_DELETE_WINDOW", dlg.destroy)
+                      command=_close).pack(pady=(5, 20), padx=25, fill="x")
+        dlg.protocol("WM_DELETE_WINDOW", _close)
 
     def _build_title_bar(self):
         from pathlib import Path
