@@ -224,7 +224,13 @@ class NaChanceApp(
         Toggle: nút ℹ (title bar) gọi đúng hàm này để MỞ dialog — bấm lần
         nữa khi đang mở thì ĐÓNG luôn, không mở chồng thêm 1 dialog mới
         (trước đây mỗi lần bấm luôn tạo Toplevel mới, không kiểm tra đã
-        có dialog mở sẵn hay chưa)."""
+        có dialog mở sẵn hay chưa).
+
+        KHÔNG gọi grab_set() — dialog này chỉ hiển thị thông tin, không
+        có hành động nguy hiểm cần chặn thao tác khác trong lúc mở. Có
+        grab_set() (bản trước) sẽ chiếm hết input của cả app, kể cả nút
+        ℹ đứng sau dialog — khiến bấm ℹ lần 2 để đóng (toggle) không ăn,
+        vì click không bao giờ tới được nút đó nữa."""
         if self._about_dialog is not None and self._about_dialog.winfo_exists():
             self._about_dialog.destroy()
             self._about_dialog = None
@@ -242,7 +248,6 @@ class NaChanceApp(
         dlg.resizable(False, False)
         dlg.configure(fg_color=self.COLORS['bg_dark'])
         dlg.transient(self)
-        dlg.grab_set()
 
         try:
             icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo (1).ico"
