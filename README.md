@@ -33,58 +33,10 @@ NaChance CHỈ làm được việc đó, mà vì đó là Xưởng được xâ
 Cả 2 đều là code Python (`.py`) — chưa có Xưởng nào dùng công nghệ
 khác, nên Bootstrap hiện chỉ cần biết dựng `venv` là đủ.
 
-### 🖼 Xưởng Xử lý ảnh
-
-**Đối tượng dùng:** nhân viên/chủ tiệm ảnh cần xử lý hàng loạt ảnh thẻ
-nhanh, không cần biết Photoshop; cũng chạy được như 1 pipeline độc lập
-(không cần Photoshop) trên máy có hoặc không có GPU.
-
-**Input:** ảnh chân dung (jpg/png/bmp/tiff), một ảnh hoặc cả thư mục.
-**Output:** ảnh thẻ đã xử lý (đúng kích thước/DPI theo chuẩn đã chọn).
-
-Pipeline:
-```
-Ảnh gốc
-  ├─→ [Optional] Real-ESRGAN x2 (upscale/deblur nếu ảnh nhỏ/mờ)
-  ├─→ CodeFormer (face restore, fidelity 0.0-1.0 điều chỉnh)
-  ├─→ BiSeNet Face Parsing (19 vùng: da, mắt, răng, môi, tóc...)
-  │       ├─→ Guided Filter → chỉ vùng da (không còn "mặt nhựa")
-  │       ├─→ Brighten nhẹ → chỉ vùng mắt (không cháy highlight)
-  │       └─→ Desaturate → chỉ vùng răng (tránh môi)
-  ├─→ Face Align (căn chỉnh theo spec visa, đã fix -angle)
-  ├─→ isnet RMBG (tách nền mịn hơn u2net)
-  └─→ Ghép nền màu + Xuất ảnh
-```
-
-Cấu hình:
-
-| Tùy chọn | Mô tả |
-|----------|-------|
-| **Face Restore (CodeFormer)** | Khôi phục khuôn mặt tự nhiên. Thay thế toàn bộ Auto WB/CLAHE/Gamma cũ. |
-| **Fidelity** | `0%` = đẹp nhất (có thể đổi nét nhẹ), `100%` = giữ nguyên gốc. Khuyến nghị `70%`. |
-| **Upscale 2x (Real-ESRGAN)** | Deblur + upscale nếu ảnh gốc nhỏ hoặc mờ. |
-| **Skin Smooth** | Guided Filter chỉ trên mask da từ BiSeNet — không còn "mặt nhựa". |
-| **Sáng mắt / Trắng răng** | Mask chính xác từ face parsing, không còn hardcode ROI. |
-| **Tách nền (isnet)** | Thay thế u2net mặc định, viền tóc mịn hơn; đổi màu nền trắng/xanh/đỏ/tuỳ chỉnh. |
-| **Căn chỉnh chuẩn** | Tự nhận diện mắt/mũi/cằm, xoay + scale đúng tỷ lệ đầu/mắt theo từng loại giấy tờ (CMND, hộ chiếu, visa từng nước...). |
-| **Kiểm tra chuẩn tự động** | Báo lỗi nếu đầu quá to/nhỏ, mắt nhắm, ảnh nghiêng, mắt quá gần nhau... trước khi giao khách. |
-| **Undo/Redo** | Lùi/tiến theo từng bước đã áp dụng cho ảnh đang xử lý (`Document`, xem [`document_manager.md`](./docs/architecture/document_manager.md)). |
-
-### 🖨 Xưởng Xếp in
-
-**Đối tượng dùng:** cùng người dùng Xưởng Xử lý ảnh — bước cuối trước
-khi gửi máy in, sau khi đã có ảnh thẻ đạt chuẩn.
-
-**Input:** ảnh đã xử lý (mặc định) hoặc ảnh bất kỳ do người dùng chọn.
-**Output:** 1 file ảnh khổ in đã xếp sẵn nhiều tấm, đúng DPI, sẵn sàng
-gửi máy in — hoặc xếp tiếp vào file khổ in có sẵn (không phải in rời
-từng lần).
-
-14 công thức khổ in dựng sẵn (`config/presets/layout_presets.json`),
-trộn được nhiều khổ trong cùng 1 tờ (vd "4x6 2 Dọc + 3x4 2 Ngang"):
-4x6, 3x4, 2x3, 3x5, 2.5x3.5 — hoặc giữ nguyên kích thước gốc. Vùng in/
-lề/khoảng cách/DPI tự chỉnh tay nếu công thức có sẵn không vừa khổ
-giấy đang dùng.
+Chi tiết từng Xưởng (input/output, pipeline, cấu hình) nằm ngay trong
+thư mục code của Xưởng đó, không lặp lại ở đây:
+- [`photo_engine/README.md`](./photo_engine/README.md) — Xưởng Xử lý ảnh
+- [`layout/README.md`](./layout/README.md) — Xưởng Xếp in
 
 App có thể chạy ở 2 chế độ tuỳ máy có đủ tài nguyên/model hay không —
 xem [⚡ Chạy KHÔNG cần weights (Lite Mode)](#-chạy-không-cần-weights-lite-mode)
