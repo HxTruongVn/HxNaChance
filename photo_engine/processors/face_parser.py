@@ -298,3 +298,37 @@ class FaceParsingProcessor:
         return mask
 
 
+# ------------------------------------------------------------------
+# 3. ADAPTER — Giai đoạn 4 (docs/roadmap/roadmap.md), model đầu tiên
+#    làm mẫu kiến trúc Capability/Adapter (xem
+#    docs/architecture/meta_architecture.md).
+# ------------------------------------------------------------------
+#
+# CỐ Ý dùng composition (bọc 1 instance FaceParsingProcessor) thay vì
+# sửa thẳng FaceParsingProcessor ở trên — network BiSeNet thật (~300
+# dòng phía trên) giữ NGUYÊN VẸN, không rủi ro gì thêm. Adapter chỉ
+# làm 1 việc: dịch API cũ (parse() trả numpy array trần) sang API
+# Capability Interface (parse() trả FaceParseResult) — xem
+# photo_engine/capabilities/face_parser.py.
+#
+# Tên class khớp field "adapter": "bisenet_face_parser" đã có sẵn
+# trong config/presets/model_registry.json.
+
+from photo_engine.capabilities.face_parser import FaceParser, FaceParseResult
+
+
+class BiSeNetFaceParserAdapter(FaceParser):
+    def __init__(self, weights_path: str, device="cpu"):
+        self._impl = FaceParsingProcessor(weights_path, device=device)
+
+    @property
+    def available(self) -> bool:
+        return self._impl.available
+
+    def parse(self, image_bgr: np.ndarray) -> Optional[FaceParseResult]:
+        parsing_map = self._impl.parse(image_bgr)
+        if parsing_map is None:
+            return None
+        return FaceParseResult(parsing_map=parsing_map, labels=FaceParsingProcessor.LABELS)
+
+

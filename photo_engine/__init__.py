@@ -10,8 +10,15 @@ photo_agent.py, api/engine_wrapper.py, tests/...) không cần sửa gì.
 Cấu trúc:
     utils.py              → _ensure_rgb, _imread_unicode
     spec.py                → PhotoSpec, SPEC_PRESETS, DEFAULT_PRESET_NAME
+    capabilities/
+        face_parser.py     → FaceParser (interface), FaceParseResult
+                              — Giai đoạn 4 (docs/roadmap/roadmap.md)
     processors/
         face_parser.py     → BiSeNet (lazy torch) + FaceParsingProcessor
+                              + BiSeNetFaceParserAdapter (implement
+                              FaceParser — dùng cái này khi cần gọi
+                              qua Capability, giữ FaceParsingProcessor
+                              cho ai cần truy cập BiSeNet trực tiếp)
         face_restorer.py   → CodeFormerRestorer
         upscaler.py         → RealESRGANUpscaler
         enhancer.py         → SmartEnhancer
@@ -25,7 +32,8 @@ Cấu trúc:
 
 from photo_engine.utils import _ensure_rgb, _imread_unicode
 from photo_engine.spec import PhotoSpec, _load_spec_presets, SPEC_PRESETS, DEFAULT_PRESET_NAME
-from photo_engine.processors.face_parser import _build_bisenet, FaceParsingProcessor
+from photo_engine.capabilities.face_parser import FaceParser, FaceParseResult
+from photo_engine.processors.face_parser import _build_bisenet, FaceParsingProcessor, BiSeNetFaceParserAdapter
 from photo_engine.processors.face_restorer import CodeFormerRestorer
 from photo_engine.processors.upscaler import RealESRGANUpscaler
 from photo_engine.processors.enhancer import SmartEnhancer
@@ -38,7 +46,8 @@ from photo_engine.engine import NaChanceEngine
 __all__ = [
     "_ensure_rgb", "_imread_unicode",
     "PhotoSpec", "_load_spec_presets", "SPEC_PRESETS", "DEFAULT_PRESET_NAME",
-    "_build_bisenet", "FaceParsingProcessor",
+    "FaceParser", "FaceParseResult",
+    "_build_bisenet", "FaceParsingProcessor", "BiSeNetFaceParserAdapter",
     "CodeFormerRestorer", "RealESRGANUpscaler", "SmartEnhancer", "BackgroundProcessor",
     "PhotoTransformer",
     "_rotate_cv2", "_analyze_with_orientation_fallback", "FaceAnalyzer",

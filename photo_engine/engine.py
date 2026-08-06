@@ -12,7 +12,11 @@ from photo_engine.utils import _ensure_rgb, _imread_unicode
 from photo_engine.spec import PhotoSpec
 from photo_engine.document import Document
 from config.model_manager import ModelManager
-from photo_engine.processors.face_parser import FaceParsingProcessor
+# Giai đoạn 4 (docs/roadmap/roadmap.md): face_parser giờ đi qua
+# Capability Interface (FaceParser/FaceParseResult), KHÔNG import thẳng
+# FaceParsingProcessor nữa — chỉ Adapter (processors/face_parser.py)
+# mới được biết BiSeNet là gì.
+from photo_engine.processors.face_parser import BiSeNetFaceParserAdapter
 from photo_engine.processors.face_restorer import CodeFormerRestorer
 from photo_engine.processors.upscaler import RealESRGANUpscaler
 from photo_engine.processors.enhancer import SmartEnhancer
@@ -90,14 +94,14 @@ class NaChanceEngine:
 
         # Lazy init: chỉ tạo object, không load weights ngay
         self.face_parser = _safe_init(
-            "FaceParser", lambda: FaceParsingProcessor(str(mm.weight_path("face_parser")), device=self.device))
+            "FaceParser", lambda: BiSeNetFaceParserAdapter(str(mm.weight_path("face_parser")), device=self.device))
         self.codeformer = _safe_init(
             "CodeFormer", lambda: CodeFormerRestorer(str(mm.weight_path("face_restorer")), device=self.device))
         self.upscaler = _safe_init(
             "RealESRGAN", lambda: RealESRGANUpscaler(str(mm.weight_path("upscaler")), device=self.device))
         self.enhancer = _safe_init(
             "SmartEnhancer",
-            lambda: SmartEnhancer(self.face_parser if (self.face_parser and self.face_parser.available) else None))
+            lambda: SmartEnhancer(bool(self.face_parser and self.face_parser.available)))
         self.face_analyzer = _safe_init("FaceAnalyzer (MediaPipe)", lambda: FaceAnalyzer())
         # BackgroundProcessor CHƯA qua ModelManager: tham số nó nhận là
         # model_name (tên session rembg tự quản lý cache), không phải
@@ -241,29 +245,29 @@ class NaChanceEngine:
                     "dùng lại toạ độ khuôn mặt trước đó.")
 
         # 3. Face Parsing
-        parsing_map = None
+        face_parse_result = None
         if self.face_parser.available:
             try:
-                parsing_map = self.face_parser.parse(image)
+                face_parse_result = self.face_parser.parse(image)
             except Exception as e:
                 print(f"[FaceParsing] ⚠ Lỗi: {e}")
 
         # 4. Skin Smoothing
-        if options.get('skin_smooth', True) and parsing_map is not None:
+        if options.get('skin_smooth', True) and face_parse_result is not None:
             strength = options.get('skin_strength', 0.5)
-            image = self.enhancer.skin_smoothing(image, parsing_map, strength=strength)
+            image = self.enhancer.skin_smoothing(image, face_parse_result, strength=strength)
             doc.apply("skin_smooth", {"strength": strength}, image.copy())
 
         # 5. Eye Enhancement
-        if options.get('eye_enhance', True) and parsing_map is not None:
+        if options.get('eye_enhance', True) and face_parse_result is not None:
             strength = options.get('eye_strength', 0.3)
-            image = self.enhancer.eye_enhancement(image, parsing_map, strength=strength)
+            image = self.enhancer.eye_enhancement(image, face_parse_result, strength=strength)
             doc.apply("eye_enhance", {"strength": strength}, image.copy())
 
         # 6. Teeth Whitening
-        if options.get('teeth_whiten', False) and parsing_map is not None:
+        if options.get('teeth_whiten', False) and face_parse_result is not None:
             strength = options.get('teeth_strength', 0.3)
-            image = self.enhancer.teeth_whitening(image, parsing_map, strength=strength)
+            image = self.enhancer.teeth_whitening(image, face_parse_result, strength=strength)
             doc.apply("teeth_whiten", {"strength": strength}, image.copy())
 
         # 6b. Shoulder Warp (tiện ích thêm — KHÔNG thay đổi logic align cũ)
