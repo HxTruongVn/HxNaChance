@@ -729,6 +729,16 @@ ModelValidator
 ModelRegistry
 Giai đoạn 4 — Chuyển BiSeNet thành Adapter
 
+**Trạng thái: ĐÃ XONG** — `photo_engine/capabilities/face_parser.py` +
+`BiSeNetFaceParserAdapter`, chi tiết xem
+[`../architecture/architecture.md`](../architecture/architecture.md).
+"Sau đó kiểm tra toàn bộ: Skin/Eye/Teeth/Hair" bên dưới — đã kiểm tra
+được Skin/Eye/Teeth (3 tính năng có thật trong `SmartEnhancer`, có
+test); "Hair" không phải tính năng nào đang tồn tại trong code (BiSeNet
+có nhãn `hair` trong 19 lớp nhưng chưa có tính năng nào của app dùng
+tới nhãn này) — không phải thiếu sót, chỉ là mục này trong kế hoạch gốc
+không khớp tính năng thật nào để kiểm tra.
+
 Đầu tiên xử lý:
 
 BiSeNet

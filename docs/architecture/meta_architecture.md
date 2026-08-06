@@ -170,8 +170,14 @@ mới cùng mô tả cần thiết.
 ├── (config/model_manager.py)              — resolver đường dẫn weight
 │                                             (phạm vi hẹp: chỉ tra path,
 │                                             chưa tự khởi tạo model)
-└── [Adapter thống nhất cho từng model]     — Giai đoạn 4-5 (roadmap.md),
-                                              chưa xây
+├── (photo_engine/capabilities/face_parser.py + processors/face_parser.py
+│    :: BiSeNetFaceParserAdapter)          — Giai đoạn 4 ĐÃ XONG, model
+│                                             đầu tiên làm mẫu kiến trúc
+└── [Adapter cho 4 model còn lại]           — Giai đoạn 5 (roadmap.md):
+                                              face_restorer/upscaler/
+                                              background_remover/
+                                              pose_estimator vẫn gọi
+                                              thẳng class cụ thể
 
 (Production Line — pipeline xử lý ảnh, bên trong Workshop "Xử lý ảnh")
 ├── (photo_engine/engine.py)               — NaChanceEngine — pipeline VẪN
