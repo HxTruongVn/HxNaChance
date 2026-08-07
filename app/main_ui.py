@@ -9,6 +9,7 @@ app/main.py, đúng nguyên lý đã dùng cho workshops/photo/.
 """
 import os
 import sys
+import threading
 from pathlib import Path
 from PIL import Image as PILImage, ImageTk
 import customtkinter as ctk
@@ -110,6 +111,13 @@ class NaChanceApp(
                 "App sẽ chạy ở chế độ Lite (không có phục hồi/nâng cao ảnh).\n"
                 "Kiểm tra console để biết chi tiết lỗi."
             ))
+
+        # Luôn cho chạy Lite Mode ngay (ở trên) — KHÔNG chặn khởi động
+        # để chờ tải model. Nếu đang thiếu model (Lite Mode), tự tải nốt
+        # phần còn thiếu Ở NỀN trong lúc người dùng đã dùng được app.
+        if runtime_report is not None and not runtime_report.can_run_full_ai:
+            self._start_background_weight_download()
+
         self._drag_x = 0
         self._drag_y = 0
         self._process_timer_id = None  # FIX: lưu timer ID để hủy
@@ -177,6 +185,43 @@ class NaChanceApp(
             (self.chk_teeth, avail(getattr(self.engine, 'face_parser', None)), "Trắng răng (Face Parsing)"),
             (self.chk_remove_bg, avail(getattr(self.engine, 'bg_processor', None)), "Tách nền (isnet)"),
         ]
+
+    def _start_background_weight_download(self):
+        """Thiếu model (Lite Mode) -> tự tải nốt phần còn thiếu Ở NỀN,
+        không chặn app đã dùng được ngay. Tái sử dụng download_all_weights()
+        có sẵn (setup/setup_models.py — tự thử lần lượt hết source, có
+        resume khi đứt giữa chừng) thay vì viết lại logic tải.
+
+        Chạy trong 1 thread daemon CÙNG process với UI (app/main.py chạy
+        UI trực tiếp trong process, khác NaChance.py chạy app/main.py
+        như subprocess con) — nhờ vậy tải xong có thể cập nhật thẳng UI.
+        Widget Tkinter không thread-safe: cập nhật self.status từ thread
+        nền phải qua self.after(0, ...), đúng pattern đã dùng trong
+        ui/pipeline_mixin.py (xử lý ảnh theo lô), không tự sáng tác cách
+        khác.
+
+        KHÔNG hot-reload engine sau khi tải xong — engine đang giữ model
+        cũ trong RAM, có thể đang được dùng ở worker thread xử lý ảnh
+        khác cùng lúc; đổi engine giữa chừng rủi ro cao hơn giá trị nó
+        mang lại. Chỉ báo cho người dùng biết, gợi ý khởi động lại.
+        """
+        def _worker():
+            try:
+                from setup.setup_models import download_all_weights
+                failed = download_all_weights()
+                ok = not failed
+            except Exception as e:
+                print(f"[BackgroundDownload] ⚠ Lỗi: {e}")
+                ok = False
+            if ok:
+                msg, color = ("✓ Đã tải xong model còn thiếu — khởi động lại "
+                              "NaChance để dùng đầy đủ tính năng"), self.COLORS['success']
+            else:
+                msg, color = ("⚠ Tải model nền chưa xong hết — xem console "
+                               "để biết chi tiết, hoặc chạy lại setup_models.py"), self.COLORS['warning']
+            self.after(0, lambda: self.status.configure(text=msg, text_color=color))
+
+        threading.Thread(target=_worker, daemon=True, name="NaChanceWeightDownload").start()
 
     def _on_close(self):
         try:

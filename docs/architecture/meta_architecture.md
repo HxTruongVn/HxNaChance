@@ -162,7 +162,22 @@ mới cùng mô tả cần thiết.
 ├── (workshops/layout/ui.py)               — Workshop "Xếp in" — cùng
 │                                             tình trạng
 ├── (workshops/layout/manifest.json)       — cùng tình trạng
-└── [Bootstrap Controller đọc manifest]     — Audit/Verify/Resolve theo
+├── (app/main_ui.py::_start_background_weight_download) — 1 PHẦN nhỏ
+│                                             của "Resolve": thiếu weight
+│                                             -> tự tải nền (thread daemon,
+│                                             không chặn khởi động), báo
+│                                             qua self.status khi xong.
+│                                             KHÔNG đọc manifest.json —
+│                                             gọi thẳng download_all_weights()
+│                                             (setup/setup_models.py) đọc
+│                                             weights_sources.json trực
+│                                             tiếp. KHÔNG có Audit (quét
+│                                             manifest mọi Workshop trước)
+│                                             hay Verify (đối chiếu
+│                                             capabilities_required) —
+│                                             chỉ đúng phần Resolve, cho
+│                                             riêng weight thôi
+└── [Bootstrap Controller đọc manifest]     — Audit/Verify đầy đủ theo
                                               manifest.json từng Workshop
                                               — CHƯA xây: Reception
                                               (app/main_ui.py) vẫn gọi cố
