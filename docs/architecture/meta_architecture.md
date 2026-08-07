@@ -150,24 +150,40 @@ mới cùng mô tả cần thiết.
 │                                             chia 4 nhóm chức năng, VÀ
 │                                             đã dời về đúng thư mục
 │                                             Xưởng (trước ở ui/) — Xưởng
-│                                             tự quản UI của mình — vẫn
-│                                             KHÔNG tự mô tả (không có
-│                                             manifest riêng)
+│                                             tự quản UI của mình
+├── (workshops/photo/manifest.json)        — WorkshopManifest có DỮ
+│                                             LIỆU rồi (environment/
+│                                             capabilities_required/
+│                                             default_spec/output_settings,
+│                                             tham chiếu chứ không chép
+│                                             lại model_registry.json +
+│                                             weights_sources.json) —
+│                                             nhưng CHƯA có code nào đọc
 ├── (workshops/layout/ui.py)               — Workshop "Xếp in" — cùng
 │                                             tình trạng
-└── [WorkshopManifest]                      — id/title/capabilities_required/
-                                              ui_factory/status_check, tách
-                                              riêng khỏi code Mixin —
-                                              CHƯA xây: Reception
+├── (workshops/layout/manifest.json)       — cùng tình trạng
+└── [Bootstrap Controller đọc manifest]     — Audit/Verify/Resolve theo
+                                              manifest.json từng Workshop
+                                              — CHƯA xây: Reception
                                               (app/main_ui.py) vẫn gọi cố
                                               định đúng 2 Workshop này
-                                              (hardcode), việc UI đã dời
-                                              đúng thư mục KHÔNG tự động
-                                              nghĩa là Reception đọc động
+                                              (hardcode), có manifest.json
+                                              KHÔNG tự động nghĩa là
+                                              Reception đọc động
 
 (Warehouse)
 ├── (weights/)                             — thư mục chứa weight thật
-├── (config/presets/weights_sources.json)  — metadata nguồn tải/checksum
+├── (config/presets/weights_sources.json)  — metadata nguồn tải
+│                                             (KHÔNG có checksum — dòng
+│                                             cũ ở đây từng ghi sai
+│                                             "checksum", đã sửa. Không
+│                                             file nào trong
+│                                             config/presets/*.json hay
+│                                             setup/setup_models.py có
+│                                             sha256/hash nào cả — tải
+│                                             weight xong không verify
+│                                             được tính toàn vẹn. Gap
+│                                             thật, chưa vá)
 ├── (config/presets/model_registry.json)   — gần nhất với Department
 │                                             Contract, nhưng CHỈ áp dụng
 │                                             cho AI model

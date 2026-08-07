@@ -1,0 +1,32 @@
+{
+  "_comment": "WorkshopManifest (docs/architecture/meta_architecture.md, mục [ ] còn thiếu). Xưởng này KHÔNG dùng AI model nào — capabilities_required rỗng có chủ đích, không phải thiếu sót.",
+  "workshop_id": "layout",
+  "workshop_name": "Xưởng Xếp in",
+  "version": "1.0.0",
+  "description": "Xếp ảnh đã xử lý (hoặc ảnh bất kỳ) vào khổ in theo công thức bố cục, tối ưu số lượng ảnh trên tờ giấy.",
+
+  "environment": {
+    "_comment": "CHƯA có Bootstrap Controller nào đọc/enforce khối này. Nhẹ hơn hẳn Xưởng Xử lý ảnh — chỉ cần Pillow, không cần GPU/RAM lớn.",
+    "python_version": ">=3.10",
+    "device_preference": "cpu_only",
+    "min_ram_gb": 2
+  },
+
+  "capabilities_required": [],
+  "capabilities_optional": [],
+
+  "resources": {
+    "_comment": "Không có weight AI nào — chỉ cần dữ liệu công thức khổ in.",
+    "layout_presets_file": "../../config/presets/layout_presets.json"
+  },
+
+  "default_spec": null,
+  "_default_spec_note": "Khác Xưởng Xử lý ảnh (1 spec mặc định duy nhất) — Xưởng này cho chọn NHIỀU khổ in cùng lúc (checkbox), không có khái niệm 1 preset 'mặc định'. null có chủ đích, không phải bỏ sót.",
+
+  "output_settings": {
+    "_comment": "Khai báo mới — chưa có nơi nào đọc field này.",
+    "format": "jpg",
+    "dpi": 300,
+    "auto_save": false
+  }
+}

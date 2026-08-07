@@ -1,0 +1,32 @@
+{
+  "_comment": "WorkshopManifest (docs/architecture/meta_architecture.md, mục [ ] còn thiếu). THAM CHIẾU model_registry.json + weights_sources.json (resources.*_file) thay vì chép lại URL/adapter/weight — tránh 2 nguồn sự thật lệch nhau theo thời gian. Chỉ khai báo ở đây phần THẬT SỰ chưa có chỗ nào khai báo.",
+  "workshop_id": "photo",
+  "workshop_name": "Xưởng Xử lý ảnh",
+  "version": "1.0.0",
+  "description": "Nhận ảnh chân dung gốc, phục hồi/làm đẹp khuôn mặt đúng vùng, căn chỉnh chuẩn ảnh thẻ, tách nền.",
+
+  "environment": {
+    "_comment": "CHƯA có Bootstrap Controller nào đọc/enforce khối này — setup/runtime_manager.py hiện chỉ DÒ (report) python_version/OS, không so sánh với ngưỡng tối thiểu nào. Khai báo trước, Bootstrap Controller (bước kế tiếp) sẽ đọc.",
+    "python_version": ">=3.10",
+    "device_preference": "auto",
+    "min_ram_gb": 8
+  },
+
+  "capabilities_required": ["face_parser", "face_restorer", "upscaler", "background_remover"],
+  "capabilities_optional": ["pose_estimator"],
+
+  "resources": {
+    "_comment": "Nguồn sự thật thật sự — xem trực tiếp 2 file này, KHÔNG chép lại nội dung ở đây.",
+    "registry_file": "../../config/presets/model_registry.json",
+    "weight_sources_file": "../../config/presets/weights_sources.json",
+    "weights_directory": "weights/"
+  },
+
+  "default_spec": "13x18",
+  "output_settings": {
+    "_comment": "Khai báo mới — chưa có nơi nào đọc field này (app hiện luôn xuất .jpg, không có toggle auto_save). Để Bootstrap Controller/UI sau này dùng làm giá trị mặc định khi khởi tạo Xưởng lần đầu.",
+    "format": "jpg",
+    "dpi": 300,
+    "auto_save": true
+  }
+}
