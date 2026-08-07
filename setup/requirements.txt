@@ -1,28 +1,12 @@
-# Core
-torch>=2.0.0
-torchvision>=0.15.0
-# opencv-contrib-python includes everything in opencv-python (core) plus
-# extra modules like ximgproc (used for guided filter). Installing both
-# packages together can conflict since they provide the same cv2 module.
-opencv-contrib-python>=4.8.0
-Pillow>=10.0.0
-numpy>=1.24.0,<2.0.0
-mediapipe>=0.10.0,<0.10.15
-rembg>=2.0.50
-onnxruntime>=1.15.0
+# Requirements TỔNG cho cả app — mỗi Xưởng giờ tự quản requirements
+# riêng (workshops/<tên xưởng>/requirements.txt), file này chỉ gom lại
+# + phần dùng chung ở tầng Bootstrap (không thuộc riêng Xưởng nào).
+#
+# Cài lẻ 1 Xưởng (không cần cả app): pip install -r workshops/photo/requirements.txt
+-r ../workshops/photo/requirements.txt
+-r ../workshops/layout/requirements.txt
 
-# Face restoration & super-resolution
-# CodeFormer: dùng package PyPI (repo gốc không có setup.py)
-codeformer-pip
-# Real-ESRGAN: package PyPI (nếu gặp lỗi basicsr.functional_tensor thì downgrade torchvision<0.28 hoặc patch basicsr)
-realesrgan
-facexlib
-
-# Utilities
+# Bootstrap — tải weight, không thuộc Xưởng nào (setup/setup_models.py)
 tqdm>=4.65.0
 requests>=2.31.0
 gdown>=4.7.0
-scipy>=1.10.0
-
-# UI
-customtkinter>=5.2.0

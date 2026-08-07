@@ -100,7 +100,7 @@ class MenuBarMixin:
 
         # Checkbutton phản ánh + điều khiển ĐÚNG checkbox thật trên tab
         # Xử lý ảnh (không tạo trạng thái riêng) — chia đúng 4 nhóm như
-        # đã tổ chức lại trong process_tab_mixin.py.
+        # đã tổ chức lại trong workshops/photo/ui.py.
         groups = [
             ("Khuôn mặt", [
                 ("Face Restore", "chk_face_restore"),

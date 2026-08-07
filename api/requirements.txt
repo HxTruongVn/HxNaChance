@@ -1,8 +1,14 @@
 # FastAPI service — cài từ thư mục gốc repo:
 #   pip install -r api/requirements.txt
 #
-# File này kéo theo toàn bộ dependency AI/desktop (requirements.txt).
--r requirements.txt
+# File này kéo theo toàn bộ dependency AI/desktop (setup/requirements.txt).
+#
+# FIX: trước đây ghi "-r requirements.txt" (không có tiền tố đường dẫn)
+# — pip phân giải -r THEO VỊ TRÍ FILE CHỨA NÓ (api/), không theo thư mục
+# đang chạy lệnh, nên dòng đó trỏ vào chính api/requirements.txt (tự
+# tham chiếu chính nó) -> RecursionError, đã test thật và tái hiện được
+# lỗi. Đường dẫn đúng phải trỏ ra ngoài api/, lên root, vào setup/.
+-r ../setup/requirements.txt
 
 fastapi>=0.110.0
 uvicorn[standard]>=0.29.0

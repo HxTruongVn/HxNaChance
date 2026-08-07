@@ -1,4 +1,4 @@
-"""photo_engine.engine — NaChanceEngine (lazy load, graceful fallback)."""
+"""workshops.photo.engine — NaChanceEngine (lazy load, graceful fallback)."""
 import os
 import gc
 import cv2
@@ -8,22 +8,22 @@ from typing import Tuple, Optional, Dict, TYPE_CHECKING
 if TYPE_CHECKING:
     from runtime_manager import RuntimeReport
 
-from photo_engine.utils import _ensure_rgb, _imread_unicode
-from photo_engine.spec import PhotoSpec
-from photo_engine.document import Document
+from workshops.photo.utils import _ensure_rgb, _imread_unicode
+from workshops.photo.spec import PhotoSpec
+from workshops.photo.document import Document
 from config.model_manager import ModelManager
 # Giai đoạn 4 (docs/roadmap/roadmap.md): face_parser giờ đi qua
 # Capability Interface (FaceParser/FaceParseResult), KHÔNG import thẳng
 # FaceParsingProcessor nữa — chỉ Adapter (processors/face_parser.py)
 # mới được biết BiSeNet là gì.
-from photo_engine.processors.face_parser import BiSeNetFaceParserAdapter
-from photo_engine.processors.face_restorer import CodeFormerRestorer
-from photo_engine.processors.upscaler import RealESRGANUpscaler
-from photo_engine.processors.enhancer import SmartEnhancer
-from photo_engine.processors.bg_processor import BackgroundProcessor
-from photo_engine.processors.transformer import PhotoTransformer
-from photo_engine.analyzers.face_analyzer import FaceAnalyzer, _analyze_with_orientation_fallback
-from photo_engine.analyzers.shoulder_analyzer import ShoulderAnalyzer, warp_shoulders
+from workshops.photo.processors.face_parser import BiSeNetFaceParserAdapter
+from workshops.photo.processors.face_restorer import CodeFormerRestorer
+from workshops.photo.processors.upscaler import RealESRGANUpscaler
+from workshops.photo.processors.enhancer import SmartEnhancer
+from workshops.photo.processors.bg_processor import BackgroundProcessor
+from workshops.photo.processors.transformer import PhotoTransformer
+from workshops.photo.analyzers.face_analyzer import FaceAnalyzer, _analyze_with_orientation_fallback
+from workshops.photo.analyzers.shoulder_analyzer import ShoulderAnalyzer, warp_shoulders
 
 # 10. NACHANCE ENGINE (Lazy Load)
 # ------------------------------------------------------------------

@@ -1,14 +1,14 @@
-"""photo_engine.processors.enhancer — SmartEnhancer (skin/eye/teeth).
+"""workshops.photo.processors.enhancer — SmartEnhancer (skin/eye/teeth).
 
 Giai đoạn 4 (docs/roadmap/roadmap.md): nhận FaceParseResult (Capability
-Interface, photo_engine/capabilities/face_parser.py) thay vì tự hỏi
+Interface, workshops/photo/capabilities/face_parser.py) thay vì tự hỏi
 ngược `parser.get_mask()`/`parser.LABELS` — SmartEnhancer không còn
 phụ thuộc provider face-parsing cụ thể nào."""
 import numpy as np
 import cv2
 from typing import Tuple, Optional
 
-from photo_engine.capabilities.face_parser import FaceParseResult
+from workshops.photo.capabilities.face_parser import FaceParseResult
 
 # ------------------------------------------------------------------
 # 5. SMART ENHANCER

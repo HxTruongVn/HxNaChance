@@ -3,12 +3,12 @@ KHÔNG tách được thành hàm thuần (không phụ thuộc self) — 2 meth
 đọc/ghi trực tiếp hơn 10 widget khác nhau (self.layout_cfg_vars,
 self.caf_mode, self.chk_layout_stroke... — đã grep xác nhận trước khi
 tách). LAYOUT_PRESETS import riêng ở đây, tách
-khỏi layout_tab_mixin.py (cùng phụ thuộc, xem mục 4.2).
+khỏi workshops/layout/ui.py (cùng phụ thuộc, xem mục 4.2).
 """
 import json
 
-from layout.print_layout import LAYOUT_PRESETS
-from photo_engine import SPEC_PRESETS
+from workshops.layout.print_layout import LAYOUT_PRESETS
+from workshops.photo import SPEC_PRESETS
 from ui.utils import safe_float, safe_int
 
 

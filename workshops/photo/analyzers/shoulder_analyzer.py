@@ -1,4 +1,4 @@
-"""photo_engine.analyzers.shoulder_analyzer — cân vai theo sống mũi (MediaPipe Pose, tuỳ chọn)."""
+"""workshops.photo.analyzers.shoulder_analyzer — cân vai theo sống mũi (MediaPipe Pose, tuỳ chọn)."""
 import numpy as np
 import cv2
 from pathlib import Path

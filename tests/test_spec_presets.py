@@ -1,6 +1,6 @@
 """Preset loading — needs numpy + opencv (same as engine import)."""
 
-from photo_engine import DEFAULT_PRESET_NAME, SPEC_PRESETS, PhotoSpec
+from workshops.photo import DEFAULT_PRESET_NAME, SPEC_PRESETS, PhotoSpec
 
 
 def test_spec_presets_loaded():

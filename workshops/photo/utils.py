@@ -1,4 +1,4 @@
-"""photo_engine.utils — helper functions dùng chung (đọc/ghi ảnh an toàn)."""
+"""workshops.photo.utils — helper functions dùng chung (đọc/ghi ảnh an toàn)."""
 import numpy as np
 import cv2
 from PIL import Image as PILImage, ImageOps

@@ -25,26 +25,38 @@ NaChance/
 │   │                               # toàn bộ Mixin ở ui/
 │   └── photo_agent.py             # PhotoQAAgent — agent tự retry pipeline
 │
-├── ui/                             # Mixin cho NaChanceApp — mỗi file 1 nhóm
+├── ui/                             # Mixin CHUNG cho NaChanceApp — Reception,
+│                                   # không thuộc riêng Xưởng nào (2 Mixin
+│                                   # riêng từng Xưởng đã dời vào workshops/)
 │   ├── utils.py                    # safe_float/safe_int, imwrite_unicode, open_folder
 │   ├── widget_helpers.py           # _section_header/_chk/_slider dùng chung
 │   ├── theme_mixin.py              # Đọc config/presets/themes.json, đổi theme
 │   ├── menu_bar_mixin.py           # Thanh menu (Tệp/Xử lý/Bố cục/Giao diện/Trợ giúp)
-│   ├── process_tab_mixin.py        # Tab "Xử lý ảnh" (4 nhóm tùy chọn)
-│   ├── layout_tab_mixin.py         # Tab "Xếp in"
 │   ├── side_panel_mixin.py         # Panel phụ (preview/orient/result)
 │   ├── orientation_mixin.py        # Luồng xác nhận chiều ảnh
 │   ├── pipeline_mixin.py           # Chạy xử lý (đơn + batch) + Undo/Redo (current_document)
 │   └── config_mixin.py             # Đọc/ghi ~/.nachance_ai.json
 │
-├── photo_engine/                   # Core processing engine (package)
-│   ├── __init__.py                 # Facade — re-export API cũ, xem docstring trong file
-│   ├── spec.py                     # PhotoSpec, SPEC_PRESETS
-│   ├── utils.py                    # _ensure_rgb, _imread_unicode
-│   ├── document.py                 # Document, PipelineStep — Undo/Redo theo bước (Giai đoạn 11)
-│   ├── engine.py                   # NaChanceEngine — pipeline chính, gọi qua config/model_manager.py
-│   ├── processors/                 # face_parser, face_restorer, upscaler, enhancer, bg_processor, transformer
-│   └── analyzers/                  # face_analyzer, shoulder_analyzer
+├── workshops/                      # Mỗi Xưởng tự quản thư mục riêng: UI,
+│   │                               # README, code logic, requirements.txt
+│   ├── photo/                      # Xưởng Xử lý ảnh
+│   │   ├── README.md               # Input/output/pipeline/cấu hình — chi tiết Xưởng
+│   │   ├── requirements.txt        # Dependencies riêng Xưởng này (torch/cv2/mediapipe...)
+│   │   ├── ui.py                   # ProcessTabMixin — tab "Xử lý ảnh" (4 nhóm tùy chọn)
+│   │   ├── __init__.py             # Facade — re-export API cũ, xem docstring trong file
+│   │   ├── spec.py                 # PhotoSpec, SPEC_PRESETS
+│   │   ├── utils.py                # _ensure_rgb, _imread_unicode
+│   │   ├── document.py             # Document, PipelineStep — Undo/Redo theo bước (Giai đoạn 11)
+│   │   ├── engine.py               # NaChanceEngine — pipeline chính, gọi qua config/model_manager.py
+│   │   ├── capabilities/           # Capability Interface — FaceParser (Giai đoạn 4)
+│   │   ├── processors/             # face_parser, face_restorer, upscaler, enhancer, bg_processor, transformer
+│   │   └── analyzers/              # face_analyzer, shoulder_analyzer
+│   └── layout/                     # Xưởng Xếp in
+│       ├── README.md               # Chi tiết Xưởng
+│       ├── requirements.txt        # Dependencies riêng Xưởng này (chỉ Pillow)
+│       ├── ui.py                   # LayoutTabMixin — tab "Xếp in"
+│       └── print_layout.py         # LAYOUT_PRESETS, build_layout_canvas, save_layout,
+│                                    # inpaint_extend_cv2 (lấp vùng mở rộng — OpenCV cổ điển)
 │
 ├── config/                         # Registry + resolver weight (Infrastructure)
 │   ├── model_registry.py           # Đọc config/presets/model_registry.json — metadata thuần
@@ -52,17 +64,13 @@ NaChance/
 │   └── presets/                    # model_registry.json, weights_sources.json, themes.json,
 │                                    # spec_presets.json, layout_presets.json
 │
-├── layout/
-│   └── print_layout.py             # LAYOUT_PRESETS, build_layout_canvas, save_layout,
-│                                    # inpaint_extend_cv2 (lấp vùng mở rộng — OpenCV cổ điển)
-│
 ├── setup/                          # Bootstrap độc lập (Independent Auditor)
 │   ├── venv_bootstrap.py           # Tự chuyển vào .venv/
 │   ├── runtime_manager.py          # RuntimeManager, RuntimeReport, FEATURE_REQUIREMENTS
 │   ├── setup_models.py             # File cài đặt DUY NHẤT: venv + pip + tải weights + install_fonts()
 │   ├── installer.py                # SetupInstaller
 │   ├── debug.py                    # Kiểm tra môi trường độc lập, không cài gì
-│   └── requirements*.txt
+│   └── requirements*.txt           # File tổng hợp — gom -r từ workshops/*/requirements.txt
 │
 ├── api/                            # FastAPI service (tuỳ chọn, cùng engine với desktop app)
 │   ├── main.py
@@ -76,7 +84,7 @@ NaChance/
 ├── tests/                          # pytest — test_smoke, test_runtime_manager,
 │                                    # test_model_registry, test_model_manager,
 │                                    # test_bg_processor, test_align_face, test_photo_agent,
-│                                    # test_spec_presets
+│                                    # test_spec_presets, test_document, test_face_parser_adapter
 ├── docs/                           # xem docs/README.md làm mục lục
 ├── pytest.ini
 ├── README.md
@@ -87,15 +95,22 @@ NaChance/
 đọc code/doc cũ nhắc tới): `main.py` ở root (nay là `NaChance.py` +
 `app/main.py`), `main_ui.py`/`photo_engine.py`/`runtime_manager.py`/
 `print_layout.py`/`setup_models.py`/`debug.py` ở root (đã dời vào
-`app/`/`photo_engine/`/`setup/`/`layout/`), `presets/` ở root (nay
-`config/presets/`), `bootstrap.py` (đổi tên thành `NaChance.py`).
+`app/`/`workshops/photo/`/`setup/`/`workshops/layout/`), `presets/` ở
+root (nay `config/presets/`), `bootstrap.py` (đổi tên thành
+`NaChance.py`). **Mới nhất**: package `photo_engine/` (đã dời vào
+`workshops/photo/`), thư mục `layout/` (đã dời vào `workshops/layout/`),
+`ui/process_tab_mixin.py` (đã dời vào `workshops/photo/ui.py`),
+`ui/layout_tab_mixin.py` (đã dời vào `workshops/layout/ui.py`) — mỗi
+Xưởng giờ tự quản thư mục riêng.
 
 ---
 
 ## 📦 Quy tắc tổ chức module
 
 ### 1. Naming Convention
-- Package: `snake_case` (vd `photo_engine`)
+- Package: `snake_case` (vd `photo_engine`, `workshops.photo`)
+- Tên thư mục Xưởng dưới `workshops/`: ngắn gọn, không tiền tố/hậu tố
+  thừa (`photo`, `layout` — không phải `photo_processing_workshop`)
 - Module trong package: `snake_case`, tên khớp nội dung export
   (vd `face_restorer.py` → export `CodeFormerRestorer`)
 - Không dùng hậu tố version (v1, v2...) trong tên file/class/branding —
@@ -103,21 +118,23 @@ NaChance/
   dụng: `main_ui_v2.py` → `main_ui.py`, `photo_engine_v2.py` →
   `photo_engine.py` trước khi tách package).
 
-### 2. `__init__.py` — mẫu thật đang dùng (`photo_engine/__init__.py`)
+### 2. `__init__.py` — mẫu thật đang dùng (`workshops/photo/__init__.py`)
 
 ```python
-"""photo_engine — AI Photo Processing Engine (package). Facade: export
-lại đúng API cũ (NaChanceEngine, SPEC_PRESETS, PhotoSpec,
-DEFAULT_PRESET_NAME...) để code gọi `from photo_engine import
-NaChanceEngine` (app/main_ui.py, app/photo_agent.py,
-api/engine_wrapper.py, tests/...) không cần sửa gì khi nội bộ package
-thay đổi."""
+"""workshops.photo — AI Photo Processing Engine (package, Xưởng Xử lý
+ảnh). Facade: export lại đúng API cũ (NaChanceEngine, SPEC_PRESETS,
+PhotoSpec, DEFAULT_PRESET_NAME...) — tên export bên trong package ổn
+định qua các lần đổi cấu trúc, nhưng đường IMPORT package (từ
+`photo_engine` giờ là `workshops.photo`) đã đổi thật ở lần dời vào
+workshops/ — mọi nơi gọi (main_ui.py, photo_agent.py,
+api/engine_wrapper.py, tests/...) đã phải sửa theo. Facade chỉ đảm bảo
+tên export ổn định, không đảm bảo đường import package không đổi."""
 
-from photo_engine.utils import _ensure_rgb, _imread_unicode
-from photo_engine.spec import PhotoSpec, SPEC_PRESETS, DEFAULT_PRESET_NAME
-from photo_engine.processors.face_parser import FaceParsingProcessor
-from photo_engine.processors.face_restorer import CodeFormerRestorer
-from photo_engine.engine import NaChanceEngine
+from workshops.photo.utils import _ensure_rgb, _imread_unicode
+from workshops.photo.spec import PhotoSpec, SPEC_PRESETS, DEFAULT_PRESET_NAME
+from workshops.photo.processors.face_parser import FaceParsingProcessor
+from workshops.photo.processors.face_restorer import CodeFormerRestorer
+from workshops.photo.engine import NaChanceEngine
 
 __all__ = ["NaChanceEngine", "FaceParsingProcessor", "CodeFormerRestorer",
            "PhotoSpec", "SPEC_PRESETS", "DEFAULT_PRESET_NAME", ...]
@@ -128,7 +145,7 @@ __all__ = ["NaChanceEngine", "FaceParsingProcessor", "CodeFormerRestorer",
 ```python
 # Lazy import cho thư viện nặng (torch, mediapipe...) — bên trong
 # method/function, không phải top-level, để app vẫn khởi động được
-# khi thiếu weight/package (Lite Mode) — xem photo_engine/processors/*.py
+# khi thiếu weight/package (Lite Mode) — xem workshops/photo/processors/*.py
 def enhance_face(image):
     import torch
     ...
@@ -143,9 +160,9 @@ Public — export trong `__init__.py` của package. Private — prefix `_`
 ## Việc còn thiếu để khớp mô hình mục tiêu
 
 Không còn "Recommended Future Structure" riêng ở đây nữa — cấu trúc
-package (`photo_engine/`, `ui/`, `config/`, `setup/`, `layout/`) đã là
-hiện thực, không phải dự đoán. Phần còn thiếu thật sự (Workshop tự mô
-tả, Reception đọc động, PipelineComposer...) nằm ở
+package (`workshops/photo/`, `workshops/layout/`, `ui/`, `config/`,
+`setup/`) đã là hiện thực, không phải dự đoán. Phần còn thiếu thật sự
+(Workshop tự mô tả, Reception đọc động, PipelineComposer...) nằm ở
 [`meta_architecture.md`](meta_architecture.md) (đánh dấu `[...]`),
 không lặp lại ở đây để tránh 2 nơi cùng liệt kê việc cần làm rồi lệch
 nhau theo thời gian.

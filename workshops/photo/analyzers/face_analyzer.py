@@ -1,4 +1,4 @@
-"""photo_engine.analyzers.face_analyzer — MediaPipe FaceAnalyzer + orientation fallback."""
+"""workshops.photo.analyzers.face_analyzer — MediaPipe FaceAnalyzer + orientation fallback."""
 import numpy as np
 import cv2
 from typing import Tuple, Optional, List, Dict

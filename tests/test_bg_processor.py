@@ -1,5 +1,5 @@
 """
-Test cho photo_engine.processors.bg_processor.BackgroundProcessor —
+Test cho workshops.photo.processors.bg_processor.BackgroundProcessor —
 bảo vệ fix ".available bị thiếu" phát hiện lúc audit tính năng: trước
 đây class này không có self.available như 3 processor kia
 (CodeFormerRestorer/RealESRGANUpscaler/FaceParsingProcessor), khiến cơ
@@ -9,7 +9,7 @@ không có cảnh báo trước.
 """
 import numpy as np
 
-from photo_engine.processors.bg_processor import BackgroundProcessor
+from workshops.photo.processors.bg_processor import BackgroundProcessor
 
 
 def test_has_available_flag():

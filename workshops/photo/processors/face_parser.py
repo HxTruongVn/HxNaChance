@@ -1,11 +1,11 @@
-"""photo_engine.processors.face_parser — BiSeNet face parsing (lazy torch import)."""
+"""workshops.photo.processors.face_parser — BiSeNet face parsing (lazy torch import)."""
 import os
 import math
 import numpy as np
 import cv2
 from pathlib import Path
 from typing import Optional, List
-from photo_engine.utils import _torch_load_safe
+from workshops.photo.utils import _torch_load_safe
 
 # ------------------------------------------------------------------
 # 1. BISENET FACE PARSING (self-contained, lazy torch import)
@@ -309,12 +309,12 @@ class FaceParsingProcessor:
 # dòng phía trên) giữ NGUYÊN VẸN, không rủi ro gì thêm. Adapter chỉ
 # làm 1 việc: dịch API cũ (parse() trả numpy array trần) sang API
 # Capability Interface (parse() trả FaceParseResult) — xem
-# photo_engine/capabilities/face_parser.py.
+# workshops/photo/capabilities/face_parser.py.
 #
 # Tên class khớp field "adapter": "bisenet_face_parser" đã có sẵn
 # trong config/presets/model_registry.json.
 
-from photo_engine.capabilities.face_parser import FaceParser, FaceParseResult
+from workshops.photo.capabilities.face_parser import FaceParser, FaceParseResult
 
 
 class BiSeNetFaceParserAdapter(FaceParser):

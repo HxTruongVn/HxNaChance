@@ -1,0 +1,32 @@
+# Xưởng Xử lý ảnh (workshops/photo/) — requirements riêng, Xưởng tự quản.
+# Cài trực tiếp: pip install -r workshops/photo/requirements.txt
+# (setup/requirements.txt gom tất cả Xưởng lại — dùng file đó nếu chạy cả app.)
+
+# Core
+torch>=2.0.0
+torchvision>=0.15.0
+# opencv-contrib-python includes everything in opencv-python (core) plus
+# extra modules like ximgproc (used for guided filter). Installing both
+# packages together can conflict since they provide the same cv2 module.
+opencv-contrib-python>=4.8.0
+Pillow>=10.0.0
+numpy>=1.24.0,<2.0.0
+mediapipe>=0.10.0,<0.10.15
+rembg>=2.0.50
+onnxruntime>=1.15.0
+
+# Face restoration & super-resolution
+# CodeFormer: dùng package PyPI (repo gốc không có setup.py)
+codeformer-pip
+# Real-ESRGAN: package PyPI (nếu gặp lỗi basicsr.functional_tensor thì downgrade torchvision<0.28 hoặc patch basicsr)
+realesrgan
+facexlib
+
+# scipy: không import trực tiếp ở đâu trong workshops/photo/ — dependency
+# bắc cầu của basicsr/facexlib (codeformer-pip, realesrgan kéo theo). Ghim
+# ở đây cho rõ ràng thay vì để pip tự chọn bản, tránh cài lại lần 2 nếu
+# basicsr đổi yêu cầu version.
+scipy>=1.10.0
+
+# UI (tab "Xử lý ảnh" trong workshops/photo/ui.py dùng trực tiếp)
+customtkinter>=5.2.0

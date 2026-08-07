@@ -1,4 +1,4 @@
-"""photo_engine.processors.transformer — PhotoTransformer.align_face()."""
+"""workshops.photo.processors.transformer — PhotoTransformer.align_face()."""
 import numpy as np
 import cv2
 from typing import Dict

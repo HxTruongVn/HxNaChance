@@ -10,7 +10,7 @@ Bọc NaChanceEngine.process() trong vòng lặp:
 Không tự "bịa" ra khả năng mới — chỉ dùng lại đúng các tham số mà
 NaChanceEngine.process() đã đọc từ `options` (face_restore_fidelity,
 upscale, ...) và đúng các câu lỗi mà FaceAnalyzer.validate() /
-SmartEnhancer.detect_blur() đã sinh ra trong photo_engine/ (processors/enhancer.py).
+SmartEnhancer.detect_blur() đã sinh ra trong workshops/photo/ (processors/enhancer.py).
 
 Phân loại lỗi:
   - FIXABLE: xử lý lại (tăng fidelity CodeFormer, bật upscale) có thể cải
@@ -28,7 +28,7 @@ from typing import Dict, List, Tuple
 from dataclasses import dataclass, field
 
 
-# Khớp đúng chuỗi lỗi thật sinh ra trong photo_engine/ (FaceAnalyzer.validate,
+# Khớp đúng chuỗi lỗi thật sinh ra trong workshops/photo/ (FaceAnalyzer.validate,
 # NaChanceEngine.process). Nếu văn bản lỗi đổi bên đó, nhớ đồng bộ ở đây.
 _FIXABLE_PREFIXES = (
     "Ảnh mờ",
@@ -112,7 +112,7 @@ class PhotoQAAgent:
     """Bọc NaChanceEngine để tự retry khi ảnh chưa đạt chuẩn.
 
     Dùng cùng engine đã có sẵn (không tạo engine mới), giữ nguyên toàn bộ
-    logic xử lý ảnh trong photo_engine/ — agent chỉ quyết định "có nên
+    logic xử lý ảnh trong workshops/photo/ — agent chỉ quyết định "có nên
     thử lại không" và "thử lại với tham số nào", không tự viết lại pipeline.
     """
 
@@ -177,7 +177,7 @@ class PhotoQAAgent:
     @staticmethod
     def _escalate(options: Dict) -> Dict:
         """Tăng dần mức xử lý cho lượt thử kế tiếp. Chỉ đụng tới đúng các
-        key mà NaChanceEngine.process() thực sự đọc (xem photo_engine/engine.py)."""
+        key mà NaChanceEngine.process() thực sự đọc (xem workshops/photo/engine.py)."""
         new_options = dict(options)
         fidelity = float(new_options.get("face_restore_fidelity", 0.7))
         new_options["face_restore_fidelity"] = min(0.95, fidelity + 0.1)

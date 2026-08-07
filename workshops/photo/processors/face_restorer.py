@@ -1,8 +1,8 @@
-"""photo_engine.processors.face_restorer — CodeFormer wrapper (lazy import)."""
+"""workshops.photo.processors.face_restorer — CodeFormer wrapper (lazy import)."""
 import os
 import numpy as np
 import cv2
-from photo_engine.utils import _torch_load_safe
+from workshops.photo.utils import _torch_load_safe
 
 # ------------------------------------------------------------------
 # 3. CODEFORMER WRAPPER (lazy import)

@@ -1,11 +1,19 @@
 """
-photo_engine — AI Photo Processing Engine (package)
+workshops.photo — AI Photo Processing Engine (package, Xưởng Xử lý ảnh)
 
 Tách ra từ photo_engine.py monolith (1409 dòng) theo docs/plan_refactor.md
 — chiến lược "Re-export Facade": package này export lại đúng API cũ
-(NaChanceEngine, SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME, ...) nên
-code gọi `from photo_engine import NaChanceEngine, ...` (main_ui.py,
-photo_agent.py, api/engine_wrapper.py, tests/...) không cần sửa gì.
+(NaChanceEngine, SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME, ...).
+
+Facade này giữ được API ổn định qua 1 lần đổi cấu trúc (monolith ->
+package `photo_engine/`, code gọi không cần sửa) nhưng KHÔNG giữ được
+qua lần thứ 2: khi package dời vào `workshops/photo/` (mỗi Xưởng tự
+quản thư mục riêng), đường IMPORT đổi thật — mọi nơi gọi
+`from photo_engine import NaChanceEngine, ...` (main_ui.py,
+photo_agent.py, api/engine_wrapper.py, tests/...) đã phải sửa thành
+`from workshops.photo import ...`. Facade chỉ đảm bảo tên export bên
+trong ổn định (NaChanceEngine, SPEC_PRESETS...), không đảm bảo đường
+import package không đổi.
 
 Cấu trúc:
     utils.py              → _ensure_rgb, _imread_unicode
@@ -30,18 +38,18 @@ Cấu trúc:
     engine.py               → NaChanceEngine (ráp toàn bộ lại)
 """
 
-from photo_engine.utils import _ensure_rgb, _imread_unicode
-from photo_engine.spec import PhotoSpec, _load_spec_presets, SPEC_PRESETS, DEFAULT_PRESET_NAME
-from photo_engine.capabilities.face_parser import FaceParser, FaceParseResult
-from photo_engine.processors.face_parser import _build_bisenet, FaceParsingProcessor, BiSeNetFaceParserAdapter
-from photo_engine.processors.face_restorer import CodeFormerRestorer
-from photo_engine.processors.upscaler import RealESRGANUpscaler
-from photo_engine.processors.enhancer import SmartEnhancer
-from photo_engine.processors.bg_processor import BackgroundProcessor
-from photo_engine.processors.transformer import PhotoTransformer
-from photo_engine.analyzers.face_analyzer import _rotate_cv2, _analyze_with_orientation_fallback, FaceAnalyzer
-from photo_engine.analyzers.shoulder_analyzer import warp_shoulders, ShoulderAnalyzer
-from photo_engine.engine import NaChanceEngine
+from workshops.photo.utils import _ensure_rgb, _imread_unicode
+from workshops.photo.spec import PhotoSpec, _load_spec_presets, SPEC_PRESETS, DEFAULT_PRESET_NAME
+from workshops.photo.capabilities.face_parser import FaceParser, FaceParseResult
+from workshops.photo.processors.face_parser import _build_bisenet, FaceParsingProcessor, BiSeNetFaceParserAdapter
+from workshops.photo.processors.face_restorer import CodeFormerRestorer
+from workshops.photo.processors.upscaler import RealESRGANUpscaler
+from workshops.photo.processors.enhancer import SmartEnhancer
+from workshops.photo.processors.bg_processor import BackgroundProcessor
+from workshops.photo.processors.transformer import PhotoTransformer
+from workshops.photo.analyzers.face_analyzer import _rotate_cv2, _analyze_with_orientation_fallback, FaceAnalyzer
+from workshops.photo.analyzers.shoulder_analyzer import warp_shoulders, ShoulderAnalyzer
+from workshops.photo.engine import NaChanceEngine
 
 __all__ = [
     "_ensure_rgb", "_imread_unicode",

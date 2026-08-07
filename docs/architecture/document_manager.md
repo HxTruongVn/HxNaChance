@@ -3,7 +3,7 @@
 > `Document`/`PipelineComposer` thuộc khu vực **Production Line** trong mô hình tổng — xem [`meta_architecture.md`](meta_architecture.md).
 
 > Trạng thái: **`Document`/`PipelineStep`/Undo-Redo đã code và hoạt
-> động** (`photo_engine/document.py`, gọi từ `photo_engine/engine.py`,
+> động** (`workshops/photo/document.py`, gọi từ `workshops/photo/engine.py`,
 > nút Undo/Redo trong `ui/menu_bar_mixin.py` + `ui/pipeline_mixin.py`).
 > `PipelineComposer` (tự sắp thứ tự capability tuỳ ý) **vẫn chưa xây**
 > — đúng như điều kiện tiên quyết ghi ở cuối file này (cần Giai đoạn
@@ -12,7 +12,7 @@
 
 ## Vì sao cần
 
-Pipeline mặc định hiện tại (`photo_engine/engine.py`) chạy 1 chuỗi cố
+Pipeline mặc định hiện tại (`workshops/photo/engine.py`) chạy 1 chuỗi cố
 định: Upscale → Face Restore → ... Không thể chạy riêng 1 capability,
 không thể đổi thứ tự.
 
@@ -27,7 +27,7 @@ Không phải file trên đĩa — là 1 đối tượng trong bộ nhớ đại
 **1 ảnh đang được xử lý**, gồm:
 
 ```
-Document                                    (photo_engine/document.py)
+Document                                    (workshops/photo/document.py)
 ├── ảnh gốc                                  original_image
 ├── danh sách PipelineStep đã áp dụng         steps: List[PipelineStep]
 │     mỗi step = (capability, tham số, ảnh sau bước đó)

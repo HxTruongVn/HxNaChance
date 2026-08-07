@@ -14,7 +14,7 @@
 - [ui.md](architecture/ui.md) — cấu trúc `ui/` (Mixin), thanh menu
 - [command_system.md](architecture/command_system.md) — thanh menu & nền tảng cho CLI
 - [setup.md](architecture/setup.md) — package `setup/` *(chưa viết)*
-- [photo_engine.md](architecture/photo_engine.md) — package `photo_engine/` *(chưa viết)*
+- [workshops_photo.md](architecture/workshops_photo.md) — package `workshops/photo/` — trỏ sang README thật của Xưởng
 - [document_manager.md](architecture/document_manager.md) — Document & Undo/Redo (đã code, Giai đoạn 11); PipelineComposer (kế hoạch)
 
 ## 🔧 Phát triển (`development/`)

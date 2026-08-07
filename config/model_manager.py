@@ -3,7 +3,8 @@ config.model_manager — ModelManager (Giai đoạn 3 của docs/roadmap/roadmap
 mục P1 #3 của docs/roadmap/action_items.md).
 
 Cầu nối GIỮA Registry (metadata thuần — capability nào dùng weight nào)
-và Engine (khởi tạo model thật). Trước đây `photo_engine/engine.py` ghi
+và Engine (khởi tạo model thật). Trước đây `engine.py` (nay ở
+`workshops/photo/engine.py`) ghi
 CỨNG tên file weight trực tiếp trong lambda khởi tạo — vi phạm nguyên
 tắc "Metadata quan trọng hơn Hard-code" của
 `docs/architecture/NaChance Architecture Vision.md`, dù

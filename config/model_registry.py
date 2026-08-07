@@ -3,7 +3,7 @@ Model Registry — Giai đoạn 2 (theo docs/roadmap/roadmap.md).
 
 Đây CHỈ là lớp đọc/validate dữ liệu mô tả model — như một quyển từ điển
 tra cứu "capability nào đang dùng provider/adapter/weight nào", KHÔNG
-chứa logic xử lý ảnh, KHÔNG tự load model, KHÔNG đụng vào package photo_engine/.
+chứa logic xử lý ảnh, KHÔNG tự load model, KHÔNG đụng vào package workshops/photo/.
 
 Theo đúng ranh giới Plan.md đã vạch: Registry mô tả Capability / Provider
 / Version / Weight / Adapter — việc THẬT SỰ load/khởi tạo model (ModelManager,
@@ -21,7 +21,7 @@ from typing import Dict, List, Optional
 _REQUIRED_KEYS = ("provider", "version", "adapter", "weight")
 
 # Fallback an toàn nếu presets/model_registry.json thiếu/hỏng — khớp với
-# 4 capability BẮT BUỘC hiện có trong package photo_engine/ (chưa tính
+# 4 capability BẮT BUỘC hiện có trong package workshops/photo/ (chưa tính
 # pose_estimator vì đó là tính năng tuỳ chọn, không cần trong fallback tối
 # thiểu).
 _REGISTRY_FALLBACK = {

@@ -729,7 +729,7 @@ ModelValidator
 ModelRegistry
 Giai đoạn 4 — Chuyển BiSeNet thành Adapter
 
-**Trạng thái: ĐÃ XONG** — `photo_engine/capabilities/face_parser.py` +
+**Trạng thái: ĐÃ XONG** — `workshops/photo/capabilities/face_parser.py` +
 `BiSeNetFaceParserAdapter`, chi tiết xem
 [`../architecture/architecture.md`](../architecture/architecture.md).
 "Sau đó kiểm tra toàn bộ: Skin/Eye/Teeth/Hair" bên dưới — đã kiểm tra
@@ -940,7 +940,7 @@ Ví dụ Capability không phụ thuộc model cụ thể: Restore → CodeForme
 21. Giai đoạn 11 — Document & Pipeline Composition
 
 **Cập nhật trạng thái**: phần `Document`/`PipelineStep`/Undo-Redo bên
-dưới **đã code xong** (`photo_engine/document.py` +
+dưới **đã code xong** (`workshops/photo/document.py` +
 `ui/menu_bar_mixin.py` + `ui/pipeline_mixin.py`) — chi tiết thật xem
 [`../architecture/document_manager.md`](../architecture/document_manager.md).
 Phần **PipelineComposer** (tự sắp thứ tự capability tuỳ ý) vẫn giữ

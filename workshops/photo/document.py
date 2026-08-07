@@ -1,4 +1,4 @@
-"""photo_engine.document — Document & PipelineStep.
+"""workshops.photo.document — Document & PipelineStep.
 
 Giai đoạn 11 (docs/roadmap/roadmap.md) — thiết kế đầy đủ ở
 docs/architecture/document_manager.md. Mỗi bước trong pipeline

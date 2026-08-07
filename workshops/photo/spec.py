@@ -1,4 +1,4 @@
-"""photo_engine.spec — PhotoSpec (thông số khổ ảnh thẻ) + preset."""
+"""workshops.photo.spec — PhotoSpec (thông số khổ ảnh thẻ) + preset."""
 import json
 from pathlib import Path
 from typing import Dict
@@ -32,7 +32,9 @@ _BUILTIN_SPEC_PRESETS_FALLBACK = {
 
 
 def _load_spec_presets() -> Dict[str, "PhotoSpec"]:
-    presets_path = Path(__file__).parent.parent / "config" / "presets" / "spec_presets.json"
+    # workshops/photo/spec.py -> lên 3 cấp mới tới repo root (trước khi
+    # dời vào workshops/ chỉ cần lên 2 cấp — xem docs/architecture/structure.md).
+    presets_path = Path(__file__).parent.parent.parent / "config" / "presets" / "spec_presets.json"
     try:
         with open(presets_path, "r", encoding="utf-8") as f:
             raw = json.load(f)

@@ -14,7 +14,7 @@ lộn ngược ở MỌI góc — không chỉ tin theo mô tả PR.
 import numpy as np
 import pytest
 
-from photo_engine import PhotoTransformer, PhotoSpec
+from workshops.photo import PhotoTransformer, PhotoSpec
 
 
 def _rotate_pt(pt, phi_deg, center):

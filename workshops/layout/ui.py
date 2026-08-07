@@ -1,4 +1,4 @@
-"""ui.layout_tab_mixin — LayoutTabMixin: tab "Xếp in".
+"""workshops.layout.ui — LayoutTabMixin: tab "Xếp in".
 Phụ thuộc WidgetHelpersMixin. LAYOUT_PRESETS cũng được ConfigMixin dùng
 riêng (import lại ở config_mixin.py), vì 2 Mixin đó cùng cần nhưng
 không phụ thuộc lẫn nhau.
@@ -12,7 +12,7 @@ from tkinter import filedialog, messagebox
 import customtkinter as ctk
 from PIL import Image as PILImage
 
-from layout.print_layout import build_layout_canvas, save_layout, LAYOUT_PRESETS
+from workshops.layout.print_layout import build_layout_canvas, save_layout, LAYOUT_PRESETS
 from ui.utils import safe_float, safe_int
 
 

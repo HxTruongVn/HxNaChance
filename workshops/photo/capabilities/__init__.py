@@ -1,4 +1,4 @@
-"""photo_engine.capabilities — Capability Interface (Giai đoạn 3-5,
+"""workshops.photo.capabilities — Capability Interface (Giai đoạn 3-5,
 docs/roadmap/roadmap.md). Mỗi capability (face_parser, face_restorer,
 upscaler...) định nghĩa 1 interface ở đây — engine.py chỉ được phép
 import/gọi qua interface, không import thẳng adapter/provider cụ thể.

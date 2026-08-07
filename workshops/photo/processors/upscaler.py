@@ -1,4 +1,4 @@
-"""photo_engine.processors.upscaler — Real-ESRGAN wrapper (lazy import)."""
+"""workshops.photo.processors.upscaler — Real-ESRGAN wrapper (lazy import)."""
 import os
 import numpy as np
 import cv2

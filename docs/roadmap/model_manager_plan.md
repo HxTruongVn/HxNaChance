@@ -30,7 +30,7 @@ khởi tạo trực tiếp trong `engine.py` như hiện tại, không đưa và
 
 ### 7.2. Vấn đề cần giải quyết trước khi viết `ModelManager`
 
-Đọc trực tiếp `photo_engine/engine.py`, 5 constructor **không đồng nhất**:
+Đọc trực tiếp `workshops/photo/engine.py`, 5 constructor **không đồng nhất**:
 
 | Class | Constructor thật | Ghi chú |
 |---|---|---|
@@ -48,7 +48,7 @@ Phát hiện thêm (đáng ghi chú riêng, không phải lỗi của Bước 7 
 
 `model_manager.py` ở **root repo**, ngang hàng `model_registry.py` và
 `runtime_manager.py` — giữ đúng ranh giới đã thiết lập ở Giai đoạn 2
-(`Plan.md`): Registry/Manager nằm ngoài `photo_engine/`, không lồng vào
+(`Plan.md`): Registry/Manager nằm ngoài `workshops/photo/`, không lồng vào
 trong package xử lý ảnh.
 
 ### 7.4. Code cụ thể
@@ -64,11 +64,11 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from model_registry import load_registry
-from photo_engine.processors.face_parser import FaceParsingProcessor
-from photo_engine.processors.face_restorer import CodeFormerRestorer
-from photo_engine.processors.upscaler import RealESRGANUpscaler
-from photo_engine.processors.bg_processor import BackgroundProcessor
-from photo_engine.analyzers.shoulder_analyzer import ShoulderAnalyzer
+from workshops.photo.processors.face_parser import FaceParsingProcessor
+from workshops.photo.processors.face_restorer import CodeFormerRestorer
+from workshops.photo.processors.upscaler import RealESRGANUpscaler
+from workshops.photo.processors.bg_processor import BackgroundProcessor
+from workshops.photo.analyzers.shoulder_analyzer import ShoulderAnalyzer
 
 
 class _Unavailable:
@@ -168,7 +168,7 @@ tại in ra ở dòng `print(f"[Engine] FaceParser: ...")` khi chạy
 
 ### 7.6. Swap vào `engine.py` — 1 commit riêng
 
-Trong `photo_engine/engine.py`, thay các dòng `_safe_init(...)` của 5
+Trong `workshops/photo/engine.py`, thay các dòng `_safe_init(...)` của 5
 capability trên bằng:
 
 ```python
@@ -272,10 +272,10 @@ Hai chỗ, đúng như đã nêu ở lượt review đầu tiên — giờ dễ 
 vì đã tách file:
 
 ```python
-# photo_engine/processors/face_parser.py
+# workshops/photo/processors/face_parser.py
 torch.load(weights_path, map_location=device, weights_only=True)
 
-# photo_engine/processors/face_restorer.py
+# workshops/photo/processors/face_restorer.py
 torch.load(weights_path, map_location=device, weights_only=True)
 ```
 
@@ -311,7 +311,10 @@ print('OK — hash sai bị chặn đúng cách')
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 ```
 
-Sau Bước 0–6, `photo_engine` đã là package chuẩn ở root — dòng này chỉ
+Sau Bước 0–6, `photo_engine` đã là package chuẩn ở root (đã dời tiếp
+vào `workshops/photo/` sau đó — không còn "ở root" nữa, nhưng
+`sys.path.insert` ở root vẫn cần vì `workshops/` cũng nằm ở root) —
+dòng này chỉ
 còn cần thiết nếu `api/` được chạy như working directory riêng (vd.
 trong Docker `WORKDIR /app/api`). Kiểm tra `api/Dockerfile`:
 - Nếu `WORKDIR` là root repo (`/app`) và `COPY . .` — dòng `sys.path.insert`

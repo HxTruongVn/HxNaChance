@@ -1,16 +1,16 @@
 """
-Smoke test cho facade photo_engine/__init__.py — theo đúng gợi ý ở
+Smoke test cho facade workshops/photo/__init__.py — theo đúng gợi ý ở
 docs/plan_refactor.md (Bước 0), lấp khoảng trống: trước đây không có
 test nào trực tiếp kiểm tra NaChanceEngine + _imread_unicode qua đúng
 đường facade (chỉ có test_align_face.py/test_spec_presets.py import
 gián tiếp PhotoTransformer/PhotoSpec/SPEC_PRESETS).
 
-Mục đích: nếu sau này photo_engine/__init__.py bị sửa nhầm (quên
+Mục đích: nếu sau này workshops/photo/__init__.py bị sửa nhầm (quên
 export 1 tên, hoặc đường import nội bộ giữa các submodule bị đứt), test
 này báo lỗi ngay thay vì âm thầm vỡ main_ui.py/photo_agent.py/
 api/engine_wrapper.py lúc chạy thật.
 """
-from photo_engine import (
+from workshops.photo import (
     NaChanceEngine, SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME,
     _imread_unicode, _ensure_rgb,
     FaceParsingProcessor, BiSeNetFaceParserAdapter, FaceParser, FaceParseResult,
@@ -22,7 +22,7 @@ from photo_engine import (
 
 def test_facade_exports_importable():
     """Toàn bộ API cũ (main_ui.py/photo_agent.py/api/engine_wrapper.py
-    đang dùng) vẫn import được qua đúng 1 câu `from photo_engine import
+    đang dùng) vẫn import được qua đúng 1 câu `from workshops.photo import
     ...` như trước khi tách package — không cần sửa gì ở nơi gọi."""
     assert NaChanceEngine is not None
     assert PhotoSpec is not None

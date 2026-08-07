@@ -1,11 +1,11 @@
-"""Unit test cho Document/PipelineStep (photo_engine/document.py) —
+"""Unit test cho Document/PipelineStep (workshops/photo/document.py) —
 Giai đoạn 11. Thuần logic, không phụ thuộc GPU/weights — dùng mảng
 numpy giả lập ảnh, không đọc file thật.
 """
 import numpy as np
 import pytest
 
-from photo_engine.document import Document, MAX_HISTORY
+from workshops.photo.document import Document, MAX_HISTORY
 
 
 def _fake_image(value: int = 0):

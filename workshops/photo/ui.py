@@ -1,4 +1,4 @@
-"""ui.process_tab_mixin — ProcessTabMixin: tab "Xử lý ảnh".
+"""workshops.photo.ui — ProcessTabMixin: tab "Xử lý ảnh".
 Phụ thuộc WidgetHelpersMixin (_section_header/_chk/_slider) — NaChanceApp
 phải kế thừa cả 2 Mixin này.
 """
@@ -6,7 +6,7 @@ from tkinter import filedialog
 
 import customtkinter as ctk
 
-from photo_engine import SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME
+from workshops.photo import SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME
 
 
 class ProcessTabMixin:
@@ -301,7 +301,7 @@ class ProcessTabMixin:
         # đã bị đổi thành "13x18" (xem SPEC_PRESETS), nên dòng cũ sẽ
         # KeyError ngay khi preset_name không khớp gì trong dict. Dùng
         # DEFAULT_PRESET_NAME (đảm bảo luôn tồn tại trong SPEC_PRESETS,
-        # xem photo_engine/spec.py) thay vì gõ tay tên preset ở đây.
+        # xem workshops/photo/spec.py) thay vì gõ tay tên preset ở đây.
         preset = SPEC_PRESETS.get(preset_name, SPEC_PRESETS[DEFAULT_PRESET_NAME])
         try:
             dpi = int(self.entry_dpi.get())

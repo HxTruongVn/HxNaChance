@@ -30,13 +30,24 @@ NaChance CHỈ làm được việc đó, mà vì đó là Xưởng được xâ
 | 🖼 **Xử lý ảnh** | Nhận ảnh chân dung gốc → AI phục hồi/làm đẹp đúng vùng cần → căn chỉnh chuẩn ảnh thẻ → tách nền | Đầy đủ nhất, có pipeline Deep Learning |
 | 🖨 **Xếp in** | Nhận ảnh đã xử lý (hoặc ảnh bất kỳ) → xếp vào khổ in theo công thức bố cục, tối ưu số lượng ảnh/tờ giấy | Đầy đủ, 14 công thức khổ in sẵn |
 
+Mỗi Xưởng có 1 thư mục riêng dưới `workshops/`, tự quản lý toàn bộ thứ
+thuộc về mình — UI của Xưởng, README, code logic, **và cả
+`requirements.txt` riêng** (cài lẻ 1 Xưởng không cần kéo theo Xưởng
+kia):
+
+```
+workshops/
+├── photo/    — Xưởng Xử lý ảnh  (ui.py, engine.py, requirements.txt, README.md, ...)
+└── layout/   — Xưởng Xếp in     (ui.py, print_layout.py, requirements.txt, README.md, ...)
+```
+
 Cả 2 đều là code Python (`.py`) — chưa có Xưởng nào dùng công nghệ
 khác, nên Bootstrap hiện chỉ cần biết dựng `venv` là đủ.
 
 Chi tiết từng Xưởng (input/output, pipeline, cấu hình) nằm ngay trong
-thư mục code của Xưởng đó, không lặp lại ở đây:
-- [`photo_engine/README.md`](./photo_engine/README.md) — Xưởng Xử lý ảnh
-- [`layout/README.md`](./layout/README.md) — Xưởng Xếp in
+thư mục của Xưởng đó, không lặp lại ở đây:
+- [`workshops/photo/README.md`](./workshops/photo/README.md) — Xưởng Xử lý ảnh
+- [`workshops/layout/README.md`](./workshops/layout/README.md) — Xưởng Xếp in
 
 App có thể chạy ở 2 chế độ tuỳ máy có đủ tài nguyên/model hay không —
 xem [⚡ Chạy KHÔNG cần weights (Lite Mode)](#-chạy-không-cần-weights-lite-mode)
@@ -132,7 +143,6 @@ lớp giao diện.
 
 ```bash
 pip install -r api/requirements.txt
-# hoặc cả 2: pip install -r setup/requirements.txt -r api/requirements.txt
 uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 

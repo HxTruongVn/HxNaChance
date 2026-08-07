@@ -10,7 +10,7 @@ import cv2
 import customtkinter as ctk
 from PIL import Image as PILImage
 
-from photo_engine import _imread_unicode
+from workshops.photo import _imread_unicode
 from ui.utils import imwrite_unicode as _imwrite_unicode
 
 

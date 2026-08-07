@@ -8,9 +8,9 @@ thật của mạng — phần đó vẫn nằm ở tests/test_align_face.py cũ
 import numpy as np
 import pytest
 
-from photo_engine.capabilities.face_parser import FaceParser, FaceParseResult
-from photo_engine.processors.face_parser import BiSeNetFaceParserAdapter, FaceParsingProcessor
-from photo_engine.processors.enhancer import SmartEnhancer
+from workshops.photo.capabilities.face_parser import FaceParser, FaceParseResult
+from workshops.photo.processors.face_parser import BiSeNetFaceParserAdapter, FaceParsingProcessor
+from workshops.photo.processors.enhancer import SmartEnhancer
 
 
 LABELS = FaceParsingProcessor.LABELS  # nhãn thật, không tự bịa ra để test khỏi lệch với code thật

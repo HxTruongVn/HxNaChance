@@ -11,9 +11,9 @@
         │                             │
      APP CORE                    RUNTIME
         │                             │
-  photo_engine                 runtime_manager
-  main_ui                      (Python/GPU/package/model
-  print_layout                  detection — 1 lần lúc khởi động)
+  workshops.photo               runtime_manager
+  workshops.layout              (Python/GPU/package/model
+  main_ui                        detection — 1 lần lúc khởi động)
         │                             │
         └──────────────┬──────────────┘
                        │
@@ -122,7 +122,7 @@ cho tính năng cân vai).
 8: "Registry không chứa logic xử lý ảnh") — `model_registry.py` có thể
 đọc/validate/tra cứu registry, đối chiếu chéo với
 `presets/weights_sources.json` để bắt lỗi lệch dữ liệu giữa 2 file,
-nhưng **CHƯA được nối vào package `photo_engine/`**. `NaChanceEngine`
+nhưng **CHƯA được nối vào package `workshops/photo/`**. `NaChanceEngine`
 vẫn import và khởi tạo thẳng `CodeFormerRestorer`/`RealESRGANUpscaler`/
 `FaceParsingProcessor`/`BackgroundProcessor` như trước — đúng tinh thần
 Giai đoạn 2 của Plan ("PhotoEngine không thay đổi").
@@ -143,6 +143,18 @@ tất cả Mixin. Cả 2 việc tách đã xong, kế hoạch chi tiết (đã h
 không giữ lại trong `docs/` nữa — chuyển vào `docs/archive/` (xem
 `docs/archive/README.md`), chỉ giữ trong các thư mục chính tài liệu còn
 việc cần làm.
+
+**Cập nhật lần 2 — mỗi Xưởng tự quản thư mục riêng**: package
+`photo_engine/` sau đó dời tiếp vào `workshops/photo/`, và 2 trong 9
+Mixin ở `ui/*.py` (`process_tab_mixin.py`, `layout_tab_mixin.py`) dời
+theo Xưởng tương ứng — thành `workshops/photo/ui.py` và
+`workshops/layout/ui.py`. `ui/*.py` giờ chỉ còn 7 file, đúng phần
+Reception (UI tổng, không thuộc riêng Xưởng nào) — chi tiết đầy đủ xem
+[`ui.md`](ui.md). Lần này facade KHÔNG giữ được API import ổn định như
+lần trước: đường import đổi thật (`from photo_engine import` ->
+`from workshops.photo import`), mọi nơi gọi phải sửa — xem ghi chú
+trung thực về việc này ngay trong `workshops/photo/__init__.py`.
+
 Đây là bước CHUẨN BỊ MẶT BẰNG cho Giai đoạn 3-4 (mỗi capability giờ đã
 nằm ở file riêng, dễ thay bằng Adapter hơn nhiều so với sửa 1 file lớn)
 — bản thân việc tách file KHÔNG phải là Giai đoạn 3-4, vẫn cần làm phần
@@ -150,9 +162,9 @@ Interface/Adapter/ModelManager thật sự bên dưới.
 
 **Giai đoạn 4 (BiSeNet) đã xong** — xem
 `docs/architecture/document_manager.md`-style ghi chú trực tiếp trong
-`meta_architecture.md` (mục Infrastructure). `photo_engine/capabilities/
+`meta_architecture.md` (mục Infrastructure). `workshops/photo/capabilities/
 face_parser.py` (interface `FaceParser`/`FaceParseResult`) +
-`BiSeNetFaceParserAdapter` (`photo_engine/processors/face_parser.py`) +
+`BiSeNetFaceParserAdapter` (`workshops/photo/processors/face_parser.py`) +
 `NaChanceEngine`/`SmartEnhancer` gọi qua interface — cả 3 việc liệt kê
 bên dưới đã làm xong **cho riêng BiSeNet**, đã có test
 (`tests/test_face_parser_adapter.py`, 45/45 test pass).

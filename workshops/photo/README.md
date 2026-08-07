@@ -1,15 +1,17 @@
 # 🖼 Xưởng Xử lý ảnh
 
 Xưởng lớn nhất và đầy đủ nhất hiện có trong NaChance — xem
-[README gốc](../README.md#-nachance-là-gì-thật-ra) để biết Xưởng này
-khớp vào đâu trong mô hình tổng (Production Complex).
+[README gốc](../../README.md#-nachance-là-gì-thật-ra) để biết Xưởng
+này khớp vào đâu trong mô hình tổng (Production Complex).
 
 **Code chính:** `engine.py` (`NaChanceEngine`, ráp toàn bộ pipeline),
 `capabilities/` (Capability Interface — `FaceParser`), `processors/`
 (BiSeNet/CodeFormer/Real-ESRGAN/enhancer/bg_processor/transformer),
 `analyzers/` (face/shoulder), `document.py` (Undo/Redo).
-**UI:** `../ui/process_tab_mixin.py`. Chi tiết kiến trúc nội bộ xem
-[`../docs/architecture/architecture.md`](../docs/architecture/architecture.md).
+**UI:** `ui.py` (ngay trong thư mục này — Xưởng tự quản UI của mình).
+**Cài riêng:** `pip install -r requirements.txt` (ngay trong thư mục
+này). Chi tiết kiến trúc nội bộ xem
+[`../../docs/architecture/architecture.md`](../../docs/architecture/architecture.md).
 
 ## Đối tượng dùng
 
@@ -49,4 +51,4 @@ Photoshop) trên máy có hoặc không có GPU.
 | **Tách nền (isnet)** | Thay thế u2net mặc định, viền tóc mịn hơn; đổi màu nền trắng/xanh/đỏ/tuỳ chỉnh. |
 | **Căn chỉnh chuẩn** | Tự nhận diện mắt/mũi/cằm, xoay + scale đúng tỷ lệ đầu/mắt theo từng loại giấy tờ (CMND, hộ chiếu, visa từng nước...). |
 | **Kiểm tra chuẩn tự động** | Báo lỗi nếu đầu quá to/nhỏ, mắt nhắm, ảnh nghiêng, mắt quá gần nhau... trước khi giao khách. |
-| **Undo/Redo** | Lùi/tiến theo từng bước đã áp dụng cho ảnh đang xử lý (`Document`, xem [`../docs/architecture/document_manager.md`](../docs/architecture/document_manager.md)). |
+| **Undo/Redo** | Lùi/tiến theo từng bước đã áp dụng cho ảnh đang xử lý (`Document`, xem [`../../docs/architecture/document_manager.md`](../../docs/architecture/document_manager.md)). |

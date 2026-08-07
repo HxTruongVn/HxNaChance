@@ -10,8 +10,8 @@ tạo trực tiếp (hardcode) cũ — đúng yêu cầu trước khi swap vào 
 from pathlib import Path
 
 from config.model_manager import ModelManager
-from photo_engine.processors.face_restorer import CodeFormerRestorer
-from photo_engine.processors.upscaler import RealESRGANUpscaler
+from workshops.photo.processors.face_restorer import CodeFormerRestorer
+from workshops.photo.processors.upscaler import RealESRGANUpscaler
 
 
 def test_weight_path_matches_old_hardcoded_paths():

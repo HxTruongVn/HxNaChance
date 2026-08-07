@@ -1,4 +1,4 @@
-"""photo_engine.processors.bg_processor — BackgroundProcessor (isnet/rembg)."""
+"""workshops.photo.processors.bg_processor — BackgroundProcessor (isnet/rembg)."""
 import numpy as np
 import cv2
 from typing import Tuple

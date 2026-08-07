@@ -146,14 +146,24 @@ mới cùng mô tả cần thiết.
                                               "chỉ đọc metadata trước"
 
 (Workshop)
-├── (ui/process_tab_mixin.py)              — Workshop "Xử lý ảnh", đã chia
-│                                             4 nhóm chức năng — KHÔNG tự
-│                                             mô tả (không có manifest riêng)
-├── (ui/layout_tab_mixin.py)               — Workshop "Xếp in" — cùng
+├── (workshops/photo/ui.py)                — Workshop "Xử lý ảnh", đã
+│                                             chia 4 nhóm chức năng, VÀ
+│                                             đã dời về đúng thư mục
+│                                             Xưởng (trước ở ui/) — Xưởng
+│                                             tự quản UI của mình — vẫn
+│                                             KHÔNG tự mô tả (không có
+│                                             manifest riêng)
+├── (workshops/layout/ui.py)               — Workshop "Xếp in" — cùng
 │                                             tình trạng
 └── [WorkshopManifest]                      — id/title/capabilities_required/
                                               ui_factory/status_check, tách
-                                              riêng khỏi code Mixin
+                                              riêng khỏi code Mixin —
+                                              CHƯA xây: Reception
+                                              (app/main_ui.py) vẫn gọi cố
+                                              định đúng 2 Workshop này
+                                              (hardcode), việc UI đã dời
+                                              đúng thư mục KHÔNG tự động
+                                              nghĩa là Reception đọc động
 
 (Warehouse)
 ├── (weights/)                             — thư mục chứa weight thật
@@ -170,7 +180,7 @@ mới cùng mô tả cần thiết.
 ├── (config/model_manager.py)              — resolver đường dẫn weight
 │                                             (phạm vi hẹp: chỉ tra path,
 │                                             chưa tự khởi tạo model)
-├── (photo_engine/capabilities/face_parser.py + processors/face_parser.py
+├── (workshops/photo/capabilities/face_parser.py + processors/face_parser.py
 │    :: BiSeNetFaceParserAdapter)          — Giai đoạn 4 ĐÃ XONG, model
 │                                             đầu tiên làm mẫu kiến trúc
 └── [Adapter cho 4 model còn lại]           — Giai đoạn 5 (roadmap.md):
@@ -180,12 +190,12 @@ mới cùng mô tả cần thiết.
                                               thẳng class cụ thể
 
 (Production Line — pipeline xử lý ảnh, bên trong Workshop "Xử lý ảnh")
-├── (photo_engine/engine.py)               — NaChanceEngine — pipeline VẪN
+├── (workshops/photo/engine.py)          — NaChanceEngine — pipeline VẪN
 │                                             cố định cứng (if/else), chưa
 │                                             phải dữ liệu
-├── (photo_engine/processors/*.py)         — 6 processor
-├── (photo_engine/analyzers/*.py)          — face_analyzer, shoulder_analyzer
-├── (photo_engine/document.py)             — Document/PipelineStep (Undo/Redo)
+├── (workshops/photo/processors/*.py)    — 6 processor
+├── (workshops/photo/analyzers/*.py)     — face_analyzer, shoulder_analyzer
+├── (workshops/photo/document.py)        — Document/PipelineStep (Undo/Redo)
 └── [PipelineComposer]                      — tổ hợp/sắp thứ tự capability
                                               tuỳ ý — Giai đoạn 11, chưa xây
 ```

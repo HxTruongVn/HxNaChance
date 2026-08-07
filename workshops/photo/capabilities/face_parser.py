@@ -1,11 +1,11 @@
-"""photo_engine.capabilities.face_parser — Capability Interface
+"""workshops.photo.capabilities.face_parser — Capability Interface
 FaceParser (Giai đoạn 4, docs/roadmap/roadmap.md; thiết kế đầy đủ ở
 docs/architecture/meta_architecture.md, mục Infrastructure).
 
 Mọi provider face-parsing (BiSeNet hiện tại — xem
-photo_engine/processors/face_parser.py::BiSeNetFaceParserAdapter — hoặc
+workshops/photo/processors/face_parser.py::BiSeNetFaceParserAdapter — hoặc
 SegFormer/khác sau này) implement interface này. engine.py và
-SmartEnhancer (photo_engine/processors/enhancer.py) chỉ được phép gọi
+SmartEnhancer (workshops/photo/processors/enhancer.py) chỉ được phép gọi
 qua FaceParser/FaceParseResult ở đây, KHÔNG import thẳng
 BiSeNetFaceParserAdapter hay bất kỳ class cụ thể nào — đúng nguyên tắc
 "PhotoEngine chỉ sử dụng Capability" (NaChance Architecture Vision.md).
