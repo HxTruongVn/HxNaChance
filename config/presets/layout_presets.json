@@ -68,7 +68,7 @@
     },
     "custom": {
       "label": "Tùy chỉnh",
-      "formula": ""
+      "formula": "|10-16.3;N;F;mL1|4*6;3*4;2*3|C2L3;C1S2"
     }
   }
 }
