@@ -89,6 +89,9 @@ def check_environment() -> dict:
             'can_run_lite': bool,
             'can_run_full_ai': bool,
             'report': RuntimeReport,
+            'workshop_problems': List[str],  # Verify — điểm KHÔNG đạt
+                # so với environment khai trong workshops/*/manifest.json
+                # (RAM/Python version/device bắt buộc) — rỗng nếu đủ.
         }
     """
     try:
@@ -123,12 +126,29 @@ def check_environment() -> dict:
         manager = RuntimeManager(weights_dir=str(project_root / "weights"))
         manager.ensure_weights_dir()
         report = manager.detect()
-        
+
+        # Verify — đối chiếu environment trong manifest.json từng Workshop
+        # với máy thật (report). Quét ĐỘNG workshops/*/manifest.json,
+        # không hardcode tên Workshop — đúng yêu cầu "repo đi đến đâu
+        # thích nghi đến đó". RAM/Python quá thấp KHÔNG thể tự sửa bằng
+        # code — trả về để main() cảnh báo rõ, không âm thầm bỏ qua.
+        workshop_problems = []
+        try:
+            from setup.runtime_manager import verify_workshop_environment
+            workshops_dir = project_root / "workshops"
+            if workshops_dir.is_dir():
+                for manifest_path in sorted(workshops_dir.glob("*/manifest.json")):
+                    workshop_problems.extend(
+                        verify_workshop_environment(str(manifest_path), report))
+        except Exception as e:
+            log.warning(f"⚠️  Không thể Verify manifest.json từng Workshop: {e}")
+
         return {
             "can_run": report.can_run_lite,
             "can_run_lite": report.can_run_lite,
             "can_run_full_ai": report.can_run_full_ai,
             "report": report,
+            "workshop_problems": workshop_problems,
         }
     except Exception:
         log.exception("⚠️  Không thể kiểm tra môi trường")
@@ -137,6 +157,7 @@ def check_environment() -> dict:
             "can_run_lite": False,
             "can_run_full_ai": False,
             "report": None,
+            "workshop_problems": [],
         }
 
 
@@ -194,6 +215,16 @@ def print_status(status: dict):
         log.info(status["report"].summary_text())
     else:
         log.warning("⚠️  Không lấy được thông tin môi trường")
+
+    # Verify — RAM/Python quá thấp so với 1 Workshop nào đó không thể
+    # tự sửa bằng code (không thể tự thêm RAM vào máy). Resolve ở đây
+    # nghĩa là CẢNH BÁO RÕ NGAY LÚC KHỞI ĐỘNG, không để người dùng tự
+    # đâm vào lỗi/crash giữa chừng lúc đang xử lý ảnh mới biết.
+    problems = status.get("workshop_problems") or []
+    if problems:
+        log.warning("\n⚠️  Máy chưa đủ yêu cầu của 1 số Xưởng:")
+        for p in problems:
+            log.warning(f"   {p}")
 
 
 def main():

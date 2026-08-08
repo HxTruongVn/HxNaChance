@@ -54,7 +54,7 @@ class NaChanceApp(
     # self.COLORS theo theme đã chọn trong __init__.
     COLORS = THEMES[DEFAULT_THEME]
 
-    def __init__(self, runtime_report=None):
+    def __init__(self, runtime_report=None, workshop_problems=None):
         super().__init__()  
         
         self.title("NaChance")
@@ -62,6 +62,7 @@ class NaChanceApp(
         self.overrideredirect(True)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.geometry("480x780")
+        self._workshop_problems = workshop_problems or []
         # Đọc tên theme đã lưu trước để lấy màu sắc chuẩn
         self.theme_name = self._load_theme_name()
         self.COLORS = self.THEMES.get(self.theme_name, self.THEMES[self.DEFAULT_THEME])
@@ -117,6 +118,15 @@ class NaChanceApp(
         # phần còn thiếu Ở NỀN trong lúc người dùng đã dùng được app.
         if runtime_report is not None and not runtime_report.can_run_full_ai:
             self._start_background_weight_download()
+
+        # Verify (setup/runtime_manager.py::verify_workshop_environment)
+        # đã chạy TRƯỚC khi tới đây (app/main.py::_detect_runtime()) —
+        # RAM/Python quá thấp so với 1 Workshop nào đó KHÔNG tự sửa được
+        # bằng code (không thể tự thêm RAM vào máy). "Resolve" ở đây là
+        # cảnh báo rõ 1 LẦN ngay khi mở app — không để người dùng tự
+        # đâm vào lỗi/crash giữa chừng lúc đang xử lý ảnh mới biết.
+        if self._workshop_problems:
+            self.after(800, self._show_workshop_problems_notice)
 
         self._drag_x = 0
         self._drag_y = 0
@@ -222,6 +232,20 @@ class NaChanceApp(
             self.after(0, lambda: self.status.configure(text=msg, text_color=color))
 
         threading.Thread(target=_worker, daemon=True, name="NaChanceWeightDownload").start()
+
+    def _show_workshop_problems_notice(self):
+        """Hiện 1 LẦN — dùng messagebox.showwarning (không phải dialog
+        tự viết) vì đây là thông báo đơn giản, không cần tương tác gì
+        thêm, đúng mức độ cần thiết. Không lặp lại/không có nút "nhắc
+        lại sau" — mở app lần sau sẽ Verify lại từ đầu, tự hiện lại nếu
+        vấn đề vẫn còn."""
+        lines = "\n".join(f"• {p}" for p in self._workshop_problems)
+        messagebox.showwarning(
+            "Máy chưa đủ yêu cầu",
+            f"Đối chiếu với yêu cầu từng Xưởng, máy này chưa đủ:\n\n{lines}\n\n"
+            "App vẫn chạy được, nhưng có thể chậm hoặc lỗi khi dùng tính năng "
+            "nặng của Xưởng liên quan."
+        )
 
     def _on_close(self):
         try:

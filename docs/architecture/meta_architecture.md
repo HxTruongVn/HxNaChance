@@ -188,26 +188,41 @@ mới cùng mô tả cần thiết.
 │                                             Workshop, so với
 │                                             RuntimeReport (máy thật),
 │                                             trả về danh sách điểm
-│                                             KHÔNG đạt. Đã nối vào
-│                                             `python setup/runtime_manager.py`
-│                                             (quét động mọi
+│                                             KHÔNG đạt. ĐÃ NỐI vào cả
+│                                             2 luồng khởi động thật:
+│                                             `NaChance.py::check_environment()`
+│                                             (in cảnh báo trong log
+│                                             Bootstrap) VÀ
+│                                             `app/main.py::_detect_runtime()`
+│                                             (truyền vào NaChanceApp,
+│                                             hiện messagebox 1 lần sau
+│                                             khi UI sẵn sàng) — quét
+│                                             động mọi
 │                                             workshops/*/manifest.json,
-│                                             KHÔNG hardcode tên Workshop)
-└── [Bootstrap Controller đầy đủ]            — CHƯA xây: verify_workshop_
-                                              environment() vẫn đứng
-                                              riêng lẻ, chưa nối vào
-                                              NaChance.py/app/main.py (chỉ
-                                              chạy khi gọi trực tiếp
-                                              `python setup/runtime_manager.py`),
-                                              chưa có Resolve tự động
-                                              theo từng vấn đề Verify tìm
-                                              ra (mới có Resolve RIÊNG
-                                              cho weight, ở trên). Reception
+│                                             KHÔNG hardcode tên Workshop
+├── (app/main_ui.py::_show_workshop_problems_notice) — Resolve cho
+│                                             RAM/Python quá thấp: CỐ Ý
+│                                             KHÔNG tự sửa bằng code
+│                                             (không thể tự thêm RAM vào
+│                                             máy) — Resolve ở đây nghĩa
+│                                             là cảnh báo rõ 1 LẦN ngay
+│                                             lúc mở app, để người dùng
+│                                             tự quyết định thay vì tự
+│                                             đâm vào lỗi/crash giữa
+│                                             chừng lúc đang xử lý ảnh
+└── [Bootstrap Controller đầy đủ]            — CHƯA xây: Reception
                                               (app/main_ui.py) vẫn gọi cố
                                               định đúng 2 Workshop này
-                                              (hardcode), có manifest.json
-                                              KHÔNG tự động nghĩa là
-                                              Reception đọc động
+                                              (hardcode) — Verify/Resolve
+                                              đã nối vào luồng chính,
+                                              nhưng vẫn KHÔNG có nghĩa
+                                              Reception TỰ ĐỘNG phát
+                                              hiện Workshop mới (thêm 1
+                                              thư mục workshops/<tên>/
+                                              có manifest.json vẫn chưa
+                                              tự xuất hiện trên UI —
+                                              vẫn phải sửa app/main_ui.py
+                                              thủ công để thêm tab mới)
 
 (Warehouse)
 ├── (weights/)                             — thư mục chứa weight thật

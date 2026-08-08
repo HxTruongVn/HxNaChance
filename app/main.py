@@ -9,9 +9,12 @@ Kiến trúc:
          ▼
     RuntimeReport   → báo cáo bất biến: tính năng nào bật/tắt được
          │
+         ├──→ verify_workshop_environment() → đối chiếu với
+         │     workshops/*/manifest.json (RAM/Python version tối thiểu
+         │     từng Workshop khai báo) → workshop_problems
          ▼
-    NaChanceApp(runtime_report) → UI + Engine chỉ ĐỌC report,
-                                      không tự dò môi trường lại nữa
+    NaChanceApp(runtime_report, workshop_problems) → UI + Engine chỉ
+                    ĐỌC report, không tự dò môi trường lại nữa
 
 Pipeline xử lý ảnh: Real-ESRGAN → CodeFormer → BiSeNet Face Parsing →
           Guided Skin Smooth → Eye/Teeth Mask Enhance →
@@ -53,7 +56,8 @@ except Exception:
 
 
 def _detect_runtime():
-    """Chạy RuntimeManager 1 lần, in báo cáo, trả về report cho UI dùng lại."""
+    """Chạy RuntimeManager 1 lần, in báo cáo, trả về (report, workshop_problems)
+    cho UI dùng lại."""
     manager = RuntimeManager(weights_dir="weights")
     manager.ensure_weights_dir()
     report = manager.detect()
@@ -72,11 +76,32 @@ def _detect_runtime():
         input("\nNhấn Enter để thoát...")
         sys.exit(1)
 
-    return report
+    # Verify — đối chiếu environment trong manifest.json từng Workshop
+    # với máy thật. Quét ĐỘNG workshops/*/manifest.json, không hardcode
+    # tên Workshop. RAM/Python quá thấp KHÔNG tự sửa được bằng code —
+    # chỉ cảnh báo rõ, không chặn app chạy (người dùng tự quyết định).
+    workshop_problems = []
+    try:
+        from setup.runtime_manager import verify_workshop_environment
+        workshops_dir = PROJECT_ROOT / "workshops"
+        if workshops_dir.is_dir():
+            for manifest_path in sorted(workshops_dir.glob("*/manifest.json")):
+                workshop_problems.extend(
+                    verify_workshop_environment(str(manifest_path), report))
+    except Exception as e:
+        print(f"[Verify] ⚠ Không thể đối chiếu manifest.json: {e}")
+
+    if workshop_problems:
+        print("\n⚠️  Máy chưa đủ yêu cầu của 1 số Xưởng:")
+        for p in workshop_problems:
+            print(f"   {p}")
+        print("=" * 60)
+
+    return report, workshop_problems
 
 
 try:
-    RUNTIME_REPORT = _detect_runtime()
+    RUNTIME_REPORT, WORKSHOP_PROBLEMS = _detect_runtime()
     from app.main_ui import NaChanceApp
     import customtkinter as ctk
 except SystemExit:
@@ -99,7 +124,7 @@ if __name__ == "__main__":
     try:
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("dark-blue")
-        app = NaChanceApp(runtime_report=RUNTIME_REPORT)
+        app = NaChanceApp(runtime_report=RUNTIME_REPORT, workshop_problems=WORKSHOP_PROBLEMS)
         app.mainloop()
     except Exception:
         print("=" * 60)
