@@ -99,6 +99,7 @@ class RuntimeReport:
     gpu_name: Optional[str]
     weights_dir: str
     torch_build_info: Optional[str] = None  # vd "torch 2.1.0 (CUDA build: KHÔNG CÓ — bản CPU-only)"
+    gpu_hardware_detected: Optional[str] = None  # tên GPU thật qua nvidia-smi, độc lập với torch
     package_status: Dict[str, bool] = field(default_factory=dict)
     model_status: Dict[str, bool] = field(default_factory=dict)
     feature_available: Dict[str, bool] = field(default_factory=dict)
@@ -127,6 +128,11 @@ class RuntimeReport:
         lines.append(f"Device: {self.device}{gpu}")
         if self.torch_build_info:
             lines.append(f"  ↳ {self.torch_build_info}")
+        if self.gpu_hardware_detected and self.device == "cpu":
+            lines.append(f"  ⚠ Phần cứng THẬT có GPU ({self.gpu_hardware_detected}, "
+                          "theo nvidia-smi — độc lập với torch) nhưng đang chạy CPU. "
+                          "Rất có thể do cài nhầm bản torch CPU-only — gỡ torch/"
+                          "torchvision rồi cài lại đúng bản CUDA.")
         lines.append("")
         lines.append("Packages:")
         for name, ok in self.package_status.items():
@@ -174,6 +180,7 @@ class RuntimeManager:
         package_status = {name: _is_importable(name) for name in all_packages}
 
         device, gpu_name, torch_build_info = self._detect_device(package_status.get("torch", False))
+        gpu_hardware_detected = self._detect_gpu_hardware()
         model_status = self._detect_models()
         feature_available = self._detect_features(package_status, model_status)
 
@@ -187,12 +194,39 @@ class RuntimeManager:
             gpu_name=gpu_name,
             weights_dir=str(self.weights_dir),
             torch_build_info=torch_build_info,
+            gpu_hardware_detected=gpu_hardware_detected,
             package_status=package_status,
             model_status=model_status,
             feature_available=feature_available,
             missing_required_packages=missing_required,
             missing_models=missing_models,
         )
+
+    @staticmethod
+    def _detect_gpu_hardware() -> Optional[str]:
+        """Dò phần cứng GPU THẬT qua nvidia-smi — độc lập hoàn toàn với
+        package Python nào đang cài. nvidia-smi đi kèm driver NVIDIA,
+        đọc thẳng từ driver, không qua torch/tensorflow hay bất kỳ
+        trung gian Python nào — đây là cách thật để trả lời "máy có GPU
+        NVIDIA không" mà không phụ thuộc torch có cài đúng bản hay
+        không (torch CPU-only luôn báo cuda.is_available()=False dù máy
+        có GPU thật — 2 chuyện khác nhau, cần 2 cách dò độc lập nhau).
+
+        Trả tên GPU (str) nếu có, None nếu không có driver NVIDIA / máy
+        không có GPU NVIDIA (không phân biệt được 2 lý do này — giống
+        cách chính nvidia-smi báo lỗi khi thiếu driver)."""
+        import subprocess
+        try:
+            result = subprocess.run(
+                ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+                capture_output=True, text=True, timeout=5)
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip().splitlines()[0].strip()
+        except (FileNotFoundError, OSError):
+            pass
+        except subprocess.TimeoutExpired:
+            pass
+        return None
 
     @staticmethod
     def _detect_os_name() -> str:

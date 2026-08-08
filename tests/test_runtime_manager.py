@@ -1,5 +1,6 @@
 """Unit tests for runtime detection (no GPU / weights required)."""
 
+import os
 from pathlib import Path
 
 from setup.runtime_manager import (
@@ -102,6 +103,29 @@ def test_detect_device_torch_cuda_available(monkeypatch):
     assert device == "cuda"
     assert gpu_name == "NVIDIA RTX 4060"
     assert "12.1" in info
+
+
+def test_detect_gpu_hardware_no_nvidia_smi_returns_none():
+    """Máy không có driver NVIDIA (không có lệnh nvidia-smi trên PATH)
+    -> None. Test THẬT trên sandbox này (không có nvidia-smi thật) —
+    không patch/giả lập gì, chạy đúng code production."""
+    result = RuntimeManager._detect_gpu_hardware()
+    assert result is None
+
+
+def test_detect_gpu_hardware_reads_real_subprocess(tmp_path, monkeypatch):
+    """Kiểm tra cơ chế đọc THẬT qua subprocess — tạo 1 chương trình giả
+    tên `nvidia-smi` trên PATH, in ra đúng định dạng nvidia-smi thật
+    xuất (--format=csv,noheader), rồi để _detect_gpu_hardware() TỰ CHẠY
+    subprocess.run() thật (không patch subprocess, không patch hàm) —
+    chỉ chương trình bị dò là giả, cơ chế đọc là thật 100%."""
+    fake_bin = tmp_path / "nvidia-smi"
+    fake_bin.write_text("#!/bin/bash\necho 'NVIDIA GeForce RTX 4060'\nexit 0\n")
+    fake_bin.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{os.environ['PATH']}")
+
+    result = RuntimeManager._detect_gpu_hardware()
+    assert result == "NVIDIA GeForce RTX 4060"
 
 
 def test_detect_os_name_windows_11_not_reported_as_10(monkeypatch):
