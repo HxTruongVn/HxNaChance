@@ -98,6 +98,7 @@ class RuntimeReport:
     device: str                      # "cuda" hoặc "cpu"
     gpu_name: Optional[str]
     weights_dir: str
+    torch_build_info: Optional[str] = None  # vd "torch 2.1.0 (CUDA build: KHÔNG CÓ — bản CPU-only)"
     package_status: Dict[str, bool] = field(default_factory=dict)
     model_status: Dict[str, bool] = field(default_factory=dict)
     feature_available: Dict[str, bool] = field(default_factory=dict)
@@ -124,6 +125,8 @@ class RuntimeReport:
         lines.append(f"Python: {self.python_version}  |  OS: {self.os_name}")
         gpu = f" ({self.gpu_name})" if self.gpu_name else ""
         lines.append(f"Device: {self.device}{gpu}")
+        if self.torch_build_info:
+            lines.append(f"  ↳ {self.torch_build_info}")
         lines.append("")
         lines.append("Packages:")
         for name, ok in self.package_status.items():
@@ -170,7 +173,7 @@ class RuntimeManager:
         all_packages = {**REQUIRED_PACKAGES, **OPTIONAL_PACKAGES}
         package_status = {name: _is_importable(name) for name in all_packages}
 
-        device, gpu_name = self._detect_device(package_status.get("torch", False))
+        device, gpu_name, torch_build_info = self._detect_device(package_status.get("torch", False))
         model_status = self._detect_models()
         feature_available = self._detect_features(package_status, model_status)
 
@@ -183,6 +186,7 @@ class RuntimeManager:
             device=device,
             gpu_name=gpu_name,
             weights_dir=str(self.weights_dir),
+            torch_build_info=torch_build_info,
             package_status=package_status,
             model_status=model_status,
             feature_available=feature_available,
@@ -192,15 +196,22 @@ class RuntimeManager:
 
     @staticmethod
     def _detect_device(has_torch: bool):
+        """Trả (device, gpu_name, torch_build_info). torch_build_info
+        luôn có nếu có torch — kể cả khi cuda.is_available()=False, để
+        biết NGAY lý do (bản CPU-only hay có GPU nhưng driver/CUDA
+        không khớp) mà không cần chạy lệnh tay riêng để kiểm tra."""
         if not has_torch:
-            return "cpu", None
+            return "cpu", None, None
         try:
             import torch
+            cuda_build = torch.version.cuda  # None nếu bản CPU-only
+            build_info = f"torch {torch.__version__} (CUDA build: {cuda_build or 'KHÔNG CÓ — bản CPU-only'})"
             if torch.cuda.is_available():
-                return "cuda", torch.cuda.get_device_name(0)
+                return "cuda", torch.cuda.get_device_name(0), build_info
+            return "cpu", None, build_info
         except Exception:
             pass
-        return "cpu", None
+        return "cpu", None, None
 
     def _detect_models(self) -> Dict[str, bool]:
         return {fname: (self.weights_dir / fname).exists() for fname in MODEL_FILES}
