@@ -102,3 +102,29 @@ def test_detect_device_torch_cuda_available(monkeypatch):
     assert device == "cuda"
     assert gpu_name == "NVIDIA RTX 4060"
     assert "12.1" in info
+
+
+def test_detect_os_name_windows_11_not_reported_as_10(monkeypatch):
+    """Bug thật: platform.release() báo "10" trên CẢ Windows 10 lẫn 11
+    (cùng version nội bộ "10.0"). Windows 11 build >= 22000 -> phải tự
+    phân biệt qua sys.getwindowsversion().build, không tin release()."""
+    import platform, sys, types
+    monkeypatch.setattr(platform, "system", lambda: "Windows")
+    monkeypatch.setattr(platform, "release", lambda: "10")
+    fake_ver = types.SimpleNamespace(build=22631)  # build thật Win11 22H2
+    monkeypatch.setattr(sys, "getwindowsversion", lambda: fake_ver, raising=False)
+
+    os_name = RuntimeManager._detect_os_name()
+    assert "Windows 11" in os_name
+    assert "10" not in os_name.replace("Windows 11", "")  # không còn lẫn "Windows 10"
+
+
+def test_detect_os_name_windows_10_stays_10(monkeypatch):
+    import platform, sys, types
+    monkeypatch.setattr(platform, "system", lambda: "Windows")
+    monkeypatch.setattr(platform, "release", lambda: "10")
+    fake_ver = types.SimpleNamespace(build=19045)  # build thật Win10 22H2
+    monkeypatch.setattr(sys, "getwindowsversion", lambda: fake_ver, raising=False)
+
+    os_name = RuntimeManager._detect_os_name()
+    assert "Windows 10" in os_name

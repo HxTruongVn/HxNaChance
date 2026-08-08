@@ -168,7 +168,7 @@ class RuntimeManager:
 
     def detect(self) -> RuntimeReport:
         python_version = sys.version.split()[0]
-        os_name = f"{platform.system()} {platform.release()}"
+        os_name = self._detect_os_name()
 
         all_packages = {**REQUIRED_PACKAGES, **OPTIONAL_PACKAGES}
         package_status = {name: _is_importable(name) for name in all_packages}
@@ -193,6 +193,26 @@ class RuntimeManager:
             missing_required_packages=missing_required,
             missing_models=missing_models,
         )
+
+    @staticmethod
+    def _detect_os_name() -> str:
+        """platform.release() có lỗ hổng nổi tiếng trên Windows: Windows
+        11 vẫn báo "10" (cùng version nội bộ "10.0" với Windows 10, chỉ
+        khác build number — Windows 11 bắt đầu từ build 22000). Ca thật
+        gặp: máy Win11 log báo "OS: Windows 10", người dùng tưởng cơ chế
+        dò máy sai hoàn toàn. Soi thêm build number qua
+        sys.getwindowsversion() (chỉ có trên Windows) để phân biệt đúng."""
+        os_name = f"{platform.system()} {platform.release()}"
+        if platform.system() == "Windows" and hasattr(sys, "getwindowsversion"):
+            try:
+                build = sys.getwindowsversion().build
+                if build >= 22000:
+                    os_name = f"Windows 11 (build {build})"
+                else:
+                    os_name = f"Windows 10 (build {build})"
+            except Exception:
+                pass
+        return os_name
 
     @staticmethod
     def _detect_device(has_torch: bool):
