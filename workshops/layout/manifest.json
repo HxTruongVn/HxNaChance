@@ -25,8 +25,8 @@
   "capabilities_optional": [],
 
   "resources": {
-    "_comment": "Không có weight AI nào — chỉ cần dữ liệu công thức khổ in.",
-    "layout_presets_file": "../../config/presets/layout_presets.json"
+    "_comment": "Không có weight AI nào — chỉ cần dữ liệu công thức khổ in (cùng thư mục, Xưởng tự quản — trước đây ở config/presets/).",
+    "layout_presets_file": "layout_presets.json"
   },
 
   "default_spec": null,

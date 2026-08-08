@@ -40,8 +40,10 @@ WEIGHTS_DIR.mkdir(exist_ok=True)
 
 # MODELS TRƯỚC ĐÂY hard-code trực tiếp trong file này (khoá cứng đúng 2
 # "slot" nguồn tải "hf"/"gh" cho mỗi weight) — giờ đọc từ
-# presets/weights_sources.json (cùng pattern với spec_presets.json/
-# layout_presets.json/themes.json: tách data khỏi code). Lợi ích:
+# workshops/photo/weights_sources.json (Xưởng tự quản dữ liệu của
+# mình — trước đây ở config/presets/, cùng pattern
+# workshops/photo/spec_presets.json/workshops/layout/layout_presets.json).
+# Lợi ích:
 #   - Thêm weight mới sau này = thêm 1 mục trong JSON, KHÔNG cần sửa file
 #     .py này.
 #   - Thêm/đổi link dự phòng cho 1 weight = sửa JSON, không đụng code.
@@ -98,7 +100,7 @@ _REQUIRED_MODEL_KEYS = ("size_mb", "sources")
 
 
 def _load_models() -> dict:
-    models_path = PROJECT_ROOT / "config" / "presets" / "weights_sources.json"
+    models_path = PROJECT_ROOT / "workshops" / "photo" / "weights_sources.json"
     try:
         with open(models_path, "r", encoding="utf-8") as f:
             raw = json.load(f)

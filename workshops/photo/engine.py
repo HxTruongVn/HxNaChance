@@ -69,7 +69,7 @@ class NaChanceEngine:
         wdir = Path(weights_dir)
         # Giai đoạn 3 (docs/roadmap/roadmap.md) + P1 #3 (action_items.md):
         # tên file weight giờ tra qua ModelManager -> Registry
-        # (config/presets/model_registry.json), không ghi cứng chuỗi
+        # (workshops/photo/model_registry.json), không ghi cứng chuỗi
         # "79999_iter.pth"/"codeformer.pth"/"RealESRGAN_x2plus.pth" trực
         # tiếp ở đây nữa — đúng nguyên tắc "Metadata quan trọng hơn
         # Hard-code" của Vision. Đổi weight/provider sau này chỉ cần sửa

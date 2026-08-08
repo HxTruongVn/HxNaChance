@@ -21,8 +21,9 @@ class PhotoSpec:
 
 
 # Preset TRƯỚC ĐÂY hard-code trực tiếp ở đây — giờ đọc từ
-# presets/spec_presets.json (tách data ra khỏi code, đổi/thêm preset
-# không cần sửa photo_engine.py). Dict dưới đây CHỈ còn vai trò fallback
+# spec_presets.json (cùng thư mục, Xưởng tự quản — tách data ra khỏi
+# code, đổi/thêm preset không cần sửa engine.py). Dict dưới đây CHỈ còn
+# vai trò fallback
 # an toàn nếu file JSON bị thiếu/hỏng — giữ đúng tinh thần graceful
 # degrade đã dùng xuyên suốt engine này (thiếu 1 phần vẫn chạy được).
 _BUILTIN_SPEC_PRESETS_FALLBACK = {
@@ -34,7 +35,10 @@ _BUILTIN_SPEC_PRESETS_FALLBACK = {
 def _load_spec_presets() -> Dict[str, "PhotoSpec"]:
     # workshops/photo/spec.py -> lên 3 cấp mới tới repo root (trước khi
     # dời vào workshops/ chỉ cần lên 2 cấp — xem docs/architecture/structure.md).
-    presets_path = Path(__file__).parent.parent.parent / "config" / "presets" / "spec_presets.json"
+    # workshops/photo/spec.py -> cùng thư mục với spec_presets.json —
+    # Xưởng tự quản dữ liệu của mình (trước đây ở config/presets/,
+    # dùng chung với các Xưởng khác — giờ mỗi Xưởng tự giữ preset riêng).
+    presets_path = Path(__file__).parent / "spec_presets.json"
     try:
         with open(presets_path, "r", encoding="utf-8") as f:
             raw = json.load(f)

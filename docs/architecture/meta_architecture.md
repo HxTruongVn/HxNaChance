@@ -276,23 +276,34 @@ mới cùng mô tả cần thiết.
 
 (Warehouse)
 ├── (weights/)                             — thư mục chứa weight thật
-├── (config/presets/weights_sources.json)  — metadata nguồn tải
-│                                             (KHÔNG có checksum — dòng
-│                                             cũ ở đây từng ghi sai
-│                                             "checksum", đã sửa. Không
-│                                             file nào trong
-│                                             config/presets/*.json hay
-│                                             setup/setup_models.py có
+├── (workshops/photo/weights_sources.json) — metadata nguồn tải, ĐÃ
+│                                             DỜI về đúng Xưởng (trước ở
+│                                             config/presets/, dùng
+│                                             chung — giờ Xưởng tự quản,
+│                                             đúng "Xưởng giống như 1
+│                                             container"). KHÔNG có
+│                                             checksum — không file nào
+│                                             (kể cả sau khi dời) có
 │                                             sha256/hash nào cả — tải
 │                                             weight xong không verify
 │                                             được tính toàn vẹn. Gap
-│                                             thật, chưa vá)
-├── (config/presets/model_registry.json)   — gần nhất với Department
+│                                             thật, chưa vá
+├── (workshops/photo/model_registry.json)  — gần nhất với Department
 │                                             Contract, nhưng CHỈ áp dụng
-│                                             cho AI model
-└── [Warehouse như 1 khu vực độc lập]       — hiện tản mác giữa config/
-                                              và weights/, chưa có vai trò/
-                                              ranh giới riêng
+│                                             cho AI model — cũng ĐÃ DỜI
+│                                             về đúng Xưởng, cùng đợt
+└── [Warehouse như 1 khu vực độc lập]       — vẫn chưa có vai trò/ranh
+                                              giới riêng thật sự — giờ
+                                              KHÔNG còn "tản mác giữa
+                                              config/ và weights/" nữa
+                                              (metadata đã dời hẳn về
+                                              workshops/photo/), nhưng
+                                              vẫn là 2 thứ khác nhau
+                                              (metadata trong Xưởng,
+                                              weight thật trong
+                                              weights/ chung ở root) —
+                                              chưa hợp nhất thành "Kho"
+                                              đúng nghĩa 1 khu vực
 
 (Infrastructure — Runtime)
 ├── (setup/runtime_manager.py :: RuntimeReport) — Device/OS/package/model detect

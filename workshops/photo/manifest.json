@@ -25,9 +25,9 @@
   "capabilities_optional": ["pose_estimator"],
 
   "resources": {
-    "_comment": "Nguồn sự thật thật sự — xem trực tiếp 2 file này, KHÔNG chép lại nội dung ở đây.",
-    "registry_file": "../../config/presets/model_registry.json",
-    "weight_sources_file": "../../config/presets/weights_sources.json",
+    "_comment": "Nguồn sự thật thật sự — xem trực tiếp 2 file này (cùng thư mục, Xưởng tự quản), KHÔNG chép lại nội dung ở đây. Trước đây ở config/presets/, đã dời về đây.",
+    "registry_file": "model_registry.json",
+    "weight_sources_file": "weights_sources.json",
     "weights_directory": "weights/"
   },
 

@@ -95,7 +95,7 @@ trong) vẫn khởi tạo trực tiếp như cũ, có ghi rõ lý do tại chỗ
 
 `workshops/photo/engine.py` không còn ghi cứng `"79999_iter.pth"`/
 `"codeformer.pth"`/`"RealESRGAN_x2plus.pth"` — đổi weight/provider sau
-này chỉ cần sửa `config/presets/model_registry.json`.
+này chỉ cần sửa `workshops/photo/model_registry.json`.
 
 Đã verify bằng chứng minh tương đương (không chỉ đọc code): so sánh
 trực tiếp path resolve qua `ModelManager` với path hardcode cũ — khớp
@@ -124,7 +124,7 @@ hoạt động giống hệt cách khởi tạo trực tiếp hiện tại.
 
 ### 4. Checksum SHA256 cho weights
 
-**File**: `config/presets/weights_sources.json` (thêm field `sha256`
+**File**: `workshops/photo/weights_sources.json` (thêm field `sha256`
 cho từng entry) + verify trong Model Manager (#3) trước khi load —
 làm sau #3 vì cần chỗ chứa (`ModelValidator`) đã có sẵn trong đó, tránh
 viết riêng rồi phải nối lại.

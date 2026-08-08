@@ -11,7 +11,7 @@ BiSeNetFaceParserAdapter hay bất kỳ class cụ thể nào — đúng nguyên
 "PhotoEngine chỉ sử dụng Capability" (NaChance Architecture Vision.md).
 
 Khớp field `adapter` đã có sẵn trong
-config/presets/model_registry.json (`"adapter": "bisenet_face_parser"`
+workshops/photo/model_registry.json (`"adapter": "bisenet_face_parser"`
 cho capability `face_parser`) — dữ liệu này tồn tại từ trước, tới đây
 mới thật sự có code dùng tới.
 """

@@ -6,7 +6,7 @@ này khớp vào đâu trong mô hình tổng (Production Complex).
 **Code chính:** `print_layout.py` (`build_layout_canvas`,
 `save_layout`, `LAYOUT_PRESETS`).
 **UI:** `ui.py` (ngay trong thư mục này — Xưởng tự quản UI của mình).
-**Data:** `../../config/presets/layout_presets.json` (14 công thức khổ in).
+**Data:** `layout_presets.json` (ngay trong thư mục này, 14 công thức khổ in).
 **Cài riêng:** `pip install -r requirements.txt` (ngay trong thư mục này).
 
 ## Đối tượng dùng
@@ -23,7 +23,7 @@ từng lần).
 
 ## Khổ in hỗ trợ
 
-14 công thức khổ in dựng sẵn (`../../config/presets/layout_presets.json`),
+14 công thức khổ in dựng sẵn (`layout_presets.json`, ngay trong thư mục này),
 trộn được nhiều khổ trong cùng 1 tờ (vd "4x6 2 Dọc + 3x4 2 Ngang"):
 4x6, 3x4, 2x3, 3x5, 2.5x3.5 — hoặc giữ nguyên kích thước gốc. Vùng in/
 lề/khoảng cách/DPI tự chỉnh tay nếu công thức có sẵn không vừa khổ

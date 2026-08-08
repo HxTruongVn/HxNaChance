@@ -9,9 +9,11 @@ Theo đúng ranh giới Plan.md đã vạch: Registry mô tả Capability / Prov
 / Version / Weight / Adapter — việc THẬT SỰ load/khởi tạo model (ModelManager,
 ModelLoader, ModelValidator) là Giai đoạn 3, chưa làm ở đây.
 
-Nguồn dữ liệu: presets/model_registry.json — cùng pattern các loader khác
-trong repo (spec_presets.json, layout_presets.json, themes.json,
-weights_sources.json): tách data khỏi code, có fallback an toàn nếu file
+Nguồn dữ liệu: workshops/photo/model_registry.json (Xưởng tự quản dữ
+liệu của mình, đọc từ config/ — cơ chế dùng chung) — cùng pattern
+workshops/photo/spec_presets.json/workshops/layout/layout_presets.json/
+config/presets/themes.json (themes DÙNG CHUNG mọi Xưởng nên vẫn ở
+config/, không dời): tách data khỏi code, có fallback an toàn nếu file
 JSON thiếu/hỏng.
 """
 import json
@@ -20,7 +22,7 @@ from typing import Dict, List, Optional
 
 _REQUIRED_KEYS = ("provider", "version", "adapter", "weight")
 
-# Fallback an toàn nếu presets/model_registry.json thiếu/hỏng — khớp với
+# Fallback an toàn nếu workshops/photo/model_registry.json thiếu/hỏng — khớp với
 # 4 capability BẮT BUỘC hiện có trong package workshops/photo/ (chưa tính
 # pose_estimator vì đó là tính năng tuỳ chọn, không cần trong fallback tối
 # thiểu).
@@ -48,15 +50,19 @@ _REGISTRY_FALLBACK = {
 }
 
 
-def _project_root() -> Path:
-    return Path(__file__).parent
+def _photo_workshop_dir() -> Path:
+    # config/model_registry.py -> workshops/photo/ — registry.py Ở LẠI
+    # config/ (cơ chế đọc dùng chung, Infrastructure), nhưng DỮ LIỆU nó
+    # đọc đã dời sang workshops/photo/ (Xưởng tự quản model_registry.json/
+    # weights_sources.json của mình — trước đây ở config/presets/).
+    return Path(__file__).parent.parent / "workshops" / "photo"
 
 
 def load_registry(registry_path: Optional[Path] = None) -> Dict[str, dict]:
-    """Đọc presets/model_registry.json. Chỉ nhận entry có đủ field bắt
+    """Đọc workshops/photo/model_registry.json. Chỉ nhận entry có đủ field bắt
     buộc — 1 capability khai sai (lỗi gõ tay JSON) không được làm hỏng
     toàn bộ registry. Trả về fallback built-in nếu file thiếu/hỏng."""
-    path = registry_path or (_project_root() / "presets" / "model_registry.json")
+    path = registry_path or (_photo_workshop_dir() / "model_registry.json")
     try:
         with open(path, "r", encoding="utf-8") as f:
             raw = json.load(f)
@@ -79,12 +85,12 @@ def load_registry(registry_path: Optional[Path] = None) -> Dict[str, dict]:
 def validate_weight_refs(registry: Dict[str, dict],
                           weights_manifest_path: Optional[Path] = None) -> List[str]:
     """Đối chiếu field 'weight' của mỗi capability với
-    presets/weights_sources.json — bắt lỗi LỆCH DỮ LIỆU giữa 2 file (ví
+    workshops/photo/weights_sources.json — bắt lỗi LỆCH DỮ LIỆU giữa 2 file (ví
     dụ registry trỏ tới 1 tên weight đã đổi/xoá bên weights_sources.json
     mà quên cập nhật). Trả về danh sách cảnh báo dạng chuỗi (rỗng nếu mọi
     thứ khớp) — hàm này KHÔNG raise, để 1 registry lệch không làm crash
     ứng dụng, chỉ để phát hiện sớm lúc dev/test."""
-    manifest_path = weights_manifest_path or (_project_root() / "presets" / "weights_sources.json")
+    manifest_path = weights_manifest_path or (_photo_workshop_dir() / "weights_sources.json")
     try:
         with open(manifest_path, "r", encoding="utf-8") as f:
             known_weights = set(json.load(f).keys())

@@ -67,7 +67,7 @@ hot-reload giữa phiên đang chạy).
 ## Nhóm tùy chọn nâng cao
 
 Tab "Xử lý ảnh" chia 12 tùy chọn thành 4 nhóm, khớp đúng ranh giới
-`capability` trong `config/presets/model_registry.json`:
+`capability` trong `workshops/photo/model_registry.json`:
 
 - **🧑 Khuôn mặt** — `chk_face_restore` + `sld_fidelity`, `chk_skin` +
   `sld_skin`, `chk_eye`, `chk_teeth`

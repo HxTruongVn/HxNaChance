@@ -50,6 +50,10 @@ NaChance/
 │   │   │                           # capabilities_required/default_spec —
 │   │   │                           # Reception đọc để tự phát hiện Xưởng
 │   │   ├── requirements.txt        # Dependencies riêng Xưởng này (torch/cv2/mediapipe...)
+│   │   ├── model_registry.json     # Metadata capability/provider/adapter/weight — Xưởng
+│   │   │                           # tự quản (trước đây ở config/presets/, dùng chung)
+│   │   ├── weights_sources.json    # URL nguồn tải (chính + dự phòng) cho từng weight
+│   │   ├── spec_presets.json       # 15 preset khổ ảnh thẻ (13x18, VN Passport...)
 │   │   ├── ui.py                   # ProcessTabMixin — tab "Xử lý ảnh" (4 nhóm tùy chọn)
 │   │   ├── __init__.py             # Facade — re-export API cũ, xem docstring trong file
 │   │   ├── spec.py                 # PhotoSpec, SPEC_PRESETS
@@ -63,15 +67,20 @@ NaChance/
 │       ├── README.md               # Chi tiết Xưởng
 │       ├── manifest.json           # WorkshopManifest — cùng vai trò với photo/
 │       ├── requirements.txt        # Dependencies riêng Xưởng này (chỉ Pillow)
+│       ├── layout_presets.json     # 15 công thức khổ in — Xưởng tự quản (trước đây
+│       │                           # ở config/presets/, dùng chung)
 │       ├── ui.py                   # LayoutTabMixin — tab "Xếp in"
 │       └── print_layout.py         # LAYOUT_PRESETS, build_layout_canvas, save_layout,
 │                                    # inpaint_extend_cv2 (lấp vùng mở rộng — OpenCV cổ điển)
 │
 ├── config/                         # Registry + resolver weight (Infrastructure)
-│   ├── model_registry.py           # Đọc config/presets/model_registry.json — metadata thuần
+│   ├── model_registry.py           # Đọc workshops/photo/model_registry.json — metadata thuần
 │   ├── model_manager.py            # Tra đường dẫn weight cho engine.py (chưa tự khởi tạo model)
-│   └── presets/                    # model_registry.json, weights_sources.json, themes.json,
-│                                    # spec_presets.json, layout_presets.json
+│   └── presets/
+│       └── themes.json             # DÙNG CHUNG mọi Xưởng (UI tổng, Reception) — không dời
+│                                    # 4 file preset khác (model_registry.json/weights_sources.json/
+│                                    # spec_presets.json/layout_presets.json) đã dời về đúng
+│                                    # thư mục Xưởng — xem workshops/ bên dưới
 │
 ├── setup/                          # Bootstrap độc lập (Independent Auditor)
 │   ├── venv_bootstrap.py           # Tự chuyển vào .venv/

@@ -30,11 +30,10 @@ _LAYOUT_PRESETS_FALLBACK = {
 
 
 def _load_layout_presets():
-    # workshops/layout/print_layout.py -> lên 3 cấp mới tới repo root
-    # (trước khi dời vào workshops/ chỉ cần lên 2 cấp).
-    presets_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-        "config", "presets", "layout_presets.json")
+    # workshops/layout/print_layout.py -> cùng thư mục với
+    # layout_presets.json — Xưởng tự quản dữ liệu của mình (trước đây ở
+    # config/presets/, dùng chung với các Xưởng khác).
+    presets_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "layout_presets.json")
     try:
         with open(presets_path, "r", encoding="utf-8") as f:
             raw = json.load(f)

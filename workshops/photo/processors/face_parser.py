@@ -312,7 +312,7 @@ class FaceParsingProcessor:
 # workshops/photo/capabilities/face_parser.py.
 #
 # Tên class khớp field "adapter": "bisenet_face_parser" đã có sẵn
-# trong config/presets/model_registry.json.
+# trong workshops/photo/model_registry.json.
 
 from workshops.photo.capabilities.face_parser import FaceParser, FaceParseResult
 

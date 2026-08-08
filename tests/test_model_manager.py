@@ -73,7 +73,7 @@ def test_realesrgan_upscaler_behaves_identically_via_model_manager():
 
 def test_model_manager_uses_real_registry_by_default():
     """Không truyền registry riêng -> phải tự load registry thật từ
-    config/presets/model_registry.json (không phải fallback tối thiểu) —
+    workshops/photo/model_registry.json (không phải fallback tối thiểu) —
     xác nhận qua việc pose_estimator (chỉ có trong file JSON thật, không
     có trong _REGISTRY_FALLBACK tối thiểu của model_registry.py) resolve
     được đúng."""

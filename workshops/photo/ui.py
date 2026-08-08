@@ -62,7 +62,7 @@ class ProcessTabMixin:
         self.entry_hex.bind("<KeyRelease>", lambda e: self._update_color_preview())
 
         # Nâng cao ảnh — chia theo đúng nhóm capability trong
-        # config/presets/model_registry.json (face_parser/face_restorer
+        # workshops/photo/model_registry.json (face_parser/face_restorer
         # ~ Khuôn mặt, upscaler/background_remover ~ Độ phân giải & Hậu
         # kỳ, pose_estimator ~ Tư thế & Bố cục). Mỗi checkbox GIỮ NGUYÊN
         # tên self.chk_xxx như cũ — chỉ đổi layout hiển thị, không đổi
