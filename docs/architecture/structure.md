@@ -22,7 +22,12 @@ NaChance/
 │   │                               # gọi trực tiếp được nếu setup đã xong
 │   ├── main_ui.py                 # NaChanceApp — phần lõi (window/lifecycle,
 │   │                               # title bar, _build_main_panel), kế thừa
-│   │                               # toàn bộ Mixin ở ui/
+│   │                               # ĐỘNG Mixin ở ui/ + workshops/*/ui.py
+│   │                               # (base list ráp lúc import, xem
+│   │                               # workshop_discovery.py)
+│   ├── workshop_discovery.py      # discover_workshops() — Reception TỰ
+│   │                               # PHÁT HIỆN Workshop qua manifest.json,
+│   │                               # import động Mixin, không hardcode
 │   └── photo_agent.py             # PhotoQAAgent — agent tự retry pipeline
 │
 ├── ui/                             # Mixin CHUNG cho NaChanceApp — Reception,
@@ -41,6 +46,9 @@ NaChance/
 │   │                               # README, code logic, requirements.txt
 │   ├── photo/                      # Xưởng Xử lý ảnh
 │   │   ├── README.md               # Input/output/pipeline/cấu hình — chi tiết Xưởng
+│   │   ├── manifest.json           # WorkshopManifest — environment/ui/
+│   │   │                           # capabilities_required/default_spec —
+│   │   │                           # Reception đọc để tự phát hiện Xưởng
 │   │   ├── requirements.txt        # Dependencies riêng Xưởng này (torch/cv2/mediapipe...)
 │   │   ├── ui.py                   # ProcessTabMixin — tab "Xử lý ảnh" (4 nhóm tùy chọn)
 │   │   ├── __init__.py             # Facade — re-export API cũ, xem docstring trong file
@@ -53,6 +61,7 @@ NaChance/
 │   │   └── analyzers/              # face_analyzer, shoulder_analyzer
 │   └── layout/                     # Xưởng Xếp in
 │       ├── README.md               # Chi tiết Xưởng
+│       ├── manifest.json           # WorkshopManifest — cùng vai trò với photo/
 │       ├── requirements.txt        # Dependencies riêng Xưởng này (chỉ Pillow)
 │       ├── ui.py                   # LayoutTabMixin — tab "Xếp in"
 │       └── print_layout.py         # LAYOUT_PRESETS, build_layout_canvas, save_layout,
@@ -84,7 +93,8 @@ NaChance/
 ├── tests/                          # pytest — test_smoke, test_runtime_manager,
 │                                    # test_model_registry, test_model_manager,
 │                                    # test_bg_processor, test_align_face, test_photo_agent,
-│                                    # test_spec_presets, test_document, test_face_parser_adapter
+│                                    # test_spec_presets, test_document, test_face_parser_adapter,
+│                                    # test_workshop_discovery
 ├── docs/                           # xem docs/README.md làm mục lục
 ├── pytest.ini
 ├── README.md

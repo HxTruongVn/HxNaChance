@@ -6,10 +6,19 @@
   "description": "Nhận ảnh chân dung gốc, phục hồi/làm đẹp khuôn mặt đúng vùng, căn chỉnh chuẩn ảnh thẻ, tách nền.",
 
   "environment": {
-    "_comment": "CHƯA có Bootstrap Controller nào đọc/enforce khối này — setup/runtime_manager.py hiện chỉ DÒ (report) python_version/OS, không so sánh với ngưỡng tối thiểu nào. Khai báo trước, Bootstrap Controller (bước kế tiếp) sẽ đọc.",
+    "_comment": "ĐÃ có Bootstrap Controller đọc/enforce khối này — setup/runtime_manager.py::verify_workshop_environment(), nối vào NaChance.py + app/main.py. min_ram_gb/python_version được so sánh thật với máy, KHÔNG tự sửa được (không thể tự thêm RAM) nên chỉ cảnh báo, không chặn.",
     "python_version": ">=3.10",
     "device_preference": "auto",
     "min_ram_gb": 8
+  },
+
+  "ui": {
+    "_comment": "Reception (app/main_ui.py) đọc khối này để TỰ PHÁT HIỆN Workshop — không hardcode tên class/tab nữa. module/mixin_class: import động qua importlib để lấy Mixin (multiple inheritance vào NaChanceApp). build_method: tên method Reception gọi để Xưởng tự vẽ tab của mình vào self.tabview (Xưởng tự quản UI, Reception chỉ gọi, không biết bên trong).",
+    "module": "workshops.photo.ui",
+    "mixin_class": "ProcessTabMixin",
+    "build_method": "_build_process_tab",
+    "tab_title": "🖼 Xử lý ảnh",
+    "tab_order": 1
   },
 
   "capabilities_required": ["face_parser", "face_restorer", "upscaler", "background_remover"],

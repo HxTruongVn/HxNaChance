@@ -11,7 +11,7 @@ from workshops.photo import SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME
 
 class ProcessTabMixin:
     def _build_process_tab(self):
-        tab = self.tab_process
+        tab = self.tab_photo
 
         # Preset
         self._section_header(tab, "🎯 LOẠI ẢNH")

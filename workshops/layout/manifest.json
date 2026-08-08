@@ -6,10 +6,19 @@
   "description": "Xếp ảnh đã xử lý (hoặc ảnh bất kỳ) vào khổ in theo công thức bố cục, tối ưu số lượng ảnh trên tờ giấy.",
 
   "environment": {
-    "_comment": "CHƯA có Bootstrap Controller nào đọc/enforce khối này. Nhẹ hơn hẳn Xưởng Xử lý ảnh — chỉ cần Pillow, không cần GPU/RAM lớn.",
+    "_comment": "ĐÃ có Bootstrap Controller đọc/enforce khối này — setup/runtime_manager.py::verify_workshop_environment(). Nhẹ hơn hẳn Xưởng Xử lý ảnh — chỉ cần Pillow, không cần GPU/RAM lớn.",
     "python_version": ">=3.10",
     "device_preference": "cpu_only",
     "min_ram_gb": 2
+  },
+
+  "ui": {
+    "_comment": "Reception (app/main_ui.py) đọc khối này để TỰ PHÁT HIỆN Workshop — không hardcode tên class/tab nữa.",
+    "module": "workshops.layout.ui",
+    "mixin_class": "LayoutTabMixin",
+    "build_method": "_build_layout_tab",
+    "tab_title": "🖨 Xếp in",
+    "tab_order": 2
   },
 
   "capabilities_required": [],

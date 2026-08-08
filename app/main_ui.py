@@ -21,16 +21,26 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from workshops.photo import NaChanceEngine
 from app.photo_agent import PhotoQAAgent
+from app.workshop_discovery import discover_workshops
 
 from ui.widget_helpers import WidgetHelpersMixin
 from ui.theme_mixin import ThemeMixin, THEMES
 from ui.menu_bar_mixin import MenuBarMixin
-from workshops.photo.ui import ProcessTabMixin
-from workshops.layout.ui import LayoutTabMixin
 from ui.side_panel_mixin import SidePanelMixin
 from ui.orientation_mixin import OrientationMixin
 from ui.pipeline_mixin import PipelineMixin
 from ui.config_mixin import ConfigMixin
+
+# Reception TỰ PHÁT HIỆN Workshop qua manifest.json — không hardcode
+# tên Mixin nữa (trước đây: `from workshops.photo.ui import
+# ProcessTabMixin` + `from workshops.layout.ui import LayoutTabMixin`
+# ngay tại đây). Chạy Ở MODULE-LEVEL (lúc import file này, không phải
+# lúc __init__) — base list của câu lệnh `class` bên dưới cần biết
+# Mixin NGAY LÚC ĐỊNH NGHĨA class, Python không cho hoãn việc này tới
+# runtime của __init__(). Nghĩa là: thêm/sửa Workshop cần KHỞI ĐỘNG LẠI
+# app để nhận — không phải hot-reload giữa phiên đang chạy (đúng chủ
+# đích, xem app/workshop_discovery.py).
+_DISCOVERED_WORKSHOPS = discover_workshops()
 
 
 class NaChanceApp(
@@ -38,8 +48,7 @@ class NaChanceApp(
     WidgetHelpersMixin,
     ThemeMixin,
     MenuBarMixin,
-    ProcessTabMixin,
-    LayoutTabMixin,
+    *[w.mixin_class for w in _DISCOVERED_WORKSHOPS],
     SidePanelMixin,
     OrientationMixin,
     PipelineMixin,
@@ -435,11 +444,17 @@ class NaChanceApp(
                                        segmented_button_unselected_hover_color=self.COLORS['bg_hover'])
         self.tabview.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.tab_process = self.tabview.add("🖼 Xử lý ảnh")
-        self.tab_layout = self.tabview.add("🖨 Xếp in")
-
-        self._build_process_tab()
-        self._build_layout_tab()
+        # Tạo tab + gọi build method cho TỪNG Workshop đã phát hiện
+        # (_DISCOVERED_WORKSHOPS, module-level, xem đầu file) — KHÔNG
+        # hardcode self.tab_process/self.tab_layout +
+        # self._build_process_tab()/self._build_layout_tab() nữa. Tên
+        # thuộc tính tab luôn là self.tab_<workshop_id> (vd self.tab_photo
+        # cho workshop_id="photo") — quy ước để từng Mixin tự đọc đúng
+        # tab của mình mà không cần Reception biết tên cụ thể.
+        for w in _DISCOVERED_WORKSHOPS:
+            tab_frame = self.tabview.add(w.tab_title)
+            setattr(self, f"tab_{w.workshop_id}", tab_frame)
+            getattr(self, w.build_method)()
 
         self.status = ctk.CTkLabel(self.main_frame, text="Sẵn sàng",
                                      font=self.F_NORMAL, text_color=self.COLORS['text_secondary'])

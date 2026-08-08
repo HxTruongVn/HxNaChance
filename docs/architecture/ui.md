@@ -5,9 +5,11 @@
 > `LayoutTabMixin`) đã dời sang chính thư mục Xưởng đó
 > (`workshops/photo/ui.py`, `workshops/layout/ui.py`) — Xưởng tự quản
 > UI của mình, đúng tinh thần mỗi Xưởng tự quản mọi thứ thuộc về nó
-> (UI, README, code logic, requirements). Vẫn CHƯA có Department
-> Contract riêng (WorkshopManifest) — Reception còn gọi cố định
-> (hardcode) 2 Xưởng, chưa đọc danh sách động — xem
+> (UI, README, code logic, requirements). Reception giờ **TỰ PHÁT
+> HIỆN** Xưởng qua `manifest.json` (khối `ui`) — xem
+> [`app/workshop_discovery.py`](../../app/workshop_discovery.py) — chứ
+> không còn hardcode `from workshops.photo.ui import ProcessTabMixin`
+> nữa. Chi tiết cơ chế + giới hạn thật xem
 > [`meta_architecture.md`](meta_architecture.md).
 
 `app/main_ui.py` từng là 1 file 1665 dòng, 1 class `NaChanceApp` với 61
@@ -17,8 +19,12 @@ tác chung 1 cửa sổ Tkinter (`self.tabview`, `self.status`...), tách
 thành class riêng vẫn cần dùng chung `self`, nên dùng multiple
 inheritance thay vì composition. 2 Mixin của từng Xưởng
 (`ProcessTabMixin`, `LayoutTabMixin`) giữ nguyên chiến lược Mixin này
-dù đã dời thư mục — chỉ đổi VỊ TRÍ file, không đổi cách nối vào
-`NaChanceApp`.
+dù đã dời thư mục — chỉ khác: trước đây `NaChanceApp` liệt kê thẳng tên
+2 Mixin này trong base list (`class NaChanceApp(..., ProcessTabMixin,
+LayoutTabMixin, ...)`), giờ base list được RÁP ĐỘNG lúc import
+(`*[w.mixin_class for w in _DISCOVERED_WORKSHOPS]`) — cú pháp Python
+hợp lệ (unpack list vào base list của `class`), đã test bằng cách
+khởi tạo thật `NaChanceApp` qua Xvfb, xác nhận MRO/tab đều đúng.
 
 ## Cấu trúc file
 
@@ -33,15 +39,28 @@ dù đã dời thư mục — chỉ đổi VỊ TRÍ file, không đổi cách n
 | `pipeline_mixin.py` | `PipelineMixin` | Chạy xử lý (đơn + hàng loạt) qua worker thread |
 | `config_mixin.py` | `ConfigMixin` | Đọc/ghi `~/.nachance_ai.json` |
 
-**Không còn ở `ui/`** — đã dời sang đúng thư mục Xưởng, Xưởng tự quản:
+**Không còn ở `ui/`** — đã dời sang đúng thư mục Xưởng, Xưởng tự quản,
+**và được Reception nạp ĐỘNG** qua `app/workshop_discovery.py` (đọc
+khối `ui` trong `manifest.json`, không hardcode tên class):
 
-| File (vị trí mới) | Mixin | Nội dung |
-|---|---|---|
-| `workshops/photo/ui.py` | `ProcessTabMixin` | Tab "Xử lý ảnh" |
-| `workshops/layout/ui.py` | `LayoutTabMixin` | Tab "Xếp in" |
+| File (vị trí mới) | Mixin | Nội dung | `workshop_id` (manifest.json) |
+|---|---|---|---|
+| `workshops/photo/ui.py` | `ProcessTabMixin` | Tab "Xử lý ảnh" | `photo` (`tab_order: 1`) |
+| `workshops/layout/ui.py` | `LayoutTabMixin` | Tab "Xếp in" | `layout` (`tab_order: 2`) |
+
+Quy ước tên thuộc tính tab: `self.tab_<workshop_id>` — Reception tạo
+(`setattr(self, f"tab_{w.workshop_id}", ...)`), Mixin tự đọc
+(`workshops/photo/ui.py` đọc `self.tab_photo`). Thêm Xưởng mới KHÔNG
+cần sửa `app/main_ui.py` — chỉ cần thư mục `workshops/<tên>/` +
+`manifest.json` khai đủ khối `ui`. Giới hạn thật: cần KHỞI ĐỘNG LẠI app
+để nhận Xưởng mới (`discover_workshops()` chạy lúc import module, base
+list của `class NaChanceApp` cần biết Mixin ngay lúc định nghĩa — không
+hot-reload giữa phiên đang chạy).
 
 `app/main_ui.py` (Core) giờ chỉ còn: `__init__`, lifecycle
 (`_on_close`, `_set_app_icon`, `_show_about`), title bar
+(`_build_title_bar`, `_toggle_panel`, kéo thả cửa sổ), và
+`_build_main_panel` (điểm lắp ráp gọi các tab).
 (`_build_title_bar`, `_toggle_panel`, kéo thả cửa sổ), và
 `_build_main_panel` (điểm lắp ráp gọi các tab).
 

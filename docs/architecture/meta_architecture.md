@@ -152,16 +152,64 @@ mới cùng mô tả cần thiết.
 │                                             Xưởng (trước ở ui/) — Xưởng
 │                                             tự quản UI của mình
 ├── (workshops/photo/manifest.json)        — WorkshopManifest có DỮ
-│                                             LIỆU rồi (environment/
-│                                             capabilities_required/
+│                                             LIỆU đầy đủ (environment/
+│                                             ui/capabilities_required/
 │                                             default_spec/output_settings,
 │                                             tham chiếu chứ không chép
 │                                             lại model_registry.json +
-│                                             weights_sources.json) —
-│                                             nhưng CHƯA có code nào đọc
+│                                             weights_sources.json) — CÓ
+│                                             code đọc thật (bên dưới)
 ├── (workshops/layout/ui.py)               — Workshop "Xếp in" — cùng
 │                                             tình trạng
 ├── (workshops/layout/manifest.json)       — cùng tình trạng
+├── (app/workshop_discovery.py::discover_workshops) — Reception TỰ
+│                                             PHÁT HIỆN Workshop: quét
+│                                             workshops/*/manifest.json,
+│                                             đọc khối "ui" (module/
+│                                             mixin_class/build_method/
+│                                             tab_title/tab_order), import
+│                                             ĐỘNG qua importlib — không
+│                                             còn `from workshops.photo.ui
+│                                             import ProcessTabMixin` +
+│                                             `from workshops.layout.ui
+│                                             import LayoutTabMixin`
+│                                             hardcode trong app/main_ui.py
+│                                             nữa. Workshop nào manifest
+│                                             lỗi/import thất bại -> BỎ
+│                                             QUA, in cảnh báo, không
+│                                             crash cả app
+├── (app/main_ui.py::NaChanceApp)          — base list kế thừa ĐỘNG
+│                                             (`*[w.mixin_class for w in
+│                                             _DISCOVERED_WORKSHOPS]`,
+│                                             cú pháp Python hợp lệ —
+│                                             đã test); `_build_main_panel()`
+│                                             tạo tab + gọi build_method
+│                                             cho TỪNG Workshop phát hiện
+│                                             được qua vòng lặp, không
+│                                             hardcode tên tab/tên hàm.
+│                                             Test THẬT (Tkinter +
+│                                             customtkinter thật, Xvfb
+│                                             màn hình ảo — không phải
+│                                             giả lập): khởi tạo
+│                                             NaChanceApp thành công, cả
+│                                             2 tab hiện đúng tên đúng
+│                                             thứ tự, đóng app không lỗi
+│                                             .
+│                                             GIỚI HẠN THẬT (không giấu):
+│                                             discover_workshops() chạy
+│                                             Ở MODULE-LEVEL (lúc import
+│                                             app/main_ui.py) vì base
+│                                             list của `class` cần biết
+│                                             Mixin NGAY LÚC ĐỊNH NGHĨA
+│                                             — không thể hoãn tới
+│                                             runtime. Nghĩa là: thêm/
+│                                             sửa Workshop vẫn cần KHỞI
+│                                             ĐỘNG LẠI app để nhận,
+│                                             KHÔNG PHẢI hot-reload giữa
+│                                             phiên đang chạy (đúng chủ
+│                                             đích — tránh rủi ro đổi
+│                                             cấu trúc UI giữa chừng lúc
+│                                             người dùng đang dùng)
 ├── (app/main_ui.py::_start_background_weight_download) — 1 PHẦN nhỏ
 │                                             của "Resolve": thiếu weight
 │                                             -> tự tải nền (thread daemon,
@@ -210,19 +258,21 @@ mới cùng mô tả cần thiết.
 │                                             tự quyết định thay vì tự
 │                                             đâm vào lỗi/crash giữa
 │                                             chừng lúc đang xử lý ảnh
-└── [Bootstrap Controller đầy đủ]            — CHƯA xây: Reception
-                                              (app/main_ui.py) vẫn gọi cố
-                                              định đúng 2 Workshop này
-                                              (hardcode) — Verify/Resolve
-                                              đã nối vào luồng chính,
-                                              nhưng vẫn KHÔNG có nghĩa
-                                              Reception TỰ ĐỘNG phát
-                                              hiện Workshop mới (thêm 1
-                                              thư mục workshops/<tên>/
-                                              có manifest.json vẫn chưa
-                                              tự xuất hiện trên UI —
-                                              vẫn phải sửa app/main_ui.py
-                                              thủ công để thêm tab mới)
+└── (Bootstrap Controller — Audit/Verify/Resolve/tự phát hiện Workshop)
+                                              ĐÃ XONG cả 4 phần chính,
+                                              nối vào luồng khởi động
+                                              thật. [ ] còn lại — thật
+                                              sự nhỏ, không phải toàn bộ
+                                              hệ thống: (1) UI "Lựa chọn
+                                              nguồn tải" khi 1 nguồn lỗi
+                                              (hiện tự thử tuần tự hết
+                                              nguồn, không hỏi người
+                                              dùng chọn); (2) Resolve tự
+                                              động sửa torch CPU-only ->
+                                              CUDA (hiện chỉ cảnh báo,
+                                              không tự gỡ/cài lại — rủi
+                                              ro cao nếu tự động, cố ý
+                                              chưa làm)
 
 (Warehouse)
 ├── (weights/)                             — thư mục chứa weight thật
