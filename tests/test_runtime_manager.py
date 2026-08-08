@@ -152,3 +152,75 @@ def test_detect_os_name_windows_10_stays_10(monkeypatch):
 
     os_name = RuntimeManager._detect_os_name()
     assert "Windows 10" in os_name
+
+
+def test_detect_ram_gb_reads_real_value():
+    """Chạy THẬT trên sandbox này (Linux, đọc /proc/meminfo thật) —
+    không patch gì, chỉ kiểm tra dò được số dương hợp lý."""
+    ram = RuntimeManager._detect_ram_gb()
+    assert ram is not None
+    assert ram > 0
+
+
+def _make_report(python_version="3.12.0", ram_gb=3.9, device="cpu"):
+    from setup.runtime_manager import RuntimeReport
+    return RuntimeReport(
+        python_version=python_version, os_name="Linux", device=device,
+        gpu_name=None, weights_dir="weights", ram_gb=ram_gb)
+
+
+def test_verify_workshop_environment_ram_too_low(tmp_path):
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text('{"workshop_name": "Test Shop", '
+                         '"environment": {"min_ram_gb": 8}}', encoding="utf-8")
+    from setup.runtime_manager import verify_workshop_environment
+    problems = verify_workshop_environment(str(manifest), _make_report(ram_gb=3.9))
+    assert len(problems) == 1
+    assert "8GB" in problems[0] and "3.9GB" in problems[0]
+
+
+def test_verify_workshop_environment_ram_enough():
+    manifest_content = '{"workshop_name": "Test Shop", "environment": {"min_ram_gb": 2}}'
+    import tempfile, os as _os
+    fd, path = tempfile.mkstemp(suffix=".json")
+    try:
+        with _os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(manifest_content)
+        from setup.runtime_manager import verify_workshop_environment
+        problems = verify_workshop_environment(path, _make_report(ram_gb=3.9))
+        assert problems == []
+    finally:
+        _os.remove(path)
+
+
+def test_verify_workshop_environment_python_version_too_old(tmp_path):
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text('{"workshop_name": "Test Shop", '
+                         '"environment": {"python_version": ">=3.12"}}', encoding="utf-8")
+    from setup.runtime_manager import verify_workshop_environment
+    problems = verify_workshop_environment(str(manifest), _make_report(python_version="3.10.8"))
+    assert len(problems) == 1
+    assert "3.12" in problems[0] and "3.10.8" in problems[0]
+
+
+def test_verify_workshop_environment_missing_manifest_file():
+    from setup.runtime_manager import verify_workshop_environment
+    problems = verify_workshop_environment("/duong/dan/khong_ton_tai.json", _make_report())
+    assert len(problems) == 1
+    assert "Không đọc được" in problems[0]
+
+
+def test_verify_workshop_environment_real_manifests_in_repo():
+    """Chạy THẬT trên chính 2 file manifest.json đang có trong repo —
+    không phải manifest giả lập, đúng ca thật đã kiểm tra tay ở trên."""
+    from setup.runtime_manager import verify_workshop_environment
+    repo_root = Path(__file__).resolve().parent.parent
+    report_low_ram = _make_report(ram_gb=3.9)
+
+    photo_problems = verify_workshop_environment(
+        str(repo_root / "workshops" / "photo" / "manifest.json"), report_low_ram)
+    assert any("RAM" in p for p in photo_problems)  # 8GB > 3.9GB -> phải báo thiếu
+
+    layout_problems = verify_workshop_environment(
+        str(repo_root / "workshops" / "layout" / "manifest.json"), report_low_ram)
+    assert layout_problems == []  # chỉ cần 2GB -> đủ, không cảnh báo gì

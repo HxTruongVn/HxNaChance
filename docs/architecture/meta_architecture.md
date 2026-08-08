@@ -171,15 +171,38 @@ mới cùng mô tả cần thiết.
 │                                             gọi thẳng download_all_weights()
 │                                             (setup/setup_models.py) đọc
 │                                             weights_sources.json trực
-│                                             tiếp. KHÔNG có Audit (quét
-│                                             manifest mọi Workshop trước)
-│                                             hay Verify (đối chiếu
-│                                             capabilities_required) —
-│                                             chỉ đúng phần Resolve, cho
-│                                             riêng weight thôi
-└── [Bootstrap Controller đọc manifest]     — Audit/Verify đầy đủ theo
-                                              manifest.json từng Workshop
-                                              — CHƯA xây: Reception
+│                                             tiếp. Chỉ đúng phần Resolve,
+│                                             cho riêng weight thôi
+├── (setup/runtime_manager.py::_detect_ram_gb + _detect_gpu_hardware +
+│    _detect_os_name)                        — Audit đọc PHẦN CỨNG THẬT
+│                                             (RAM/GPU/OS/build Windows),
+│                                             không suy luận gián tiếp
+│                                             qua package Python nào —
+│                                             dùng API/lệnh gốc hệ điều
+│                                             hành (ctypes/proc/meminfo/
+│                                             nvidia-smi), không cài
+│                                             thêm gì (không psutil)
+├── (setup/runtime_manager.py::verify_workshop_environment)  — Verify
+│                                             THẬT đã có: đọc environment
+│                                             trong manifest.json 1
+│                                             Workshop, so với
+│                                             RuntimeReport (máy thật),
+│                                             trả về danh sách điểm
+│                                             KHÔNG đạt. Đã nối vào
+│                                             `python setup/runtime_manager.py`
+│                                             (quét động mọi
+│                                             workshops/*/manifest.json,
+│                                             KHÔNG hardcode tên Workshop)
+└── [Bootstrap Controller đầy đủ]            — CHƯA xây: verify_workshop_
+                                              environment() vẫn đứng
+                                              riêng lẻ, chưa nối vào
+                                              NaChance.py/app/main.py (chỉ
+                                              chạy khi gọi trực tiếp
+                                              `python setup/runtime_manager.py`),
+                                              chưa có Resolve tự động
+                                              theo từng vấn đề Verify tìm
+                                              ra (mới có Resolve RIÊNG
+                                              cho weight, ở trên). Reception
                                               (app/main_ui.py) vẫn gọi cố
                                               định đúng 2 Workshop này
                                               (hardcode), có manifest.json

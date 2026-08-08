@@ -100,6 +100,7 @@ class RuntimeReport:
     weights_dir: str
     torch_build_info: Optional[str] = None  # vd "torch 2.1.0 (CUDA build: KHÔNG CÓ — bản CPU-only)"
     gpu_hardware_detected: Optional[str] = None  # tên GPU thật qua nvidia-smi, độc lập với torch
+    ram_gb: Optional[float] = None  # RAM vật lý thật của máy, None nếu không dò được
     package_status: Dict[str, bool] = field(default_factory=dict)
     model_status: Dict[str, bool] = field(default_factory=dict)
     feature_available: Dict[str, bool] = field(default_factory=dict)
@@ -133,6 +134,7 @@ class RuntimeReport:
                           "theo nvidia-smi — độc lập với torch) nhưng đang chạy CPU. "
                           "Rất có thể do cài nhầm bản torch CPU-only — gỡ torch/"
                           "torchvision rồi cài lại đúng bản CUDA.")
+        lines.append(f"RAM: {self.ram_gb} GB" if self.ram_gb is not None else "RAM: (không dò được)")
         lines.append("")
         lines.append("Packages:")
         for name, ok in self.package_status.items():
@@ -181,6 +183,7 @@ class RuntimeManager:
 
         device, gpu_name, torch_build_info = self._detect_device(package_status.get("torch", False))
         gpu_hardware_detected = self._detect_gpu_hardware()
+        ram_gb = self._detect_ram_gb()
         model_status = self._detect_models()
         feature_available = self._detect_features(package_status, model_status)
 
@@ -195,12 +198,64 @@ class RuntimeManager:
             weights_dir=str(self.weights_dir),
             torch_build_info=torch_build_info,
             gpu_hardware_detected=gpu_hardware_detected,
+            ram_gb=ram_gb,
             package_status=package_status,
             model_status=model_status,
             feature_available=feature_available,
             missing_required_packages=missing_required,
             missing_models=missing_models,
         )
+
+    @staticmethod
+    def _detect_ram_gb() -> Optional[float]:
+        """RAM VẬT LÝ thật của máy — dùng API/lệnh GỐC hệ điều hành,
+        KHÔNG cài thêm package nào (không psutil) — giữ đúng nguyên tắc
+        Bootstrap "không phụ thuộc gì phải cài trước": RAM cần biết
+        TRƯỚC khi biết máy có pip/internet hoạt động để cài thêm gì hay
+        không. Windows: ctypes.windll (có sẵn trong Python stdlib trên
+        Windows). Linux: /proc/meminfo. macOS: lệnh sysctl có sẵn hệ
+        thống. None nếu không dò được (hệ điều hành lạ, hoặc lỗi)."""
+        system = platform.system()
+        try:
+            if system == "Windows":
+                import ctypes
+
+                class _MEMORYSTATUSEX(ctypes.Structure):
+                    _fields_ = [
+                        ("dwLength", ctypes.c_ulong),
+                        ("dwMemoryLoad", ctypes.c_ulong),
+                        ("ullTotalPhys", ctypes.c_ulonglong),
+                        ("ullAvailPhys", ctypes.c_ulonglong),
+                        ("ullTotalPageFile", ctypes.c_ulonglong),
+                        ("ullAvailPageFile", ctypes.c_ulonglong),
+                        ("ullTotalVirtual", ctypes.c_ulonglong),
+                        ("ullAvailVirtual", ctypes.c_ulonglong),
+                        ("sullAvailExtendedVirtual", ctypes.c_ulonglong),
+                    ]
+
+                stat = _MEMORYSTATUSEX()
+                stat.dwLength = ctypes.sizeof(_MEMORYSTATUSEX)
+                ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat))  # type: ignore[attr-defined]
+                return round(stat.ullTotalPhys / (1024 ** 3), 1)
+
+            if system == "Linux":
+                with open("/proc/meminfo", encoding="utf-8") as f:
+                    for line in f:
+                        if line.startswith("MemTotal:"):
+                            kb = int(line.split()[1])
+                            return round(kb / (1024 ** 2), 1)
+                return None
+
+            if system == "Darwin":
+                import subprocess
+                result = subprocess.run(
+                    ["sysctl", "-n", "hw.memsize"],
+                    capture_output=True, text=True, timeout=5)
+                if result.returncode == 0 and result.stdout.strip():
+                    return round(int(result.stdout.strip()) / (1024 ** 3), 1)
+        except Exception:
+            pass
+        return None
 
     @staticmethod
     def _detect_gpu_hardware() -> Optional[str]:
@@ -280,6 +335,71 @@ class RuntimeManager:
         return result
 
 
+# ------------------------------------------------------------------
+# 4. Verify — đối chiếu manifest.json của 1 Xưởng với máy thật
+# ------------------------------------------------------------------
+#
+# Audit (RuntimeManager.detect(), ở trên) đã có từ trước — chỉ quan
+# sát/báo cáo máy thật, không so với ai cả. Đây là bước NỐI 2 nửa lại:
+# workshops/<tên>/manifest.json khai "cần gì" (environment), hàm này so
+# với RuntimeReport (máy thật) để ra kết luận CÓ ĐỦ hay KHÔNG — đúng
+# phần "Verify" trong "Bootstrap Controller" (Audit/Verify/Resolve) đã
+# bàn ở docs/architecture/meta_architecture.md. Resolve (tự cài/tự sửa)
+# vẫn CHƯA làm ở đây — hàm này chỉ ra kết luận, chưa tự hành động.
+
+def verify_workshop_environment(manifest_path, report: "RuntimeReport") -> List[str]:
+    """So `environment` trong manifest.json (đường dẫn `manifest_path`)
+    với `report` (RuntimeReport — máy thật, từ RuntimeManager.detect()).
+    Trả về danh sách các điểm KHÔNG đạt (chuỗi mô tả, dễ hiểu, sẵn để in
+    ra console/UI) — rỗng nghĩa là đủ điều kiện. Không raise exception
+    khi thiếu field/manifest lỗi — trả về đúng 1 dòng mô tả lỗi đó thay
+    vì làm sập Bootstrap vì 1 Xưởng có manifest hỏng."""
+    import json
+
+    problems: List[str] = []
+    try:
+        with open(manifest_path, encoding="utf-8") as f:
+            manifest = json.load(f)
+    except Exception as e:
+        return [f"Không đọc được manifest.json ({manifest_path}): {e}"]
+
+    workshop_name = manifest.get("workshop_name", manifest.get("workshop_id", manifest_path))
+    env = manifest.get("environment", {})
+
+    # python_version — chỉ hỗ trợ dạng ">=X.Y" đơn giản (đúng cú pháp
+    # đang dùng trong manifest.json thật, không cần bộ so khớp semver
+    # đầy đủ cho use-case này).
+    req_py = env.get("python_version")
+    if req_py and req_py.startswith(">="):
+        try:
+            min_ver = tuple(int(x) for x in req_py[2:].split("."))
+            cur_ver = tuple(int(x) for x in report.python_version.split("."))[:len(min_ver)]
+            if cur_ver < min_ver:
+                problems.append(
+                    f"[{workshop_name}] Cần Python {req_py}, máy đang chạy "
+                    f"{report.python_version}")
+        except ValueError:
+            pass  # manifest ghi sai định dạng version — bỏ qua, không sập
+
+    # min_ram_gb
+    min_ram = env.get("min_ram_gb")
+    if min_ram is not None:
+        if report.ram_gb is None:
+            problems.append(f"[{workshop_name}] Không dò được RAM máy — bỏ qua kiểm tra "
+                             f"(yêu cầu tối thiểu {min_ram}GB)")
+        elif report.ram_gb < min_ram:
+            problems.append(
+                f"[{workshop_name}] Cần tối thiểu {min_ram}GB RAM, máy có {report.ram_gb}GB")
+
+    # device_preference: "auto" không cần kiểm tra gì (chấp nhận cả
+    # cpu lẫn cuda). Chỉ báo khi Xưởng ép buộc "cuda" mà máy không có.
+    if env.get("device_preference") == "cuda" and report.device != "cuda":
+        problems.append(f"[{workshop_name}] Yêu cầu bắt buộc GPU (CUDA), máy đang chạy "
+                         f"{report.device}")
+
+    return problems
+
+
 if __name__ == "__main__":
     # Cùng lý do với main.py: tự chuyển vào .venv/ nếu đã có, tránh
     # chạy nhầm bằng Python hệ thống khi người dùng quên activate.
@@ -291,3 +411,20 @@ if __name__ == "__main__":
     print("NaChance — Runtime Report")
     print("=" * 60)
     print(report.summary_text())
+
+    # Verify từng Xưởng có manifest.json — quét động, không hardcode
+    # tên Xưởng (đúng yêu cầu "repo đi đến đâu thích nghi đến đó").
+    _workshops_dir = Path(__file__).resolve().parent.parent / "workshops"
+    if _workshops_dir.is_dir():
+        _all_problems = []
+        for _manifest in sorted(_workshops_dir.glob("*/manifest.json")):
+            _all_problems.extend(verify_workshop_environment(str(_manifest), report))
+        print()
+        print("=" * 60)
+        print("Verify — đối chiếu yêu cầu từng Xưởng với máy thật")
+        print("=" * 60)
+        if _all_problems:
+            for _p in _all_problems:
+                print(f"  ⚠ {_p}")
+        else:
+            print("  ✓ Máy đáp ứng đủ yêu cầu environment của mọi Xưởng có manifest.json")
