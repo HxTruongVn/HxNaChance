@@ -30,12 +30,14 @@ from typing import List, Optional, Type
 class WorkshopUI:
     workshop_id: str
     workshop_name: str
+    description: str
     mixin_class: Type
     build_method: str      # tên method Mixin tự gọi để vẽ tab của mình
     tab_title: str
     tab_order: int
     menu_label: Optional[str] = None       # nhãn cascade trong menu "Window"
     menu_build_method: Optional[str] = None  # method Mixin tự gọi để đổ nội dung submenu
+    open_method: Optional[str] = None      # method Mixin tự gọi khi File > Open, lúc tab Xưởng này đang active
 
 
 def discover_workshops(workshops_dir: Optional[Path] = None) -> List[WorkshopUI]:
@@ -71,12 +73,14 @@ def discover_workshops(workshops_dir: Optional[Path] = None) -> List[WorkshopUI]
             found.append(WorkshopUI(
                 workshop_id=manifest.get("workshop_id", manifest_path.parent.name),
                 workshop_name=manifest.get("workshop_name", manifest_path.parent.name),
+                description=manifest.get("description", ""),
                 mixin_class=mixin_class,
                 build_method=ui["build_method"],
                 tab_title=ui["tab_title"],
                 tab_order=ui.get("tab_order", 999),
                 menu_label=ui.get("menu_label"),
                 menu_build_method=ui.get("menu_build_method"),
+                open_method=ui.get("open_method"),
             ))
         except Exception as e:
             print(f"[WorkshopDiscovery] ⚠ Bỏ qua {manifest_path}: {e}")

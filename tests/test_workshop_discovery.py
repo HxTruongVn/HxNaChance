@@ -52,6 +52,32 @@ def test_discover_workshops_menu_fields_present_and_valid():
             f"{w.mixin_class} thiếu method {w.menu_build_method} đã khai trong manifest.json")
 
 
+def test_discover_workshops_open_method_present_and_valid():
+    """File > Open (ui/menu_bar_mixin.py::_menu_file) đọc open_method.
+    KHÁC build_method/menu_build_method (bắt buộc thuộc chính Mixin
+    Xưởng) — open_method được phép trỏ tới hành động dùng CHUNG ở
+    Reception (vd _run_single sống trong ui/pipeline_mixin.py, không
+    phải workshops/photo/ui.py — giống cách Undo/Redo dùng chung dù
+    hiện chỉ Photo Workshop tạo Document). Vì vậy kiểm tra trên
+    NaChanceApp đã RÁP ĐẦY ĐỦ (đúng những gì self.open_method thấy lúc
+    chạy thật), không phải trên w.mixin_class riêng lẻ."""
+    from app.main_ui import NaChanceApp
+    workshops = discover_workshops()
+    for w in workshops:
+        assert w.open_method, f"{w.workshop_id} thiếu open_method trong manifest.json"
+        assert hasattr(NaChanceApp, w.open_method), (
+            f"NaChanceApp thiếu method {w.open_method} đã khai trong manifest.json ({w.workshop_id})")
+
+
+def test_discover_workshops_description_present():
+    """About dialog (app/main_ui.py::_show_about) đọc description để
+    hiện danh sách Xưởng động — cả 2 Xưởng thật phải có description
+    không rỗng."""
+    workshops = discover_workshops()
+    for w in workshops:
+        assert w.description, f"{w.workshop_id} thiếu description trong manifest.json"
+
+
 def test_discover_workshops_skips_manifest_without_ui_block(tmp_path):
     """manifest.json không có khối "ui" -> bỏ qua, không crash."""
     workshop_dir = tmp_path / "broken_shop"

@@ -20,7 +20,8 @@
     "tab_title": "🖼 Photo Processing",
     "tab_order": 1,
     "menu_label": "Photo Processing",
-    "menu_build_method": "_menu_photo_content"
+    "menu_build_method": "_menu_photo_content",
+    "open_method": "_run_single"
   },
 
   "capabilities_required": ["face_parser", "face_restorer", "upscaler", "background_remover"],

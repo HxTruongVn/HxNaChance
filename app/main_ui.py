@@ -431,24 +431,26 @@ class NaChanceApp(
 
         ctk.CTkLabel(dlg, text="NaChance", font=self.F_BRAND_LARGE,
                      text_color=self.COLORS['accent']).pack(pady=(0, 4))
-        ctk.CTkLabel(dlg, text="Xử lý ảnh thẻ tự động cho tiệm ảnh / studio",
+        ctk.CTkLabel(dlg, text="Nền tảng xử lý ảnh mở rộng được cho tiệm ảnh/studio —\n"
+                                "mỗi Xưởng (Workshop) đảm nhận 1 việc, thêm Xưởng mới\n"
+                                "không cần sửa lại toàn bộ hệ thống",
                      font=self.F_MEDIUM, text_color=self.COLORS['text_secondary'],
                      wraplength=360, justify="center").pack(pady=(0, 15))
 
-        features = [
-            "Phục hồi & làm nét khuôn mặt (CodeFormer)",
-            "Nâng cấp độ phân giải (Real-ESRGAN)",
-            "Tách nền & đổi màu nền (isnet)",
-            "Căn chỉnh chuẩn ảnh thẻ theo từng loại giấy tờ",
-            "Xếp ảnh vào khổ in tự động",
-            "Kiểm tra chuẩn tự động trước khi giao khách",
-        ]
+        # Danh sách Xưởng ĐỘNG (self._discovered_workshops, xem
+        # app/workshop_discovery.py) — không hardcode tên/mô tả ở đây,
+        # đúng bản chất "Xưởng tự quản": About chỉ hiển thị đúng những
+        # gì manifest.json từng Xưởng khai (workshop_name + description),
+        # thêm Xưởng mới tự động xuất hiện ở đây, không cần sửa file này.
         box = ctk.CTkFrame(dlg, fg_color=self.COLORS['bg_card'], corner_radius=10)
         box.pack(fill="x", padx=25, pady=(0, 15))
-        for f in features:
-            ctk.CTkLabel(box, text=f"• {f}", font=self.F_NORMAL, anchor="w",
-                         text_color=self.COLORS['text_primary'], wraplength=340,
-                         justify="left").pack(fill="x", padx=12, pady=4)
+        for w in self._discovered_workshops:
+            ctk.CTkLabel(box, text=f"🧵 {w.workshop_name}", font=self.F_NORMAL,
+                         anchor="w", text_color=self.COLORS['accent'],
+                         wraplength=340, justify="left").pack(fill="x", padx=12, pady=(6, 0))
+            ctk.CTkLabel(box, text=w.description, font=self.F_SMALL, anchor="w",
+                         text_color=self.COLORS['text_secondary'], wraplength=340,
+                         justify="left").pack(fill="x", padx=12, pady=(0, 6))
 
         ctk.CTkButton(dlg, text="Đóng", fg_color=self.COLORS['accent'],
                       hover_color=self.COLORS['accent_hover'],

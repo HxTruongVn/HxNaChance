@@ -20,7 +20,8 @@
     "tab_title": "🖨 Layout",
     "tab_order": 2,
     "menu_label": "Layout",
-    "menu_build_method": "_menu_layout_content"
+    "menu_build_method": "_menu_layout_content",
+    "open_method": "_choose_layout_src"
   },
 
   "capabilities_required": [],

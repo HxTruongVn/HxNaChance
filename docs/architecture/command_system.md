@@ -15,7 +15,7 @@ menu, TOÀN BỘ nhãn tiếng Anh (chưa có lớp dịch — làm sau):
 
 | Menu | Mục | Định nghĩa ở đâu |
 |---|---|---|
-| **File** | Choose/Open save folder, Exit | `ui/menu_bar_mixin.py::_menu_file` |
+| **File** | Open... (định tuyến theo tab đang active), Choose/Open save folder, Exit | `ui/menu_bar_mixin.py::_menu_file` |
 | **Edit** | Undo, Redo | `ui/menu_bar_mixin.py::_menu_edit` (Reception-level — xem "Vì sao Undo/Redo ở Edit" bên dưới) |
 | **Window** | Cascade submenu — 1 mục/Xưởng, ĐỘNG | `ui/menu_bar_mixin.py::_menu_window`, nội dung mỗi submenu do CHÍNH Xưởng định nghĩa |
 | ├─ Photo Processing | Process single/batch + 11 checkbutton (4 nhóm) | `workshops/photo/ui.py::_menu_photo_content` |
@@ -56,7 +56,40 @@ chỉ tab, cả menu). Thêm Xưởng mới tự động có mục trong Window,
 cần sửa `menu_bar_mixin.py` — cùng giới hạn thật với tab (xem
 [ui.md](ui.md)): cần khởi động lại app để nhận Xưởng mới.
 
-## Vì sao Undo/Redo ở "Edit", không phải trong submenu Xưởng
+## File > Open — định tuyến động theo tab đang hoạt động
+
+Trước đây `File` chỉ có thao tác thư mục lưu, KHÔNG có cách mở/chọn
+input — phải vào tận `Window → <Xưởng> → ...` mới chọn được ảnh, trong
+khi `File > Open` là thứ người dùng bấm ĐẦU TIÊN theo phản xạ ở mọi
+app. Giờ có `Open...` ở đầu `File`, tự xác định đang ở tab nào
+(`self.tabview.get()`) rồi gọi đúng `open_method` Xưởng đó tự khai
+trong `manifest.json` — cùng cơ chế `build_method`/`menu_build_method`
+đã có, KHÔNG hardcode "nếu đang ở tab Photo thì gọi gì" trong
+`menu_bar_mixin.py`.
+
+**Khác biệt quan trọng với `build_method`/`menu_build_method`**:
+2 field đó BẮT BUỘC là method sống trong chính `workshops/<tên>/ui.py`
+(Xưởng tự quản UI của mình). `open_method` thì KHÔNG bắt buộc — cho
+phép trỏ tới hành động dùng CHUNG ở Reception (`Photo Processing` khai
+`"open_method": "_run_single"`, nhưng `_run_single` thật ra sống trong
+`ui/pipeline_mixin.py`, không phải `workshops/photo/ui.py`) — giống
+cách `Undo`/`Redo` dùng chung dù hiện chỉ Photo Workshop tạo `Document`.
+Test (`tests/test_workshop_discovery.py`) vì vậy kiểm tra `open_method`
+tồn tại trên `NaChanceApp` đã ráp đầy đủ, không phải trên
+`w.mixin_class` riêng lẻ như 2 field kia.
+
+`Open...` tự xám đi (`state="disabled"`) nếu Xưởng đang active không
+khai `open_method` — không đoán mò gọi nhầm hành động.
+
+## Phím tắt mở menu (Alt+<chữ cái đầu>)
+
+App tự vẽ title bar (`self.overrideredirect(True)`) nên phím `Alt` mặc
+định của Windows để focus menu bar GỐC không hoạt động — đã tự bind
+`Alt+F/E/W/V/S/H` (chữ cái đầu mỗi menu, không trùng nhau) mở đúng menu
+tương ứng, không cần bấm chuột. `bind_all()` (không phải `bind()`) —
+bấm được dù đang focus ở widget con nào trong cửa sổ.
+
+
 
 Undo/Redo (Giai đoạn 11) thao tác trên `self.current_document` —
 thuộc tính của `NaChanceApp` (Reception/App-level), không phải state

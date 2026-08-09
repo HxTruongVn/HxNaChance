@@ -74,6 +74,19 @@ class MenuBarMixin:
             btn.pack(side="left", padx=(4, 0), pady=2)
             self._menu_buttons[label] = btn
 
+        # Phím tắt Alt+<chữ cái đầu> mở đúng menu — Windows mặc định
+        # dùng Alt để focus menu bar GỐC của hệ điều hành, nhưng app
+        # này tự vẽ title bar (self.overrideredirect(True), xem
+        # docstring đầu file "Vì sao cửa sổ tự vẽ") nên Alt mặc định
+        # KHÔNG hoạt động — phải tự bind. 6 menu, 6 chữ cái đầu khác
+        # nhau (F/E/W/V/S/H), không trùng, không cần đặt tên viết tắt
+        # riêng. bind_all (không phải bind) để bấm được dù đang focus ở
+        # widget con nào trong cửa sổ, không chỉ khi menu bar có focus.
+        for label, builder in menu_defs:
+            key = label[0].lower()
+            self.bind_all(f"<Alt-{key}>",
+                           lambda e, b=self._menu_buttons[label], build=builder: self._popup_menu(b, build))
+
     def _popup_menu(self, button, build_fn):
         """Dựng lại menu MỚI mỗi lần bấm (không giữ menu cũ) — để các
         mục checkbutton (Window) luôn phản ánh đúng trạng thái checkbox
@@ -96,6 +109,24 @@ class MenuBarMixin:
 
     # ===== FILE =====
     def _menu_file(self, menu: tk.Menu):
+        """"Open..." định tuyến ĐỘNG theo tab Xưởng đang active
+        (self.tabview.get() trả đúng tab_title đang hiển thị) — gọi
+        open_method Xưởng đó tự khai trong manifest.json (giống hệt
+        pattern build_method/menu_build_method đã có), KHÔNG hardcode
+        "nếu đang ở tab Photo thì gọi _run_single" ở đây. Xưởng không
+        khai open_method (hoặc không khớp tab nào đang active — không
+        nên xảy ra trong vận hành bình thường, nhưng không giả định) ->
+        mục "Open..." xám đi, không đoán mò gọi nhầm hành động."""
+        active_tab = self.tabview.get()
+        active_workshop = next(
+            (w for w in self._discovered_workshops if w.tab_title == active_tab), None)
+
+        menu.add_command(
+            label="Open...",
+            command=lambda: getattr(self, active_workshop.open_method)(),
+            state="normal" if (active_workshop and active_workshop.open_method) else "disabled",
+        )
+        menu.add_separator()
         menu.add_command(label="Choose Save Folder...", command=self._choose_save_dir)
         menu.add_command(label="Open Save Folder", command=lambda: _open_folder(self.save_dir))
         menu.add_separator()
