@@ -150,6 +150,13 @@ class NaChanceApp(
         self._build_menu_bar()
         self._build_main_panel()
         self._lock_unavailable_features()
+        # resize_grip tạo trong _build_title_bar() (TRƯỚC main_frame) —
+        # Tk mặc định xếp widget tạo SAU đè lên widget tạo TRƯỚC cùng 1
+        # parent, nên main_frame (pack fill="both") che mất góc chứa
+        # grip dù grip vẫn hiển thị đúng vị trí — click không tới được.
+        # .lift() SAU KHI mọi widget khác đã dựng xong mới chắc chắn
+        # grip luôn ở trên cùng, nhận được sự kiện chuột.
+        self.resize_grip.lift()
         if self.is_mini:
             self.main_frame.pack_forget()
             self.geometry("480x42")
@@ -514,7 +521,50 @@ class NaChanceApp(
 
         self.title_bar.bind("<Button-1>", self._start_drag)
         self.title_bar.bind("<B1-Motion>", self._do_drag)
-        
+
+        self._build_resize_grip()
+
+    def _build_resize_grip(self):
+        """Ô nhỏ góc dưới-phải để kéo chuột đổi kích thước cửa sổ.
+        overrideredirect(True) (title bar tự vẽ) tắt luôn khả năng kéo
+        viền cửa sổ GỐC của hệ điều hành — không có gì để "bật lại",
+        phải tự vẽ + tự tính lại geometry() khi kéo, y hệt cách
+        _start_drag/_do_drag đã tự làm cho việc DI CHUYỂN cửa sổ.
+
+        .place() (không phải .pack()/.grid()) — neo cố định góc dưới-
+        phải (relx=1.0, rely=1.0, anchor="se") bất kể self.main_frame
+        đang pack hay pack_forget (mini mode), không bị cuốn theo layout
+        pack thông thường."""
+        self.resize_grip = ctk.CTkLabel(
+            self, text="⋰", width=18, height=18,
+            fg_color="transparent", text_color=self.COLORS['text_secondary'],
+            font=(self.FONT_FAMILY, 12), cursor="bottom_right_corner",
+        )
+        self.resize_grip.place(relx=1.0, rely=1.0, anchor="se")
+        self.resize_grip.bind("<Button-1>", self._start_resize)
+        self.resize_grip.bind("<B1-Motion>", self._do_resize)
+
+    def _start_resize(self, event):
+        # event.x_root/y_root (toạ độ MÀN HÌNH tuyệt đối) chứ không
+        # phải event.x/y (toạ độ TƯƠNG ĐỐI theo widget) — vì bản thân
+        # cửa sổ đổi kích thước ngay trong lúc kéo, toạ độ tương đối sẽ
+        # lệch theo, không tính được delta đúng. Chụp lại kích thước +
+        # vị trí chuột BAN ĐẦU 1 lần lúc bấm, mọi lần <B1-Motion> sau đó
+        # tính delta so với mốc này.
+        self._resize_start_w = self.winfo_width()
+        self._resize_start_h = self.winfo_height()
+        self._resize_start_mouse_x = event.x_root
+        self._resize_start_mouse_y = event.y_root
+
+    def _do_resize(self, event):
+        dx = event.x_root - self._resize_start_mouse_x
+        dy = event.y_root - self._resize_start_mouse_y
+        # Chặn dưới 320x200 — co nhỏ hơn sẽ vỡ layout (nút/label đè lên
+        # nhau), không phải số tuỳ tiện, đã thử tay trước khi chọn.
+        new_w = max(320, self._resize_start_w + dx)
+        new_h = max(200, self._resize_start_h + dy)
+        self.geometry(f"{new_w}x{new_h}")
+
     def _build_main_panel(self):
         self.main_frame = ctk.CTkScrollableFrame(
             self, fg_color=self.COLORS['bg_dark'],
@@ -555,6 +605,40 @@ class NaChanceApp(
             self.main_frame.pack_forget()
             self.geometry("480x42")
             self.is_mini = True
+
+    def _set_display_mode(self, mode: str):
+        """View -> Mini / Full Screen / Half Screen. 3 kích thước dựng
+        sẵn, khác với kéo tay bằng resize grip (góc dưới-phải, xem
+        _build_resize_grip) — đây là lối tắt nhanh, không cần tự đo/kéo
+        mỗi lần muốn 1 trong 3 kích thước hay dùng này.
+
+        "mini" TÁI SỬ DỤNG đúng self.is_mini đã có từ trước (nút ☰ trên
+        title bar, xem _toggle_panel) — không phải khái niệm mới, chỉ
+        thêm 1 đường vào nữa từ menu View, ép về đúng trạng thái mini
+        thay vì TOGGLE (bấm nút ☰ đảo trạng thái hiện tại; chọn "Mini"
+        trong menu phải LUÔN vào mini, kể cả khi đang mini sẵn rồi —
+        khác hành vi toggle)."""
+        if mode == "mini":
+            self.main_frame.pack_forget()
+            self.geometry("480x42")
+            self.is_mini = True
+            return
+
+        # "full"/"half" đều cần main_frame đang hiện — tự mở lại nếu
+        # đang ở mini (giống nhánh else của _toggle_panel).
+        if self.is_mini:
+            self.main_frame.pack(fill="both", expand=True, padx=0, pady=0)
+            self.is_mini = False
+
+        screen_w = self.winfo_screenwidth()
+        screen_h = self.winfo_screenheight()
+        if mode == "full":
+            self.geometry(f"{screen_w}x{screen_h}+0+0")
+        elif mode == "half":
+            # Nửa CHIỀU RỘNG, đủ chiều cao, ghim mép trái — đúng quy ước
+            # "snap nửa màn hình" phổ biến nhất (Windows Win+Left/Right),
+            # không phải số tự nghĩ ra.
+            self.geometry(f"{screen_w // 2}x{screen_h}+0+0")
 
     def _start_drag(self, event):
         self._drag_x = event.x

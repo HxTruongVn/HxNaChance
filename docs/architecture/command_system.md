@@ -20,7 +20,7 @@ menu, TOÀN BỘ nhãn tiếng Anh (chưa có lớp dịch — làm sau):
 | **Window** | Cascade submenu — 1 mục/Xưởng, ĐỘNG | `ui/menu_bar_mixin.py::_menu_window`, nội dung mỗi submenu do CHÍNH Xưởng định nghĩa |
 | ├─ Photo Processing | Process single/batch + 11 checkbutton (4 nhóm) | `workshops/photo/ui.py::_menu_photo_content` |
 | ├─ Layout | Choose source, preview, save, print | `workshops/layout/ui.py::_menu_layout_content` |
-| **View** | Đổi theme (tên theme CHƯA dịch — dữ liệu riêng) | `ui/menu_bar_mixin.py::_menu_view` |
+| **View** | Mini / Full Screen / Half Screen (3 chế độ dựng sẵn), đổi theme (tên theme CHƯA dịch — dữ liệu riêng) | `ui/menu_bar_mixin.py::_menu_view` |
 | **System** | Retry Weight Download, Install Missing Packages, Show Environment Report, Open Weights Folder | `ui/menu_bar_mixin.py::_menu_system` — xem mục riêng bên dưới |
 | **Help** | About | `ui/menu_bar_mixin.py::_menu_help` |
 

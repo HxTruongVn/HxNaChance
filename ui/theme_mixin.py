@@ -101,6 +101,7 @@ class ThemeMixin:
         self._build_title_bar()
         self._build_main_panel()
         self._lock_unavailable_features()
+        self.resize_grip.lift()  # cùng lý do với __init__ — main_frame tạo sau, đè lên grip
         self._restyle_side_panel()
         if self.is_mini:
             self.main_frame.pack_forget()

@@ -90,4 +90,23 @@ App dùng title bar tự vẽ (logo + nút RUN + thông tin + đóng), không
 dùng khung cửa sổ hệ điều hành. Hệ quả: menu bar gốc của Tk
 (`self.config(menu=...)`) không hiển thị trên Windows khi
 `overrideredirect(True)` đang bật — xem giải pháp trong
-[command_system.md](command_system.md).
+[command_system.md](command_system.md). Hệ quả thứ 2: mất luôn khả
+năng KÉO VIỀN để đổi kích thước (resize) — hệ điều hành không còn vẽ
+viền cửa sổ để kéo. Giải pháp: `_build_resize_grip()`
+(`app/main_ui.py`) — 1 ô nhỏ `.place()` cố định góc dưới-phải, tự tính
+lại `geometry()` khi kéo (`_start_resize`/`_do_resize`), y hệt cách
+`_start_drag`/`_do_drag` đã tự làm cho việc DI CHUYỂN cửa sổ.
+
+**Bẫy thật đã gặp khi làm resize grip**: `CTkLabel` là widget TỔNG HỢP
+— khung ngoài không tự nhận sự kiện chuột, bấm/kéo thật sự xảy ra ở
+`CTkCanvas`/`Label` CON bên trong (`.bind()` gọi trên khung ngoài tự
+chuyển xuống đúng widget con, nhưng test tự động nhắm event vào khung
+ngoài sẽ KHÔNG thấy gì xảy ra — phải nhắm đúng `widget.winfo_children()[0]`
+khi viết test giả lập chuột cho bất kỳ `CTkLabel`/`CTkButton` nào).
+**Bẫy thứ 2**: `resize_grip` tạo trong `_build_title_bar()` — TRƯỚC
+`main_frame` (tạo sau, trong `_build_main_panel()`). Tk mặc định xếp
+widget tạo SAU đè lên widget tạo TRƯỚC cùng 1 parent, nên `main_frame`
+(`pack(fill="both")`) che mất góc chứa grip dù grip vẫn hiển thị đúng vị
+trí — phải gọi `self.resize_grip.lift()` SAU KHI mọi widget khác đã
+dựng xong (`__init__` VÀ `ui/theme_mixin.py::_on_theme_change`, vì
+theme đổi thì dựng lại toàn bộ UI).

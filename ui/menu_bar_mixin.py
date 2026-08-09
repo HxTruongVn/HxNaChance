@@ -165,7 +165,17 @@ class MenuBarMixin:
         """Trước đây có thêm nhánh đọc self.theme_menu (dropdown ở tab Xử
         lý ảnh) — dropdown đó đã bị xóa (đổi giao diện giờ CHỈ qua menu
         này), self.theme_name luôn là nguồn sự thật duy nhất. Tên theme
-        (themes.json) CHƯA dịch — dữ liệu riêng, phạm vi khác."""
+        (themes.json) CHƯA dịch — dữ liệu riêng, phạm vi khác.
+
+        3 chế độ hiển thị dựng sẵn (Mini/Full Screen/Half Screen) — gọi
+        lại self._set_display_mode(mode) (app/main_ui.py), không viết
+        logic geometry() ở đây. "Mini" tái sử dụng đúng self.is_mini đã
+        có (nút ☰ trên title bar), không phải khái niệm mới."""
+        menu.add_command(label="Mini", command=lambda: self._set_display_mode("mini"))
+        menu.add_command(label="Full Screen", command=lambda: self._set_display_mode("full"))
+        menu.add_command(label="Half Screen", command=lambda: self._set_display_mode("half"))
+        menu.add_separator()
+
         current = self.theme_name
         theme_menu = tk.Menu(
             menu, tearoff=0,
