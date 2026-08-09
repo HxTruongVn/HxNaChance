@@ -73,6 +73,8 @@ class NaChanceApp(
         self.geometry("480x780")
         self._workshop_problems = workshop_problems or []
         self._discovered_workshops = _DISCOVERED_WORKSHOPS  # menu "Window" đọc để gộp submenu từng Xưởng
+        self._download_in_progress = False  # tránh 2 thread tải weight cùng lúc (tự động lúc mở app + bấm tay trong menu System)
+        self._install_in_progress = False   # tương tự, cho "Install Missing Packages..."
         # Đọc tên theme đã lưu trước để lấy màu sắc chuẩn
         self.theme_name = self._load_theme_name()
         self.COLORS = self.THEMES.get(self.theme_name, self.THEMES[self.DEFAULT_THEME])
@@ -224,7 +226,18 @@ class NaChanceApp(
         cũ trong RAM, có thể đang được dùng ở worker thread xử lý ảnh
         khác cùng lúc; đổi engine giữa chừng rủi ro cao hơn giá trị nó
         mang lại. Chỉ báo cho người dùng biết, gợi ý khởi động lại.
+
+        Cũng được gọi TAY qua menu System -> Retry Weight Download (không
+        chỉ tự động lúc thiếu weight) — self._download_in_progress chặn
+        bấm 2 lần chồng nhau (vd tự động đang chạy, người dùng lại bấm
+        tay) thay vì spawn 2 thread cùng tải 1 lúc.
         """
+        if self._download_in_progress:
+            self.status.configure(text="⏳ Đang tải weight, đợi xong đã...",
+                                   text_color=self.COLORS['text_secondary'])
+            return
+        self._download_in_progress = True
+
         def _worker():
             try:
                 from setup.setup_models import download_all_weights
@@ -233,6 +246,7 @@ class NaChanceApp(
             except Exception as e:
                 print(f"[BackgroundDownload] ⚠ Lỗi: {e}")
                 ok = False
+            self._download_in_progress = False
             if ok:
                 msg, color = ("✓ Đã tải xong model còn thiếu — khởi động lại "
                               "NaChance để dùng đầy đủ tính năng"), self.COLORS['success']
@@ -242,6 +256,75 @@ class NaChanceApp(
             self.after(0, lambda: self.status.configure(text=msg, text_color=color))
 
         threading.Thread(target=_worker, daemon=True, name="NaChanceWeightDownload").start()
+
+    def _show_environment_report(self):
+        """Menu System -> Show Environment Report. Trước đây chỉ in ra
+        console lúc khởi động (mất luôn nếu đóng console/không kịp xem)
+        — giờ xem lại được trong app bất cứ lúc nào. Tái sử dụng đúng
+        report.summary_text() đã có (setup/runtime_manager.py), không
+        viết lại logic format báo cáo."""
+        dlg = ctk.CTkToplevel(self)
+        dlg.title("Environment Report")
+        dlg.geometry("560x480")
+        dlg.configure(fg_color=self.COLORS['bg_dark'])
+        dlg.transient(self)
+
+        text = self.runtime_report.summary_text() if self.runtime_report else \
+            "Không có báo cáo môi trường (runtime_report=None)."
+        if self._workshop_problems:
+            text += "\n\n⚠️  Máy chưa đủ yêu cầu của 1 số Xưởng:\n"
+            text += "\n".join(f"   {p}" for p in self._workshop_problems)
+
+        box = ctk.CTkTextbox(dlg, fg_color=self.COLORS['bg_card'],
+                              text_color=self.COLORS['text_primary'],
+                              font=("Consolas", 11), wrap="word")
+        box.pack(fill="both", expand=True, padx=15, pady=15)
+        box.insert("1.0", text)
+        box.configure(state="disabled")  # chỉ đọc — đây là báo cáo, không phải chỗ sửa
+
+        ctk.CTkButton(dlg, text="Đóng", fg_color=self.COLORS['accent'],
+                      hover_color=self.COLORS['accent_hover'],
+                      command=dlg.destroy).pack(pady=(0, 15), padx=15, fill="x")
+
+    def _open_weights_folder(self):
+        """Menu System -> Open Weights Folder. "weights" là đường dẫn
+        tương đối dùng NHẤT QUÁN xuyên suốt app (NaChanceEngine(weights_dir=
+        "weights", ...) ở __init__, setup/setup_models.py, setup/
+        runtime_manager.py đều dùng đúng chuỗi này) — không tự bịa
+        đường dẫn khác."""
+        from ui.utils import open_folder as _open_folder
+        _open_folder("weights")
+
+    def _install_missing_packages(self):
+        """Menu System -> Install Missing Packages... Gọi
+        install_requirements() (setup/setup_models.py) — CỐ Ý không gọi
+        setup_weights() (hàm tổng): setup_weights() có sys.exit(1) khi
+        lỗi, gọi thẳng từ app đang chạy sẽ TẮT CẢ APP, không an toàn.
+        Chạy nền giống hệt pattern tải weight — có guard
+        self._install_in_progress tránh bấm chồng."""
+        if self._install_in_progress:
+            self.status.configure(text="⏳ Đang cài package, đợi xong đã...",
+                                   text_color=self.COLORS['text_secondary'])
+            return
+        self._install_in_progress = True
+
+        def _worker():
+            try:
+                from setup.setup_models import install_requirements
+                install_requirements()
+                ok = True
+            except Exception as e:
+                print(f"[InstallPackages] ⚠ Lỗi: {e}")
+                ok = False
+            self._install_in_progress = False
+            if ok:
+                msg, color = ("✓ Đã cài xong package còn thiếu — khởi động lại "
+                              "NaChance để nhận thay đổi"), self.COLORS['success']
+            else:
+                msg, color = ("⚠ Cài package lỗi — xem console để biết chi tiết"), self.COLORS['warning']
+            self.after(0, lambda: self.status.configure(text=msg, text_color=color))
+
+        threading.Thread(target=_worker, daemon=True, name="NaChanceInstallPackages").start()
 
     def _show_workshop_problems_notice(self):
         """Hiện 1 LẦN — dùng messagebox.showwarning (không phải dialog

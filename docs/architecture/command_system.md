@@ -21,6 +21,7 @@ menu, TOÀN BỘ nhãn tiếng Anh (chưa có lớp dịch — làm sau):
 | ├─ Photo Processing | Process single/batch + 11 checkbutton (4 nhóm) | `workshops/photo/ui.py::_menu_photo_content` |
 | ├─ Layout | Choose source, preview, save, print | `workshops/layout/ui.py::_menu_layout_content` |
 | **View** | Đổi theme (tên theme CHƯA dịch — dữ liệu riêng) | `ui/menu_bar_mixin.py::_menu_view` |
+| **System** | Retry Weight Download, Install Missing Packages, Show Environment Report, Open Weights Folder | `ui/menu_bar_mixin.py::_menu_system` — xem mục riêng bên dưới |
 | **Help** | About | `ui/menu_bar_mixin.py::_menu_help` |
 
 **Nguyên tắc quan trọng nhất**: mọi mục menu chỉ **gọi lại** method đã
@@ -66,6 +67,52 @@ niệm chung ở tầng Document, không phải business logic riêng 1 Xưởng
 nếu sau này có Xưởng khác cũng tạo Document, Undo/Redo dùng chung được
 ngay, không cần sửa gì thêm.
 
+## Menu "System" — thao tác Bootstrap/Setup thủ công
+
+Trước đây 4 việc này KHÔNG có đường vào UI — Bootstrap chỉ tự chạy 1
+lần lúc khởi động (tải weight nếu thiếu, in báo cáo môi trường ra
+console), không có cách nào gọi lại giữa phiên đang chạy. Ca thật: mạng
+đứt giữa chừng lúc tải weight -> trước đây phải khởi động lại cả app
+mới thử lại được.
+
+| Mục | Gọi lại hàm nào | Chạy nền? |
+|---|---|---|
+| Retry Weight Download | `app/main_ui.py::_start_background_weight_download` (đã có từ trước, giờ thêm đường gọi tay qua menu) | Có, thread daemon |
+| Install Missing Packages... | `setup/setup_models.py::install_requirements()` | Có, thread daemon |
+| Show Environment Report | `setup/runtime_manager.py::RuntimeReport.summary_text()` (hiện trong dialog `CTkTextbox`, chỉ đọc) | Không |
+| Open Weights Folder | `ui/utils.py::open_folder("weights")` | Không |
+
+**CỐ Ý không gọi `setup/setup_models.py::setup_weights()`** (hàm tổng
+hợp cả 4 bước cài đặt) cho "Install Missing Packages..." — hàm đó có
+`sys.exit(1)` khi lỗi, gọi thẳng từ app đang chạy sẽ **tắt cả app**.
+Gọi đúng hàm con an toàn (`install_requirements()`).
+
+`self._download_in_progress`/`self._install_in_progress` (2 cờ boolean
+trên `NaChanceApp`) chặn bấm trùng — vd tự động đang tải lúc khởi động,
+người dùng lại bấm tay "Retry" thêm 1 lần, tránh 2 thread cùng tải.
+
+## Kiểm kê CHƯA đưa vào menu — chuẩn bị cho CLI sau này
+
+Không phải mọi hàm "hành động trọn vẹn" trong repo đều đã có đường vào
+UI. Danh sách dưới đây kiểm kê phần còn lại (đã quét toàn bộ
+`setup/setup_models.py`, `config/model_registry.py`,
+`workshops/*/engine.py`/`print_layout.py` — không phải đoán):
+
+| Hành động | Hàm có sẵn | Vì sao chưa thêm vào System |
+|---|---|---|
+| Install Fonts | `setup/setup_models.py::install_fonts()` | Ít khi cần riêng lẻ (thường đi cùng lúc cài package) — gộp vào "Install Missing Packages..." nếu cần, hoặc thêm mục riêng khi có nhu cầu thật |
+| Install GitHub Deps (CodeFormer/Real-ESRGAN) | `setup/setup_models.py::install_github_deps()` | Cùng lý do — ít khi cần tách riêng khỏi Install Missing Packages |
+| Xem danh sách capability + provider/adapter/weight | `config/model_registry.py::list_capabilities()`, `get_capability()` | Hữu ích cho debug, nhưng chưa có ca thật nào cần — đợi có nhu cầu cụ thể |
+| Kiểm tra lệch dữ liệu registry ↔ weight source | `config/model_registry.py::validate_weight_refs()` | Cùng lý do — công cụ chẩn đoán, chưa có UI nào cần hiện kết quả này |
+| **Reset config về mặc định** | **CHƯA CÓ HÀM NÀO CẢ** — không phải thiếu menu, thiếu cả logic. `ui/config_mixin.py` chỉ có save/load, không có reset | Cần viết hàm mới trước khi thêm vào menu được — ghi lại ở đây để không quên |
+| Verify checksum weight đã tải | Chưa có (không file nào có sha256 — gap đã ghi trong `meta_architecture.md`) | Cần thêm sha256 vào `weights_sources.json` + hàm verify trước, chưa tới lúc |
+
+Khi viết CLI thật (`cli.py`/`argparse`), 4 mục trong "System" + 2 hành
+động `process()`/`build_layout_canvas()` (Window) là nhóm **ưu tiên
+cao nhất** — đã tách sẵn tham số tường minh, không đọc gì từ Tkinter,
+sẵn sàng gọi lại nguyên vẹn từ CLI. 6 hành động trong bảng kiểm kê
+trên cần đánh giá thêm khi thật sự bắt tay viết CLI.
+
 ## Vì sao thiết kế vậy — nền tảng cho CLI
 
 M��c tiêu ban đầu khi làm thanh menu: dọn cho gọn hiển thị + chuẩn bị để
@@ -83,7 +130,8 @@ widget, rồi gọi đúng bước 2 y hệt GUI đang gọi — không cần vi
 
 **Chưa làm** (không nằm trong phạm vi thanh menu, ghi lại để không quên):
 - CLI thật (file `cli.py` hoặc tương tự, dùng `argparse`/`click`) —
-  cần làm riêng, dùng lại đúng `engine.process()` như trên.
+  cần làm riêng, dùng lại đúng `engine.process()` như trên. Danh sách
+  hành động cần đưa vào xem bảng kiểm kê ở mục "System" phía trên.
 - Lớp dịch (i18n) — menu hiện tiếng Anh cứng, chưa có cơ chế đổi ngôn
   ngữ runtime. Nội dung tab (checkbox/label trên UI chính) và tên
   theme (`themes.json`) vẫn tiếng Việt — chưa đồng bộ.

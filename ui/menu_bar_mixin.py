@@ -59,6 +59,7 @@ class MenuBarMixin:
             ("Edit", self._menu_edit),
             ("Window", self._menu_window),
             ("View", self._menu_view),
+            ("System", self._menu_system),
             ("Help", self._menu_help),
         ]
         self._menu_buttons = {}
@@ -148,6 +149,19 @@ class MenuBarMixin:
                 command=lambda n=name: self._on_theme_change(n),
             )
         menu.add_cascade(label="Theme", menu=theme_menu)
+
+    # ===== SYSTEM — Bootstrap/Setup thao tác tay, ngoài luồng tự động =====
+    def _menu_system(self, menu: tk.Menu):
+        """4 thao tác trước đây KHÔNG có đường vào UI — chỉ chạy tự động
+        lúc khởi động (tải weight/Verify) hoặc phải thoát app, tự chạy
+        setup_models.py bằng tay. Đều gọi lại đúng hàm/method đã có sẵn
+        (setup/setup_models.py, setup/runtime_manager.py, app/main_ui.py)
+        — không viết logic mới ở đây, đúng nguyên tắc chung của file này."""
+        menu.add_command(label="Retry Weight Download", command=self._start_background_weight_download)
+        menu.add_command(label="Install Missing Packages...", command=self._install_missing_packages)
+        menu.add_separator()
+        menu.add_command(label="Show Environment Report", command=self._show_environment_report)
+        menu.add_command(label="Open Weights Folder", command=self._open_weights_folder)
 
     # ===== HELP =====
     def _menu_help(self, menu: tk.Menu):
