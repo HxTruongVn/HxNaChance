@@ -43,10 +43,15 @@ khởi tạo thật `NaChanceApp` qua Xvfb, xác nhận MRO/tab đều đúng.
 **và được Reception nạp ĐỘNG** qua `app/workshop_discovery.py` (đọc
 khối `ui` trong `manifest.json`, không hardcode tên class):
 
-| File (vị trí mới) | Mixin | Nội dung | `workshop_id` (manifest.json) |
-|---|---|---|---|
-| `workshops/photo/ui.py` | `ProcessTabMixin` | Tab "Xử lý ảnh" | `photo` (`tab_order: 1`) |
-| `workshops/layout/ui.py` | `LayoutTabMixin` | Tab "Xếp in" | `layout` (`tab_order: 2`) |
+| File (vị trí mới) | Mixin | Nội dung | `workshop_id` (manifest.json) | Menu "Window" |
+|---|---|---|---|---|
+| `workshops/photo/ui.py` | `ProcessTabMixin` | Tab "🖼 Photo Processing" | `photo` (`tab_order: 1`) | `_menu_photo_content` |
+| `workshops/layout/ui.py` | `LayoutTabMixin` | Tab "🖨 Layout" | `layout` (`tab_order: 2`) | `_menu_layout_content` |
+
+Menu (`Window`, gộp từ 2 menu ngang hàng "Xử lý"/"Bố cục" trước đây)
+cũng theo đúng cơ chế này — mỗi Xưởng tự khai `menu_label`/
+`menu_build_method` trong `manifest.json`, chi tiết xem
+[`command_system.md`](command_system.md).
 
 Quy ước tên thuộc tính tab: `self.tab_<workshop_id>` — Reception tạo
 (`setattr(self, f"tab_{w.workshop_id}", ...)`), Mixin tự đọc
@@ -66,7 +71,7 @@ hot-reload giữa phiên đang chạy).
 
 ## Nhóm tùy chọn nâng cao
 
-Tab "Xử lý ảnh" chia 12 tùy chọn thành 4 nhóm, khớp đúng ranh giới
+Tab "🖼 Photo Processing" (trước đây "Xử lý ảnh") chia 11 tùy chọn thành 4 nhóm, khớp đúng ranh giới
 `capability` trong `workshops/photo/model_registry.json`:
 
 - **🧑 Khuôn mặt** — `chk_face_restore` + `sld_fidelity`, `chk_skin` +

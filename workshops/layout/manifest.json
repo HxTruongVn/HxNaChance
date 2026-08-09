@@ -17,8 +17,10 @@
     "module": "workshops.layout.ui",
     "mixin_class": "LayoutTabMixin",
     "build_method": "_build_layout_tab",
-    "tab_title": "🖨 Xếp in",
-    "tab_order": 2
+    "tab_title": "🖨 Layout",
+    "tab_order": 2,
+    "menu_label": "Layout",
+    "menu_build_method": "_menu_layout_content"
   },
 
   "capabilities_required": [],

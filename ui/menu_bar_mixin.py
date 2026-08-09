@@ -1,6 +1,11 @@
-"""ui.menu_bar_mixin — MenuBarMixin: thanh menu ngang, gom mọi thao tác
-đang rải rác trên UI vào 1 chỗ (Tệp / Xử lý / Bố cục / Giao diện / Trợ
-giúp).
+"""ui.menu_bar_mixin — MenuBarMixin: thanh menu ngang, chuẩn desktop app
+(File / Edit / Window / View / Help), gom mọi thao tác đang rải rác
+trên UI vào 1 chỗ.
+
+CHUẨN HOÁ (theo yêu cầu): toàn bộ nhãn menu tiếng Anh — CHƯA có lớp
+dịch (i18n), đây là bước chuẩn bị trước, lớp dịch làm sau. Chỉ tiếng
+Anh ở TẦNG MENU — nội dung tab (checkbox, label...) và tên theme
+(themes.json, có mô tả tiếng Việt) CHƯA đụng tới, phạm vi riêng.
 
 VÌ SAO KHÔNG DÙNG self.config(menu=...) (menu bar gốc của Tk):
 App dùng self.overrideredirect(True) (title bar tự vẽ, không dùng
@@ -18,6 +23,21 @@ cho CLI sau này: CLI cũng sẽ chỉ là một người gọi khác của cùn
 hàm này (thay vì đọc tham số từ tk.Menu, CLI đọc từ argparse), miễn
 là các hàm _run_single/_run_batch/... không tự ý phụ thuộc thứ chỉ
 Tkinter GUI mới có.
+
+Menu "Window" gộp nội dung riêng từng Xưởng (trước đây 2 menu ngang
+hàng "Xử lý"/"Bố cục") thành submenu cascade — ĐÚNG cơ chế phát hiện
+Xưởng động (app/workshop_discovery.py, self._discovered_workshops):
+mỗi Xưởng tự khai menu_label/menu_build_method trong manifest.json,
+Reception chỉ lặp qua danh sách đã phát hiện + gọi, KHÔNG hardcode tên
+Xưởng ở đây. Nội dung mỗi submenu do CHÍNH Xưởng định nghĩa (trong
+workshops/<tên>/ui.py — Xưởng tự quản UI của mình, kể cả phần menu),
+không nằm trong file này.
+
+Undo/Redo xếp vào "Edit" (chuẩn desktop app), KHÔNG nằm trong submenu
+Xưởng nào — dù hiện chỉ Xưởng Xử lý ảnh dùng tới (self.current_document
+chỉ được NaChanceEngine.process() điền), nhưng đây là khái niệm chung ở
+tầng Document (Reception/App-level, xem ui/pipeline_mixin.py), không
+phải business logic riêng của 1 Xưởng.
 """
 import tkinter as tk
 
@@ -35,11 +55,11 @@ class MenuBarMixin:
         self.menu_bar_frame.pack_propagate(False)
 
         menu_defs = [
-            ("Tệp", self._menu_file),
-            ("Xử lý", self._menu_process),
-            ("Bố cục", self._menu_layout),
-            ("Giao diện", self._menu_theme),
-            ("Trợ giúp", self._menu_help),
+            ("File", self._menu_file),
+            ("Edit", self._menu_edit),
+            ("Window", self._menu_window),
+            ("View", self._menu_view),
+            ("Help", self._menu_help),
         ]
         self._menu_buttons = {}
         for label, builder in menu_defs:
@@ -55,9 +75,10 @@ class MenuBarMixin:
 
     def _popup_menu(self, button, build_fn):
         """Dựng lại menu MỚI mỗi lần bấm (không giữ menu cũ) — để các
-        mục checkbutton (Xử lý) luôn phản ánh đúng trạng thái checkbox
+        mục checkbutton (Window) luôn phản ánh đúng trạng thái checkbox
         thật tại thời điểm mở, không bị lệch nếu người dùng đổi checkbox
-        ở tab chính rồi mới mở menu."""
+        ở tab chính rồi mới mở menu.
+        """
         menu = tk.Menu(
             self, tearoff=0,
             bg=self.COLORS['bg_card'], fg=self.COLORS['text_primary'],
@@ -72,88 +93,62 @@ class MenuBarMixin:
         finally:
             menu.grab_release()
 
-    # ===== TỆP =====
+    # ===== FILE =====
     def _menu_file(self, menu: tk.Menu):
-        menu.add_command(label="Chọn thư mục lưu...", command=self._choose_save_dir)
-        menu.add_command(label="Mở thư mục lưu", command=lambda: _open_folder(self.save_dir))
+        menu.add_command(label="Choose Save Folder...", command=self._choose_save_dir)
+        menu.add_command(label="Open Save Folder", command=lambda: _open_folder(self.save_dir))
         menu.add_separator()
-        menu.add_command(label="Thoát", command=self._on_close)
+        menu.add_command(label="Exit", command=self._on_close)
 
-    # ===== XỬ LÝ =====
-    def _menu_process(self, menu: tk.Menu):
-        menu.add_command(label="Xử lý ảnh đơn...", command=self._run_single)
-        menu.add_command(label="Xử lý hàng loạt...", command=self._run_batch)
-        menu.add_separator()
-
-        # Undo/Redo (Giai đoạn 11) — thao tác trên Document của ảnh xử lý
-        # gần nhất (self.current_document). Xám đi khi không còn bước nào
-        # để lùi/tiến — đọc trạng thái MỚI mỗi lần mở menu (đúng nguyên
-        # tắc "dựng lại menu mỗi lần bấm" đã áp dụng cho checkbutton).
+    # ===== EDIT =====
+    def _menu_edit(self, menu: tk.Menu):
+        """Undo/Redo (Giai đoạn 11) — thao tác trên Document của ảnh xử
+        lý gần nhất (self.current_document). Xám đi khi không còn bước
+        nào để lùi/tiến — đọc trạng thái MỚI mỗi lần mở menu (đúng
+        nguyên tắc "dựng lại menu mỗi lần bấm")."""
         doc = self.current_document
         can_undo = doc is not None and doc.can_undo()
         can_redo = doc is not None and doc.can_redo()
-        menu.add_command(label="↶ Undo", command=self._undo,
+        menu.add_command(label="Undo", command=self._undo,
                           state="normal" if can_undo else "disabled")
-        menu.add_command(label="↷ Redo", command=self._redo,
+        menu.add_command(label="Redo", command=self._redo,
                           state="normal" if can_redo else "disabled")
-        menu.add_separator()
 
-        # Checkbutton phản ánh + điều khiển ĐÚNG checkbox thật trên tab
-        # Xử lý ảnh (không tạo trạng thái riêng) — chia đúng 4 nhóm như
-        # đã tổ chức lại trong workshops/photo/ui.py.
-        groups = [
-            ("Khuôn mặt", [
-                ("Face Restore", "chk_face_restore"),
-                ("Làm mịn da", "chk_skin"),
-                ("Sáng mắt", "chk_eye"),
-                ("Trắng răng", "chk_teeth"),
-            ]),
-            ("Tư thế & Bố cục", [
-                ("Tự dò hướng ảnh", "chk_auto_rotate"),
-                ("Xác nhận trước khi xử lý", "chk_confirm_orientation"),
-                ("Cân vai", "chk_shoulder_warp"),
-            ]),
-            ("Độ phân giải & Hậu kỳ", [
-                ("Upscale 2x", "chk_upscale"),
-                ("Tách nền", "chk_remove_bg"),
-            ]),
-            ("Kiểm tra & An toàn", [
-                ("Kiểm tra chuẩn", "chk_validate"),
-                ("Xem trước", "chk_preview"),
-            ]),
-        ]
-        for i, (group_name, items) in enumerate(groups):
-            if i > 0:
-                menu.add_separator()
-            menu.add_command(label=f"— {group_name} —", state="disabled")
-            for label, attr in items:
-                chk = getattr(self, attr)
-                var = tk.BooleanVar(value=bool(chk.get()))
-                menu.add_checkbutton(
-                    label=label, variable=var,
-                    command=lambda c=chk: c.toggle(),
-                )
+    # ===== WINDOW — gộp submenu từng Xưởng, phát hiện ĐỘNG =====
+    def _menu_window(self, menu: tk.Menu):
+        for w in self._discovered_workshops:
+            if not w.menu_build_method:
+                continue  # Xưởng không khai menu_label/menu_build_method -> bỏ qua, không lỗi
+            submenu = tk.Menu(
+                menu, tearoff=0,
+                bg=self.COLORS['bg_card'], fg=self.COLORS['text_primary'],
+                activebackground=self.COLORS['accent'], activeforeground="#ffffff",
+                relief="flat", borderwidth=1,
+            )
+            getattr(self, w.menu_build_method)(submenu)
+            menu.add_cascade(label=w.menu_label or w.workshop_name, menu=submenu)
 
-    # ===== BỐ CỤC =====
-    def _menu_layout(self, menu: tk.Menu):
-        menu.add_command(label="Chọn ảnh nguồn...", command=self._choose_layout_src)
-        menu.add_command(label="Xem trước", command=self._layout_preview)
-        menu.add_command(label="Lưu layout...", command=self._layout_save)
-        menu.add_command(label="In layout...", command=self._layout_print)
-
-    # ===== GIAO DIỆN =====
-    def _menu_theme(self, menu: tk.Menu):
-        # Trước đây có thêm nhánh đọc self.theme_menu (dropdown ở tab Xử
-        # lý ảnh) — dropdown đó đã bị xóa (đổi giao diện giờ CHỈ qua menu
-        # này), self.theme_name luôn là nguồn sự thật duy nhất.
+    # ===== VIEW =====
+    def _menu_view(self, menu: tk.Menu):
+        """Trước đây có thêm nhánh đọc self.theme_menu (dropdown ở tab Xử
+        lý ảnh) — dropdown đó đã bị xóa (đổi giao diện giờ CHỈ qua menu
+        này), self.theme_name luôn là nguồn sự thật duy nhất. Tên theme
+        (themes.json) CHƯA dịch — dữ liệu riêng, phạm vi khác."""
         current = self.theme_name
+        theme_menu = tk.Menu(
+            menu, tearoff=0,
+            bg=self.COLORS['bg_card'], fg=self.COLORS['text_primary'],
+            activebackground=self.COLORS['accent'], activeforeground="#ffffff",
+            relief="flat", borderwidth=1,
+        )
         for name in self.THEMES:
-            menu.add_radiobutton(
+            theme_menu.add_radiobutton(
                 label=name, value=name,
                 variable=tk.StringVar(value=current),
                 command=lambda n=name: self._on_theme_change(n),
             )
+        menu.add_cascade(label="Theme", menu=theme_menu)
 
-    # ===== TRỢ GIÚP =====
+    # ===== HELP =====
     def _menu_help(self, menu: tk.Menu):
-        menu.add_command(label="Giới thiệu", command=self._show_about)
+        menu.add_command(label="About", command=self._show_about)

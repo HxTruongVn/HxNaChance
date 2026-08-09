@@ -17,8 +17,10 @@
     "module": "workshops.photo.ui",
     "mixin_class": "ProcessTabMixin",
     "build_method": "_build_process_tab",
-    "tab_title": "🖼 Xử lý ảnh",
-    "tab_order": 1
+    "tab_title": "🖼 Photo Processing",
+    "tab_order": 1,
+    "menu_label": "Photo Processing",
+    "menu_build_method": "_menu_photo_content"
   },
 
   "capabilities_required": ["face_parser", "face_restorer", "upscaler", "background_remover"],

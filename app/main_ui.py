@@ -72,6 +72,7 @@ class NaChanceApp(
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.geometry("480x780")
         self._workshop_problems = workshop_problems or []
+        self._discovered_workshops = _DISCOVERED_WORKSHOPS  # menu "Window" đọc để gộp submenu từng Xưởng
         # Đọc tên theme đã lưu trước để lấy màu sắc chuẩn
         self.theme_name = self._load_theme_name()
         self.COLORS = self.THEMES.get(self.theme_name, self.THEMES[self.DEFAULT_THEME])

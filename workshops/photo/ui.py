@@ -1,4 +1,4 @@
-"""workshops.photo.ui — ProcessTabMixin: tab "Xử lý ảnh".
+"""workshops.photo.ui — ProcessTabMixin: tab "🖼 Photo Processing" (trước đây "Xử lý ảnh").
 Phụ thuộc WidgetHelpersMixin (_section_header/_chk/_slider) — NaChanceApp
 phải kế thừa cả 2 Mixin này.
 """
@@ -318,4 +318,54 @@ class ProcessTabMixin:
             dpi=dpi, head_ratio_min=preset.head_ratio_min, head_ratio_max=preset.head_ratio_max,
             min_eye_dist_mm=preset.min_eye_dist_mm
         )
+
+    def _menu_photo_content(self, menu):
+        """Nội dung submenu "Photo Processing" trong menu Window (Reception
+        gọi qua manifest.json::ui.menu_build_method, xem
+        ui/menu_bar_mixin.py::_menu_window) — Xưởng TỰ khai menu của
+        mình, đúng tinh thần "Xưởng tự quản UI" (không chỉ tab, cả menu).
+
+        Checkbutton phản ánh + điều khiển ĐÚNG checkbox thật trên tab (không
+        tạo trạng thái riêng) — chia đúng 4 nhóm như đã tổ chức trên tab.
+        KHÔNG có Undo/Redo ở đây — đã dời sang menu Edit (Reception-level,
+        chuẩn desktop app), xem ui/menu_bar_mixin.py::_menu_edit.
+        """
+        import tkinter as tk
+
+        menu.add_command(label="Process Single Image...", command=self._run_single)
+        menu.add_command(label="Process Batch...", command=self._run_batch)
+        menu.add_separator()
+
+        groups = [
+            ("Face", [
+                ("Face Restore", "chk_face_restore"),
+                ("Skin Smoothing", "chk_skin"),
+                ("Brighten Eyes", "chk_eye"),
+                ("Whiten Teeth", "chk_teeth"),
+            ]),
+            ("Pose & Alignment", [
+                ("Auto-detect Orientation", "chk_auto_rotate"),
+                ("Confirm Before Processing", "chk_confirm_orientation"),
+                ("Shoulder Warp", "chk_shoulder_warp"),
+            ]),
+            ("Resolution & Post-processing", [
+                ("Upscale 2x", "chk_upscale"),
+                ("Remove Background", "chk_remove_bg"),
+            ]),
+            ("Validation & Safety", [
+                ("Validate Standard", "chk_validate"),
+                ("Preview", "chk_preview"),
+            ]),
+        ]
+        for i, (group_name, items) in enumerate(groups):
+            if i > 0:
+                menu.add_separator()
+            menu.add_command(label=f"— {group_name} —", state="disabled")
+            for label, attr in items:
+                chk = getattr(self, attr)
+                var = tk.BooleanVar(value=bool(chk.get()))
+                menu.add_checkbutton(
+                    label=label, variable=var,
+                    command=lambda c=chk: c.toggle(),
+                )
 

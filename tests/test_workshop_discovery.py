@@ -40,6 +40,18 @@ def test_discover_workshops_mixin_class_has_declared_build_method():
             f"{w.mixin_class} thiếu method {w.build_method} đã khai trong manifest.json")
 
 
+def test_discover_workshops_menu_fields_present_and_valid():
+    """Menu "Window" (ui/menu_bar_mixin.py::_menu_window) đọc menu_label/
+    menu_build_method — cả 2 Xưởng thật đều phải khai đủ, và
+    mixin_class phải thật sự có method đó."""
+    workshops = discover_workshops()
+    for w in workshops:
+        assert w.menu_label, f"{w.workshop_id} thiếu menu_label trong manifest.json"
+        assert w.menu_build_method, f"{w.workshop_id} thiếu menu_build_method"
+        assert hasattr(w.mixin_class, w.menu_build_method), (
+            f"{w.mixin_class} thiếu method {w.menu_build_method} đã khai trong manifest.json")
+
+
 def test_discover_workshops_skips_manifest_without_ui_block(tmp_path):
     """manifest.json không có khối "ui" -> bỏ qua, không crash."""
     workshop_dir = tmp_path / "broken_shop"

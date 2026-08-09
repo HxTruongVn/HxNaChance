@@ -54,7 +54,7 @@ NaChance/
 │   │   │                           # tự quản (trước đây ở config/presets/, dùng chung)
 │   │   ├── weights_sources.json    # URL nguồn tải (chính + dự phòng) cho từng weight
 │   │   ├── spec_presets.json       # 15 preset khổ ảnh thẻ (13x18, VN Passport...)
-│   │   ├── ui.py                   # ProcessTabMixin — tab "Xử lý ảnh" (4 nhóm tùy chọn)
+│   │   ├── ui.py                   # ProcessTabMixin — tab "🖼 Photo Processing" (trước đây "Xử lý ảnh"), 4 nhóm tùy chọn
 │   │   ├── __init__.py             # Facade — re-export API cũ, xem docstring trong file
 │   │   ├── spec.py                 # PhotoSpec, SPEC_PRESETS
 │   │   ├── utils.py                # _ensure_rgb, _imread_unicode
@@ -69,7 +69,7 @@ NaChance/
 │       ├── requirements.txt        # Dependencies riêng Xưởng này (chỉ Pillow)
 │       ├── layout_presets.json     # 15 công thức khổ in — Xưởng tự quản (trước đây
 │       │                           # ở config/presets/, dùng chung)
-│       ├── ui.py                   # LayoutTabMixin — tab "Xếp in"
+│       ├── ui.py                   # LayoutTabMixin — tab "🖨 Layout" (trước đây "Xếp in")
 │       └── print_layout.py         # LAYOUT_PRESETS, build_layout_canvas, save_layout,
 │                                    # inpaint_extend_cv2 (lấp vùng mở rộng — OpenCV cổ điển)
 │

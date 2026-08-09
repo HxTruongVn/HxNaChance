@@ -77,7 +77,7 @@ class ThemeMixin:
                                  "Đợi xử lý ảnh xong rồi đổi giao diện nhé.")
             # Trước đây reset lại self.theme_menu (dropdown ở tab Xử lý ảnh)
             # về theme cũ — dropdown đó đã bị xóa (theme giờ chỉ đổi qua
-            # menu Giao diện), không còn gì cần reset: menu build lại từ
+            # menu View → Theme), không còn gì cần reset: menu build lại từ
             # self.theme_name mỗi lần mở, tự động đúng theme cũ vì hàm này
             # return sớm ở đây, chưa hề gán self.theme_name mới.
             return

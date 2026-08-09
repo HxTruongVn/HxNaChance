@@ -1,4 +1,4 @@
-"""workshops.layout.ui — LayoutTabMixin: tab "Xếp in".
+"""workshops.layout.ui — LayoutTabMixin: tab "🖨 Layout" (trước đây "Xếp in").
 Phụ thuộc WidgetHelpersMixin. LAYOUT_PRESETS cũng được ConfigMixin dùng
 riêng (import lại ở config_mixin.py), vì 2 Mixin đó cùng cần nhưng
 không phụ thuộc lẫn nhau.
@@ -353,3 +353,13 @@ class LayoutTabMixin:
                 self.status.configure(text="✓ Đã gửi lệnh in (lpr)", text_color=self.COLORS['success'])
         except Exception as e:
             messagebox.showerror("Lỗi in", f"Không thể in: {e}\nFile tạm: {tmp}")
+
+    def _menu_layout_content(self, menu):
+        """Nội dung submenu "Layout" trong menu Window (Reception gọi
+        qua manifest.json::ui.menu_build_method, xem
+        ui/menu_bar_mixin.py::_menu_window) — Xưởng TỰ khai menu của
+        mình, đúng tinh thần "Xưởng tự quản UI" (không chỉ tab, cả menu)."""
+        menu.add_command(label="Choose Source Image...", command=self._choose_layout_src)
+        menu.add_command(label="Preview", command=self._layout_preview)
+        menu.add_command(label="Save Layout...", command=self._layout_save)
+        menu.add_command(label="Print Layout...", command=self._layout_print)

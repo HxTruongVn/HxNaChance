@@ -34,6 +34,8 @@ class WorkshopUI:
     build_method: str      # tên method Mixin tự gọi để vẽ tab của mình
     tab_title: str
     tab_order: int
+    menu_label: Optional[str] = None       # nhãn cascade trong menu "Window"
+    menu_build_method: Optional[str] = None  # method Mixin tự gọi để đổ nội dung submenu
 
 
 def discover_workshops(workshops_dir: Optional[Path] = None) -> List[WorkshopUI]:
@@ -73,6 +75,8 @@ def discover_workshops(workshops_dir: Optional[Path] = None) -> List[WorkshopUI]
                 build_method=ui["build_method"],
                 tab_title=ui["tab_title"],
                 tab_order=ui.get("tab_order", 999),
+                menu_label=ui.get("menu_label"),
+                menu_build_method=ui.get("menu_build_method"),
             ))
         except Exception as e:
             print(f"[WorkshopDiscovery] ⚠ Bỏ qua {manifest_path}: {e}")

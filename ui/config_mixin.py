@@ -22,7 +22,7 @@ class ConfigMixin:
                 if hasattr(self, "lbl_save_dir"):
                     self.lbl_save_dir.configure(text=self.save_dir)
 
-                # Tab "Xử lý ảnh" — trước đây CHỈ save_dir/theme/layout được
+                # Tab "Photo Processing" (workshops/photo/ui.py) — trước đây CHỈ save_dir/theme/layout được
                 # nhớ giữa các lần mở app, mọi checkbox/slider/preset ở tab
                 # Xử lý ảnh reset về mặc định code mỗi lần khởi động lại.
                 pc = cfg.get("process", {})
@@ -105,7 +105,7 @@ class ConfigMixin:
 
     def _save_config(self):
         try:
-            # Tab "Xử lý ảnh" — dùng CHUNG self._get_options() (nguồn dữ
+            # Tab "Photo Processing" (workshops/photo/ui.py) — dùng CHUNG self._get_options() (nguồn dữ
             # liệu thật engine đọc) thay vì liệt kê lại từng self.chk_xxx
             # ở đây — tránh 2 danh sách lệch nhau nếu sau này thêm/bớt
             # tuỳ chọn mà quên cập nhật 1 trong 2 chỗ.
