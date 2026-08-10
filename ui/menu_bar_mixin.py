@@ -74,18 +74,20 @@ class MenuBarMixin:
             btn.pack(side="left", padx=(4, 0), pady=2)
             self._menu_buttons[label] = btn
 
-        # Phím tắt Alt+<chữ cái đầu> mở đúng menu — Windows mặc định
-        # dùng Alt để focus menu bar GỐC của hệ điều hành, nhưng app
-        # này tự vẽ title bar (self.overrideredirect(True), xem
-        # docstring đầu file "Vì sao cửa sổ tự vẽ") nên Alt mặc định
-        # KHÔNG hoạt động — phải tự bind. 6 menu, 6 chữ cái đầu khác
-        # nhau (F/E/W/V/S/H), không trùng, không cần đặt tên viết tắt
-        # riêng. bind_all (không phải bind) để bấm được dù đang focus ở
-        # widget con nào trong cửa sổ, không chỉ khi menu bar có focus.
+        # Menu accelerators: Alt+chữ cái mở menu vì app tự vẽ menu bar.
         for label, builder in menu_defs:
             key = label[0].lower()
-            self.bind_all(f"<Alt-{key}>",
-                           lambda e, b=self._menu_buttons[label], build=builder: self._popup_menu(b, build))
+            self.bind_all(
+                f"<Alt-{key}>",
+                lambda e, b=self._menu_buttons[label], build=builder:
+                    self._popup_menu(b, build)
+            )
+
+        # Command shortcuts: đi thẳng vào cùng action mà menu gọi.
+        # Không dùng một implementation khác cho hotkey.
+        self.bind_all("<Control-o>", self._shortcut_open)
+        self.bind_all("<Control-z>", self._shortcut_undo)
+        self.bind_all("<Control-y>", self._shortcut_redo)
 
     def _popup_menu(self, button, build_fn):
         """Dựng lại menu MỚI mỗi lần bấm (không giữ menu cũ) — để các
@@ -123,8 +125,9 @@ class MenuBarMixin:
 
         menu.add_command(
             label="Open...",
-            command=lambda: getattr(self, active_workshop.open_method)(),
+            command=self._open_active_workshop,
             state="normal" if (active_workshop and active_workshop.open_method) else "disabled",
+            accelerator="Ctrl+O",
         )
         menu.add_separator()
         menu.add_command(label="Choose Save Folder...", command=self._choose_save_dir)
@@ -134,17 +137,84 @@ class MenuBarMixin:
 
     # ===== EDIT =====
     def _menu_edit(self, menu: tk.Menu):
-        """Undo/Redo (Giai đoạn 11) — thao tác trên Document của ảnh xử
-        lý gần nhất (self.current_document). Xám đi khi không còn bước
-        nào để lùi/tiến — đọc trạng thái MỚI mỗi lần mở menu (đúng
-        nguyên tắc "dựng lại menu mỗi lần bấm")."""
-        doc = self.current_document
-        can_undo = doc is not None and doc.can_undo()
-        can_redo = doc is not None and doc.can_redo()
-        menu.add_command(label="Undo", command=self._undo,
-                          state="normal" if can_undo else "disabled")
-        menu.add_command(label="Redo", command=self._redo,
-                          state="normal" if can_redo else "disabled")
+        """Edit phản ánh capability/history của Workshop đang active.
+
+        Không tạo mục Undo/Redo giả khi Workshop chưa có history. Với Document
+        hiện tại, mỗi lần mở menu lại đọc can_undo/can_redo mới nhất.
+        """
+        doc = getattr(self, "current_document", None)
+
+        # Core history commands. Chỉ hiện khi capability tồn tại và đang có
+        # bước để thực hiện; không để một menu đầy mục disabled vô nghĩa.
+        if doc is not None and doc.can_undo():
+            menu.add_command(
+                label="Undo",
+                command=self._undo,
+                accelerator="Ctrl+Z",
+            )
+        if doc is not None and doc.can_redo():
+            menu.add_command(
+                label="Redo",
+                command=self._redo,
+                accelerator="Ctrl+Y",
+            )
+
+        # Workshop-specific Edit commands can opt in through a future
+        # `get_edit_menu_items()` contract without Core hard-coding them.
+        provider = getattr(self, "get_edit_menu_items", None)
+        if callable(provider):
+            items = provider() or []
+            if items:
+                if menu.index("end") is not None:
+                    menu.add_separator()
+                for item in items:
+                    menu.add_command(**item)
+
+    def _open_active_workshop(self):
+        active_tab = self.tabview.get() if getattr(self, "tabview", None) is not None else ""
+        workshop = next(
+            (w for w in getattr(self, "_discovered_workshops", [])
+             if w.tab_title == active_tab),
+            None,
+        )
+        if workshop and workshop.open_method:
+            method = getattr(self, workshop.open_method, None)
+            if callable(method):
+                return method()
+        return None
+
+    @staticmethod
+    def _is_text_editing_focus(widget):
+        if widget is None:
+            return False
+        try:
+            cls = widget.winfo_class().lower()
+        except Exception:
+            return False
+        return any(x in cls for x in ("entry", "text", "spinbox"))
+
+    def _shortcut_open(self, _event=None):
+        self._open_active_workshop()
+        return "break"
+
+    def _shortcut_undo(self, event=None):
+        # Khi người dùng đang gõ vào Entry/Text, nhường Ctrl+Z cho widget đó.
+        focus = self.focus_get()
+        if self._is_text_editing_focus(focus):
+            return None
+        doc = getattr(self, "current_document", None)
+        if doc is not None and doc.can_undo():
+            self._undo()
+        return "break"
+
+    def _shortcut_redo(self, event=None):
+        focus = self.focus_get()
+        if self._is_text_editing_focus(focus):
+            return None
+        doc = getattr(self, "current_document", None)
+        if doc is not None and doc.can_redo():
+            self._redo()
+        return "break"
 
     # ===== WINDOW — thao tác host + submenu từng Xưởng =====
     def _menu_window(self, menu: tk.Menu):

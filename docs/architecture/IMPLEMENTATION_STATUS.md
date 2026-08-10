@@ -31,3 +31,19 @@ Khi code thay đổi:
 3. cập nhật bảng này;
 4. cập nhật current architecture nếu contract thay đổi;
 5. chỉ sau đó cập nhật roadmap/vision nếu cần.
+
+
+## Command / Menu / Shortcut / History
+
+| Area | Status | Evidence |
+|---|---|---|
+| Command abstraction | IMPLEMENTED | `app/commands/command.py` |
+| Command registry | IMPLEMENTED | `app/commands/registry.py` |
+| Shortcut registry | IMPLEMENTED | `app/commands/shortcut_registry.py` |
+| Standard Ctrl+O/Ctrl+S commands | IMPLEMENTED | `app/commands/standard_commands.py` |
+| Core history contract | IMPLEMENTED | `app/history/history.py` |
+| Execution checkpoint contract | IMPLEMENTED | `app/history/execution_history.py` |
+| Full menu migration | PARTIAL | File Open + Edit Undo/Redo now use shared UI action paths; remaining menu actions remain legacy |
+| Workshop-adaptive Edit UI | PARTIAL | Edit hides unavailable Undo/Redo and supports future Workshop-provided Edit items |
+| Photo document history adapter | PLANNED | not migrated |
+| Photo execution-step undo | PLANNED | checkpoint contract only |

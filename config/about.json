@@ -8,5 +8,6 @@
     "Workshop tự mô tả metadata và yêu cầu của mình.",
     "Workshop không phụ thuộc trực tiếp vào Workshop khác.",
     "Kiến trúc mục tiêu không được coi là implementation đã hoàn thành."
-  ]
+  ],
+  "current_architecture_note": "Menu, shortcut và lịch sử thao tác đang được chuẩn hóa theo Command/History contract để mỗi Workshop có thể thích nghi với capability của chính nó."
 }

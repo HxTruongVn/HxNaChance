@@ -119,3 +119,33 @@ Tạm thời không đưa vào roadmap Core của đợt này:
 - model architecture bên trong Workshop.
 
 Những mục này sẽ được đánh giá riêng sau khi Core docs ổn định.
+
+
+## P1 — Command / Menu / Shortcut
+
+### P1.8 — Migrate menu actions to Command Registry
+`PLANNED`
+
+Route applicable existing menu actions through the shared command registry.
+
+### P1.9 — Workshop-adaptive Edit
+`PLANNED`
+
+Build Edit from active Workshop command/history capabilities.
+
+### P1.10 — Global shortcut dispatch
+`PARTIAL`
+
+The UI now binds `Ctrl+O`, `Ctrl+Z`, and `Ctrl+Y`. `Ctrl+S` remains unbound because
+the current application has no single document-save command yet. Remaining
+command migration and conflict handling are still pending.
+
+### P1.11 — Document history adapter
+`PLANNED`
+
+Adapt existing Workshop document state to `HistoryProvider`.
+
+### P2.3 — Execution history integration
+`PLANNED`
+
+Expose safe pipeline checkpoints/artifacts as reversible execution history.

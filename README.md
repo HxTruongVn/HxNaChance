@@ -191,6 +191,7 @@ Nếu bạn mới vào repo:
 
 1. `docs/README.md`
 2. `docs/architecture/architecture.md`
+3. `docs/architecture/command_menu_shortcut_contract.md`
 3. `docs/architecture/meta_architecture.md`
 4. `docs/architecture/IMPLEMENTATION_STATUS.md`
 5. `docs/roadmap/roadmap.md`
@@ -279,3 +280,6 @@ Chi tiết tại:
 ## License
 
 Xem file `LICENSE` trong repository.
+
+
+> UI note: File > Open uses `Ctrl+O`; Edit Undo/Redo use `Ctrl+Z`/`Ctrl+Y` when the active Workshop exposes those history steps. Menu and shortcut integration is being migrated incrementally.
