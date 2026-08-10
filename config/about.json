@@ -1,6 +1,12 @@
 {
   "title": "Giới thiệu NaChance",
-  "tagline": "Container runtime cho các Workshop độc lập.",
-  "description": "NaChance không bị giới hạn ở một lĩnh vực hay loại tác vụ cụ thể. NaChance cung cấp môi trường chạy, tài nguyên và các cơ chế nền để các Workshop được triển khai và vận hành. Mỗi Workshop tự mô tả nhu cầu về môi trường, dependency và tài nguyên; vì vậy quy mô và cấu hình của một NaChance phụ thuộc vào các Workshop đi kèm.",
-  "workshops_intro": "Sau đây là danh sách các Workshop đi kèm với NaChance hiện tại:"
+  "tagline": "Một nền tảng — nhiều Workshop — mỗi Workshop một nhiệm vụ.",
+  "description": "NaChance là nền tảng runtime và orchestration cho các Workshop độc lập. Mỗi Workshop tự mô tả chức năng, giao diện và các yêu cầu về môi trường hoặc tài nguyên của mình; Core của NaChance chịu trách nhiệm discovery, khởi động và điều phối chúng. Xử lý ảnh hiện là một Workshop phát triển chính, nhưng NaChance không bị giới hạn ở xử lý ảnh. Nền tảng hiện vẫn đang được xây dựng; một số cơ chế như resource provisioning thống nhất, lifecycle nâng cao và hot reload vẫn đang phát triển.",
+  "workshops_intro": "Sau đây là danh sách các Workshop đi kèm với NaChance hiện tại:",
+  "principles": [
+    "Core không chứa nghiệp vụ riêng của từng Workshop.",
+    "Workshop tự mô tả metadata và yêu cầu của mình.",
+    "Workshop không phụ thuộc trực tiếp vào Workshop khác.",
+    "Kiến trúc mục tiêu không được coi là implementation đã hoàn thành."
+  ]
 }

@@ -1,244 +1,281 @@
-![Banner NaChance](assets/images/banner.png)
-# NaChance /neɪ tʃæns/
+# NaChance
 
-## 🏭 NaChance là gì, thật ra?
+**Một nền tảng — nhiều Workshop — mỗi Workshop một nhiệm vụ.**
 
-NaChance **không phải** 1 phần mềm xử lý-ảnh-thẻ cố định — đó chỉ là
-việc nó đang làm *hôm nay*. Bản chất NaChance là **1 nền tảng có thể mở
-rộng lâu dài**: 1 "khu phức hợp sản xuất" (Production Complex) gồm
-Bootstrap (khởi động/dò môi trường) → Reception (gọi đúng Xưởng cần
-dùng) → **Xưởng** (Workshop — nơi thật sự làm việc) → Warehouse (kho
-model/tài nguyên dùng chung). Xem đầy đủ mô hình + triết lý thiết kế
-tại [`meta_architecture.md`](./docs/architecture/meta_architecture.md)
-và [`NaChance Architecture Vision.md`](./docs/architecture/NaChance%20Architecture%20Vision.md).
+NaChance là nền tảng runtime và orchestration cho các Workshop độc lập.
+Mỗi Workshop có thể tự mô tả chức năng, giao diện và các yêu cầu về môi
+trường/tài nguyên; Core của NaChance chịu trách nhiệm discovery, khởi động,
+điều phối và kết nối chúng.
 
-Nói ngắn gọn: mục tiêu không phải "tích hợp thật nhiều AI xử lý ảnh
-thẻ", mà là 1 kiến trúc cho phép **thêm Xưởng mới / thay AI cũ / mở
-rộng chức năng** mà không phải thiết kế lại toàn bộ hệ thống mỗi lần.
-"Xử lý ảnh thẻ" hiện là Xưởng lớn nhất và đầy đủ nhất — không phải vì
-NaChance CHỈ làm được việc đó, mà vì đó là Xưởng được xây trước.
+Xử lý ảnh hiện là một Workshop phát triển chính, nhưng NaChance không bị
+giới hạn ở xử lý ảnh.
 
-> ⚠️ Hiện tại Reception (`app/main_ui.py`) vẫn **gọi cố định** đúng 2
-> Xưởng bên dưới (hardcode, chưa đọc danh sách Xưởng động) — đúng thực
-> trạng code, không phải nói quá. Chi tiết phần còn thiếu để tới đúng
-> mô hình mục tiêu xem `meta_architecture.md`.
+> **Trạng thái:** NaChance đang trong quá trình xây dựng nền tảng.
+> Một số cơ chế mục tiêu như unified resource provisioning, lifecycle nâng cao
+> và hot reload vẫn đang được phát triển.
 
-## 🧵 Các Xưởng hiện có
+---
 
-| Xưởng | Làm gì | Trạng thái |
-|---|---|---|
-| 🖼 **Xử lý ảnh** | Nhận ảnh chân dung gốc → AI phục hồi/làm đẹp đúng vùng cần → căn chỉnh chuẩn ảnh thẻ → tách nền | Đầy đủ nhất, có pipeline Deep Learning |
-| 🖨 **Xếp in** | Nhận ảnh đã xử lý (hoặc ảnh bất kỳ) → xếp vào khổ in theo công thức bố cục, tối ưu số lượng ảnh/tờ giấy | Đầy đủ, 14 công thức khổ in sẵn |
+## NaChance hiện tại
 
-Mỗi Xưởng có 1 thư mục riêng dưới `workshops/`, tự quản lý toàn bộ thứ
-thuộc về mình — UI của Xưởng, README, code logic, **và cả
-`requirements.txt` riêng** (cài lẻ 1 Xưởng không cần kéo theo Xưởng
-kia):
+Repo hiện đã có các lớp nền chính:
 
-```
-workshops/
-├── photo/    — Xưởng Xử lý ảnh  (ui.py, engine.py, requirements.txt, README.md, ...)
-└── layout/   — Xưởng Xếp in     (ui.py, print_layout.py, requirements.txt, README.md, ...)
+```text
+NaChance Bootstrap
+        │
+        ▼
+Core / Reception
+        │
+        ├── Workshop Discovery
+        │
+        ├── Runtime / Resource Checks
+        │
+        ├── Pipeline Persistence
+        │
+        └── Workshop UI
+                │
+                ├── Photo
+                └── Layout
 ```
 
-Cả 2 đều là code Python (`.py`) — chưa có Xưởng nào dùng công nghệ
-khác, nên Bootstrap hiện chỉ cần biết dựng `venv` là đủ.
+### Đã có
 
-Chi tiết từng Xưởng (input/output, pipeline, cấu hình) nằm ngay trong
-thư mục của Xưởng đó, không lặp lại ở đây:
-- [`workshops/photo/README.md`](./workshops/photo/README.md) — Xưởng Xử lý ảnh
-- [`workshops/layout/README.md`](./workshops/layout/README.md) — Xưởng Xếp in
+- Bootstrap entry point (`NaChance.py`)
+- Runtime/environment checking
+- Workshop discovery từ `manifest.json`
+- Workshop requirement analysis
+- Core/Reception UI
+- Workshop UI integration
+- Pipeline persistence
+- Setup và virtual environment bootstrap
+- Resource/weight detection và download ở mức hiện tại
+- Lite/degraded operation cho một số trường hợp thiếu tài nguyên
 
-App có thể chạy ở 2 chế độ tuỳ máy có đủ tài nguyên/model hay không —
-xem [⚡ Chạy KHÔNG cần weights (Lite Mode)](#-chạy-không-cần-weights-lite-mode)
-bên dưới. Kiến trúc nội bộ (RuntimeManager → Engine → UI) được mô tả
-chi tiết tại [architecture.md](./docs/architecture/architecture.md).
+### Đang phát triển
 
-## 🚀 Cài đặt nhanh
+- Unified Resource Contract
+- Resolve / Provision / Verify lifecycle
+- Resource version/checksum/state management
+- Workshop lifecycle/status contract
+- Pipeline validation và execution orchestration
+- Integration tests cấp Core
+- Packaging/distribution hoàn chỉnh
 
-### Bước 0: Kiểm tra môi trường (tự động)
+### Chưa phải tính năng hiện tại
 
-**Bootstrap sẽ tự làm tất cả — người dùng chỉ cần chạy:**
+- Hot reload Workshop trong lúc ứng dụng đang chạy
+- Một resource provisioning engine thống nhất hoàn chỉnh
+- Hot replacement model/resource đang được sử dụng
+- Một plugin runtime hoàn chỉnh theo nghĩa plugin framework tổng quát
+
+---
+
+## Kiến trúc
+
+Ở cấp hệ thống, NaChance được tổ chức theo mô hình:
+
+```text
+                    ┌─────────────────┐
+                    │    Bootstrap    │
+                    └────────┬────────┘
+                             │
+                    ┌────────▼────────┐
+                    │  Core /         │
+                    │  Reception      │
+                    └────────┬────────┘
+                             │
+                  ┌──────────┼──────────┐
+                  │          │          │
+             Workshop A  Workshop B   ...
+                  │
+                  ▼
+          Infrastructure / Resources
+```
+
+Nguyên tắc quan trọng:
+
+1. Core không chứa nghiệp vụ riêng của từng Workshop.
+2. Workshop tự khai báo metadata và yêu cầu của mình.
+3. Workshop không phụ thuộc trực tiếp vào Workshop khác.
+4. Việc kết nối giữa các Workshop thuộc Core/Pipeline.
+5. Kiến trúc mục tiêu không được coi là implementation đã hoàn thành.
+
+### Workshop discovery
+
+NaChance hiện discovery các Workshop từ:
+
+```text
+workshops/*/manifest.json
+```
+
+Điều này giúp thêm Workshop mà không phải duy trì danh sách tên Workshop
+hard-code trong `app/main_ui.py`.
+
+**Lưu ý:** discovery hiện được thực hiện khi ứng dụng khởi động. Thêm hoặc
+thay đổi Workshop cần restart ứng dụng; đây chưa phải hot reload.
+
+---
+
+## Cài đặt
+
+NaChance được thiết kế để Bootstrap kiểm tra môi trường trước khi chạy.
+
+Thông thường:
+
 ```bash
 python NaChance.py
 ```
 
-Bootstrap tự:
-1. Kiểm tra môi trường
-2. Nếu chưa sẵn sàng → gọi setup tự động
-3. Tạo .venv + cài dependencies + tải weights
-4. Khởi động ứng dụng
+Bootstrap sẽ kiểm tra runtime và chuyển sang Setup khi môi trường chưa đáp ứng
+yêu cầu.
 
-**Hoặc kiểm tra thủ công:**
-```bash
-python setup/debug.py
-# hoặc: python setup/runtime_manager.py
+Chi tiết:
+
+- `docs/getting_started/installation.md`
+- `docs/getting_started/quick_start.md`
+- `docs/getting_started/faq.md`
+
+---
+
+## Cấu trúc chính
+
+```text
+NaChance/
+├── NaChance.py          # Bootstrap
+├── app/                 # Core / Reception services
+├── config/              # Core configuration
+├── setup/               # Runtime / installation
+├── ui/                  # Core UI
+├── workshops/           # Independent Workshops
+├── api/                 # API surface
+├── tests/               # Tests
+├── weights/             # Runtime resources
+├── data/                # Application data
+├── logs/                # Logs
+└── docs/                # Documentation
 ```
 
-Script này kiểm tra tất cả dependencies và weights, báo ✓/✗ rõ ràng.
-`app/main.py` (được `NaChance.py` gọi) cũng tự chạy bước dò môi trường
-này mỗi lần khởi động, trước khi mở UI. Kiến trúc hiện tại xem
-[architecture.md](./docs/architecture/architecture.md); mô hình mục
-tiêu (Bootstrap/Reception/Workshop/Warehouse) xem
-[meta_architecture.md](./docs/architecture/meta_architecture.md).
+Xem:
 
-### Bước 1: Cài đặt + tải weights (nếu bootstrap chưa làm)
+`docs/architecture/structure.md`
 
-```bash
-python setup/setup_models.py
+để biết trách nhiệm chi tiết của từng khu vực.
+
+---
+
+## Workshop
+
+Workshop là đơn vị mở rộng của NaChance.
+
+Một Workshop nên tự mô tả:
+
+```text
+identity
+capabilities
+UI metadata
+requirements
+resources
 ```
 
-Script sẽ hỏi xác nhận trước khi tạo virtualenv (`.venv/`) — gõ Enter
-hoặc `y` để đồng ý, `n` để bỏ qua và cài thẳng vào Python hiện tại.
-Chạy tự động/không tương tác (script, CI): thêm `-y`/`--yes` để bỏ qua
-hỏi. Sau đó tự cài dependencies (`setup/requirements.txt`) và tải weights —
-thử Hugging Face trước, GitHub sau, Google Drive (gdown) làm phương án
-cuối, hỗ trợ resume nếu tải bị đứt giữa chừng.
+Core đọc metadata này để discovery và kiểm tra môi trường.
 
-**Trên Windows có GPU NVIDIA:** script tự chạy `nvidia-smi` để phát hiện
-CUDA driver và cài đúng bản `torch` có CUDA tương ứng. Lý do cần bước
-này: PyPI (index mặc định của `pip install torch`) trên Windows/macOS
-**chỉ có bản CPU-only** — bản có CUDA chỉ nằm ở index riêng của
-PyTorch. Máy có GPU CUDA 12 thật nhưng cài theo cách thông thường vẫn
-sẽ chạy CPU nếu không cài đúng index này (trên Linux thì không sao,
-PyPI mặc định ở đó đã là bản có CUDA).
+Chi tiết implementation **bên trong từng Workshop** không thuộc kiến trúc
+Core. Vì vậy tài liệu Core không dùng Photo processing internals để tuyên bố
+NaChance đã hoàn thành kiến trúc nền tảng.
 
-**Máy yếu / không có GPU:** dùng cờ `--cpu-only` để ép cài đúng bản
-torch CPU-only (tránh tải nhầm wheel bundle CUDA runtime, nặng hơn
-nhiều và không cần thiết nếu không có GPU):
-```bash
-python setup/setup_models.py --cpu-only
+---
+
+## Tài liệu
+
+Nếu bạn mới vào repo:
+
+1. `docs/README.md`
+2. `docs/architecture/architecture.md`
+3. `docs/architecture/meta_architecture.md`
+4. `docs/architecture/IMPLEMENTATION_STATUS.md`
+5. `docs/roadmap/roadmap.md`
+
+### Các nhóm tài liệu
+
+```text
+docs/
+├── architecture/       # Kiến trúc và hiện trạng
+├── development/        # Phát triển / test / debug
+├── getting_started/    # Cài đặt / sử dụng
+├── roadmap/             # Kế hoạch
+└── archive/             # Tài liệu lịch sử
 ```
 
-**Hoặc tải từng file bằng trình duyệt (nếu máy không chạy được script):**
+### Phân biệt ba khái niệm
 
-| File | Link | Size |
-|------|------|------|
-| `codeformer.pth` | [GitHub](https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth) | ~380 MB |
-| `RealESRGAN_x2plus.pth` | [GitHub](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth) | ~70 MB |
-| `79999_iter.pth` | [Google Drive](https://drive.google.com/uc?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812) | ~50 MB |
-| `isnet-general-use.onnx` | [GitHub](https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx) | ~180 MB |
+**Current Architecture**
 
-Tải xong đặt vào thư mục `weights/`.
+> Code đang thực sự làm gì?
 
-### Bước 2: Chạy
+**Architecture Vision**
 
-```bash
-python NaChance.py
+> NaChance muốn trở thành gì?
+
+**Roadmap**
+
+> Cần xây gì tiếp theo?
+
+Không sử dụng Vision hoặc Roadmap làm bằng chứng rằng một tính năng đã được
+implement.
+
+---
+
+## Development
+
+Các thay đổi Core nên tuân theo thứ tự:
+
+```text
+Code
+  ↓
+Test / runtime verification
+  ↓
+Documentation
+  ↓
+Roadmap update
 ```
 
-Bootstrap sẽ tự kiểm tra môi trường, chạy setup nếu cần, rồi khởi động ứng dụng.
+Không nên thêm logic nghiệp vụ Workshop trực tiếp vào Core chỉ để giải quyết
+một tính năng riêng của Workshop.
 
-Hoặc chạy trực tiếp (giả sử setup đã hoàn tất, bỏ qua bước Bootstrap
-dò môi trường):
-```bash
-python app/main.py
-```
-
-## 🌐 Chạy dưới dạng API (tuỳ chọn)
-
-Ngoài desktop app, engine còn dùng được qua REST API — cùng pipeline,
-cùng cơ chế tự thử lại (agent Cấp 1, xem `photo_agent.py`), khác mỗi
-lớp giao diện.
+Chạy test:
 
 ```bash
-pip install -r api/requirements.txt
-uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-- `GET /health` — trạng thái model/GPU/tính năng khả dụng
-- `POST /process` — upload ảnh, trả PNG hoặc JSON base64
-
-Chạy bằng Docker (build từ thư mục gốc repo):
-```bash
-docker build -f api/Dockerfile -t nachance-api .
-docker run --gpus all -p 8000:8000 -v $(pwd)/weights:/app/weights nachance-api
-```
-
-Test thủ công API (server phải đang chạy):
-`python scripts/manual_api_test.py --image path/to/photo.jpg`
-
-## 🧪 Phát triển & CI
-
-```bash
-pip install -r setup/requirements.txt -r setup/requirements-dev.txt
 python -m pytest -q
 ```
 
-GitHub Actions (`.github/workflows/tests.yml`) chạy pytest trên mỗi push/PR.
-Chi tiết khắc phục sự cố: [docs/development/troubleshooting.md](./docs/development/troubleshooting.md).
+---
 
-## ⚡ Chạy KHÔNG cần weights (Lite Mode)
+## Project status
 
-Nếu bạn không muốn tải ~680MB weights, engine vẫn chạy được — các chức năng AI tự động tắt, chỉ giữ lại:
+NaChance hiện đang ở giai đoạn **xây nền tảng Core**.
 
-- ✅ Face Align (căn chỉnh khuôn mặt)
-- ✅ Background Remove (rembg mặc định)
-- ✅ Validation (kiểm tra chuẩn visa)
-- ✅ Face detection (MediaPipe)
+Ưu tiên kỹ thuật hiện tại:
 
-```bash
-python app/main.py
-# Trong UI: tắt "Face Restore", "Upscale", "Skin Smooth", "Eye Enhance", "Teeth Whiten"
+```text
+Documentation Truth
+        ↓
+Resource Contract
+        ↓
+Runtime / Bootstrap lifecycle
+        ↓
+Workshop lifecycle
+        ↓
+Pipeline Core
+        ↓
+Packaging / Distribution
 ```
 
-## 🖥 Yêu cầu phần cứng
+Chi tiết tại:
 
-| Chế độ | CPU | RAM | GPU | Lưu ý |
-|--------|-----|-----|-----|-------|
-| **Lite** (không weights) | Bất kỳ | 4GB | Không cần | Chạy ngay |
-| **Full AI** | i5+ | 8GB | NVIDIA 4GB+ VRAM | ~1-2s/ảnh |
-| **Full AI (CPU)** | i7+ | 16GB | Không | ~5-10s/ảnh |
+`docs/roadmap/roadmap.md`
 
-## 🐛 Fix so với bản gốc
+---
 
-1. **Thread-safety**: Config thu thập từ UI **trước** khi chạy worker thread.
-2. **CTkEntry/CTkCheckBox**: Không còn gọi `.set()` (không tồn tại), dùng `delete+insert` / `select+deselect`.
-3. **`save_layout` kwargs**: Chỉ truyền đúng 3 tham số.
-4. **Timer leak**: Lưu `after_id` và hủy trước khi đặt timer mới.
-6. **Xoay align**: Đã fix `-angle` trong `getRotationMatrix2D`.
-7. **Lazy loading**: Engine không crash khi thiếu weights/dependencies — tự chuyển Lite Mode.
-8. **Global exception handler**: `app/main.py` bắt lỗi toàn cục, log chi tiết ra console.
+## License
 
-## 🆘 Khắc phục sự cố
-
-Xem [docs/development/troubleshooting.md](./docs/development/troubleshooting.md) (đầy đủ). Tóm tắt:
-**App khởi động rồi tắt ngay:**
-```bash
-python setup/debug.py      # xem thiếu gì
-python NaChance.py        # tự kiểm tra + setup + chạy app
-```
-
-**Lỗi "No module named 'codeformer'":**
-```bash
-pip install codeformer-pip
-# hoặc chạy lại: python setup/setup_models.py
-```
-
-**Lỗi "No module named 'realesrgan'":**
-```bash
-pip install git+https://github.com/xinntao/Real-ESRGAN.git
-```
-
-**Lỗi cv2.ximgproc không tồn tại:**
-```bash
-pip install opencv-contrib-python
-```
-
-## 📄 License
-
-- Code: MIT
-- CodeFormer weights: MIT
-- Real-ESRGAN weights: BSD-3
-- BiSeNet weights: Academic/Research
-- isnet weights: MIT (rembg)
-
-> ⚠️ **Lưu ý khi dùng thương mại:** BiSeNet weights (`79999_iter.pth`,
-> dùng cho làm mịn da/sáng mắt/trắng răng) đang ở diện cấp phép
-> **Academic/Research** — không rõ ràng được phép dùng cho mục đích
-> kinh doanh (thu tiền dịch vụ chụp ảnh thẻ). Nếu dùng app này để kinh
-> doanh, nên kiểm tra kỹ nguồn gốc chính xác của file weights đang
-> dùng, hoặc cân nhắc thay bằng model face-parsing khác có license
-> thương mại rõ ràng hơn. Việc này không ảnh hưởng các tính năng khác
-> (face align, tách nền, restore, upscale) — chỉ riêng 3 tính năng
-> dùng face-parsing mask.
+Xem file `LICENSE` trong repository.
