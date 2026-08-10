@@ -33,33 +33,53 @@ class ProcessTabMixin:
         self.lbl_preset_info.pack(padx=10, pady=(0, 10), anchor="w")
         self._update_preset_info()
 
-        # Background
-        self._section_header(tab, "🎨 NỀN ẢNH")
+        # Hậu kỳ & nền ảnh — "Tách nền" quyết định toàn bộ khu vực nền.
+        # Khi tắt Tách nền, các lựa chọn màu nền bị vô hiệu hóa vì chúng
+        # không có tác dụng nếu ảnh không được tách nền.
+        self._section_header(tab, "🖼 HẬU KỲ & NỀN ẢNH")
         fb = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'], corner_radius=8,
                           border_width=1, border_color=self.COLORS['border'])
         fb.pack(fill="x", pady=(0, 10))
 
+        grid_bg = ctk.CTkFrame(fb, fg_color="transparent")
+        grid_bg.pack(padx=10, pady=10, fill="x")
+
+        self.chk_remove_bg = self._chk(grid_bg, "Tách nền", 0, 0, True)
+        self.chk_upscale = self._chk(grid_bg, "Upscale 2x", 0, 1, False)
+
+        self.frame_bg_options = ctk.CTkFrame(fb, fg_color="transparent")
+        self.frame_bg_options.pack(fill="x", padx=10, pady=(0, 10))
+
         self.bg_mode = ctk.CTkSegmentedButton(
-            fb, values=["Trắng", "Xanh", "Đỏ", "Tùy chỉnh"], command=self._on_bg_change,
-            font=self.F_NORMAL, fg_color=self.COLORS['bg_hover'],
-            selected_color=self.COLORS['accent'], selected_hover_color=self.COLORS['accent_hover']
+            self.frame_bg_options, values=["Trắng", "Xanh", "Đỏ", "Tùy chỉnh"],
+            command=self._on_bg_change, font=self.F_NORMAL,
+            fg_color=self.COLORS['bg_hover'],
+            selected_color=self.COLORS['accent'],
+            selected_hover_color=self.COLORS['accent_hover']
         )
         self.bg_mode.set("Trắng")
-        self.bg_mode.pack(padx=10, pady=10, fill="x")
+        self.bg_mode.pack(fill="x")
 
-        self.frame_custom = ctk.CTkFrame(fb, fg_color="transparent")
-        self.frame_custom.pack(fill="x", padx=10, pady=(0, 10))
+        self.frame_custom = ctk.CTkFrame(self.frame_bg_options, fg_color="transparent")
+        self.frame_custom.pack(fill="x", pady=(8, 0))
         self.frame_custom.pack_forget()
 
         ctk.CTkLabel(self.frame_custom, text="HEX:", width=40, font=self.F_NORMAL).pack(side="left")
-        self.entry_hex = ctk.CTkEntry(self.frame_custom, width=100, font=self.F_NORMAL,
-                                       fg_color=self.COLORS['bg_hover'], border_color=self.COLORS['border'])
+        self.entry_hex = ctk.CTkEntry(
+            self.frame_custom, width=100, font=self.F_NORMAL,
+            fg_color=self.COLORS['bg_hover'], border_color=self.COLORS['border']
+        )
         self.entry_hex.insert(0, "2772D0")
         self.entry_hex.pack(side="left", padx=5)
-        self.color_preview = ctk.CTkLabel(self.frame_custom, text="   ", width=28, height=28,
-                                            fg_color="#2772D0", corner_radius=4)
+        self.color_preview = ctk.CTkLabel(
+            self.frame_custom, text="   ", width=28, height=28,
+            fg_color="#2772D0", corner_radius=4
+        )
         self.color_preview.pack(side="left")
         self.entry_hex.bind("<KeyRelease>", lambda e: self._update_color_preview())
+
+        # Chỉ cho phép chỉnh nền khi đang bật Tách nền.
+        self._set_bg_controls_enabled(self.chk_remove_bg.get())
 
         # Nâng cao ảnh — chia theo đúng nhóm capability trong
         # workshops/photo/model_registry.json (face_parser/face_restorer
@@ -67,6 +87,39 @@ class ProcessTabMixin:
         # kỳ, pose_estimator ~ Tư thế & Bố cục). Mỗi checkbox GIỮ NGUYÊN
         # tên self.chk_xxx như cũ — chỉ đổi layout hiển thị, không đổi
         # _get_options()/engine, không đổi hành vi.
+
+        # Actions
+        self._section_header(tab, "🚀 THAO TÁC")
+        fa = ctk.CTkFrame(tab, fg_color="transparent")
+        fa.pack(fill="x", pady=(0, 10))
+
+        # Chọn file / Chọn thư mục ĐẶT CẠNH NHAU (trước đây xếp chồng dọc,
+        # 2 cách chọn nguồn ảnh khác nhau nên đặt ngang hàng cho dễ so
+        # sánh/chọn) — cả 2 đều nhận nhiều file/cả thư mục, immediate-run
+        # sau khi chọn xong (giữ nguyên hành vi cũ, chỉ đổi vị trí + cho
+        # chọn nhiều file thay vì 1 file duy nhất).
+        row_pick = ctk.CTkFrame(fa, fg_color="transparent")
+        row_pick.pack(fill="x", pady=(0, 8))
+
+        self.btn_run = ctk.CTkButton(row_pick, text="🖼 Chọn file", command=self._run_single,
+                                      height=45, fg_color=self.COLORS['accent'],
+                                      hover_color=self.COLORS['accent_hover'],
+                                      font=self.F_LARGE, text_color="white", corner_radius=8)
+        self.btn_run.pack(side="left", fill="x", expand=True, padx=(0, 4))
+
+        self.btn_batch = ctk.CTkButton(row_pick, text="📂 Chọn thư mục", command=self._run_batch,
+                                        height=45, fg_color=self.COLORS['bg_card'],
+                                        hover_color=self.COLORS['bg_hover'], border_width=1,
+                                        border_color=self.COLORS['accent'], font=self.F_MEDIUM,
+                                        text_color=self.COLORS['accent'], corner_radius=8)
+        self.btn_batch.pack(side="left", fill="x", expand=True, padx=(4, 0))
+
+        self.btn_preview = ctk.CTkButton(tab, text="👁 Xem trước", command=self._show_preview,
+                                          height=35, fg_color=self.COLORS['bg_card'],
+                                          hover_color=self.COLORS['bg_hover'], border_width=1,
+                                          border_color=self.COLORS['info'], font=self.F_MEDIUM,
+                                          text_color=self.COLORS['info'])
+
 
         # --- Nhóm 1: Khuôn mặt ---
         self._section_header(tab, "🧑 KHUÔN MẶT")
@@ -121,16 +174,6 @@ class ProcessTabMixin:
         self.chk_confirm_orientation = self._chk(grid2, "Xác nhận trước khi xử lý", 0, 1, True)
         self.chk_shoulder_warp = self._chk(grid2, "Cân vai", 1, 0, False)
 
-        # --- Nhóm 3: Độ phân giải & Hậu kỳ ---
-        self._section_header(tab, "🖼 ĐỘ PHÂN GIẢI & HẬU KỲ")
-        fe3 = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'], corner_radius=8,
-                           border_width=1, border_color=self.COLORS['border'])
-        fe3.pack(fill="x", pady=(0, 10))
-        grid3 = ctk.CTkFrame(fe3, fg_color="transparent")
-        grid3.pack(padx=10, pady=10, fill="x")
-        self.chk_upscale = self._chk(grid3, "Upscale 2x", 0, 0, False)
-        self.chk_remove_bg = self._chk(grid3, "Tách nền", 0, 1, True)
-
         # --- Nhóm 4: Kiểm tra & An toàn ---
         self._section_header(tab, "✅ KIỂM TRA & AN TOÀN")
         fe4 = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'], corner_radius=8,
@@ -175,38 +218,6 @@ class ProcessTabMixin:
         ctk.CTkButton(fs, text="📁", width=30, height=28, fg_color=self.COLORS['bg_hover'],
                       hover_color=self.COLORS['border'], command=self._choose_save_dir).pack(side="right")
 
-        # Actions
-        self._section_header(tab, "🚀 THAO TÁC")
-        fa = ctk.CTkFrame(tab, fg_color="transparent")
-        fa.pack(fill="x", pady=(0, 10))
-
-        # Chọn file / Chọn thư mục ĐẶT CẠNH NHAU (trước đây xếp chồng dọc,
-        # 2 cách chọn nguồn ảnh khác nhau nên đặt ngang hàng cho dễ so
-        # sánh/chọn) — cả 2 đều nhận nhiều file/cả thư mục, immediate-run
-        # sau khi chọn xong (giữ nguyên hành vi cũ, chỉ đổi vị trí + cho
-        # chọn nhiều file thay vì 1 file duy nhất).
-        row_pick = ctk.CTkFrame(fa, fg_color="transparent")
-        row_pick.pack(fill="x", pady=(0, 8))
-
-        self.btn_run = ctk.CTkButton(row_pick, text="🖼 Chọn file", command=self._run_single,
-                                      height=45, fg_color=self.COLORS['accent'],
-                                      hover_color=self.COLORS['accent_hover'],
-                                      font=self.F_LARGE, text_color="white", corner_radius=8)
-        self.btn_run.pack(side="left", fill="x", expand=True, padx=(0, 4))
-
-        self.btn_batch = ctk.CTkButton(row_pick, text="📂 Chọn thư mục", command=self._run_batch,
-                                        height=45, fg_color=self.COLORS['bg_card'],
-                                        hover_color=self.COLORS['bg_hover'], border_width=1,
-                                        border_color=self.COLORS['accent'], font=self.F_MEDIUM,
-                                        text_color=self.COLORS['accent'], corner_radius=8)
-        self.btn_batch.pack(side="left", fill="x", expand=True, padx=(4, 0))
-
-        self.btn_preview = ctk.CTkButton(tab, text="👁 Xem trước", command=self._show_preview,
-                                          height=35, fg_color=self.COLORS['bg_card'],
-                                          hover_color=self.COLORS['bg_hover'], border_width=1,
-                                          border_color=self.COLORS['info'], font=self.F_MEDIUM,
-                                          text_color=self.COLORS['info'])
-
     def _toggle_advanced(self):
         if self.adv_frame.winfo_ismapped():
             self.adv_frame.pack_forget()
@@ -238,10 +249,33 @@ class ProcessTabMixin:
             self.lbl_preset_info.configure(text=info)
 
     def _on_bg_change(self, choice):
-        if choice == "Tùy chỉnh":
-            self.frame_custom.pack(fill="x", padx=10, pady=(0, 10))
+        if choice == "Tùy chỉnh" and self.chk_remove_bg.get():
+            self.frame_custom.pack(fill="x", pady=(8, 0))
         else:
             self.frame_custom.pack_forget()
+
+    def _set_bg_controls_enabled(self, enabled):
+        """Bật/tắt toàn bộ lựa chọn nền theo trạng thái Tách nền."""
+        state = "normal" if enabled else "disabled"
+        self.bg_mode.configure(state=state)
+        self.entry_hex.configure(state=state)
+        if not enabled:
+            self.frame_custom.pack_forget()
+
+        # Khi không tách nền thì màu nền không có tác dụng, vì vậy
+        # ẩn luôn khu vực lựa chọn nền để giao diện phản ánh đúng trạng thái.
+        if enabled:
+            self.frame_bg_options.pack(fill="x", padx=10, pady=(0, 10))
+        else:
+            self.frame_bg_options.pack_forget()
+
+        # CTkCheckBox/CTkButton đều hỗ trợ command qua configure.
+        # Không thay command của _chk: chỉ bọc command hiện tại.
+        self.chk_remove_bg.configure(command=lambda: self._on_remove_bg_toggle())
+
+    def _on_remove_bg_toggle(self):
+        enabled = bool(self.chk_remove_bg.get())
+        self._set_bg_controls_enabled(enabled)
 
     def _update_color_preview(self):
         hex_color = self.entry_hex.get().strip()
@@ -359,9 +393,9 @@ class ProcessTabMixin:
                 ("Confirm Before Processing", "chk_confirm_orientation"),
                 ("Shoulder Warp", "chk_shoulder_warp"),
             ]),
-            ("Resolution & Post-processing", [
-                ("Upscale 2x", "chk_upscale"),
+            ("Background & Post-processing", [
                 ("Remove Background", "chk_remove_bg"),
+                ("Upscale 2x", "chk_upscale"),
             ]),
             ("Validation & Safety", [
                 ("Validate Standard", "chk_validate"),
