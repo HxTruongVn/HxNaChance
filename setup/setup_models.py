@@ -68,9 +68,11 @@ def _load_models() -> dict:
                 item = dict(info)
                 item["_workshop_id"] = workshop_id
                 item["_workshop_dir"] = str(workshop_dir)
-                item["_weights_dir"] = str(
-                    workshop_dir / "weights"
-                )
+                # Runtime weights are shared by NaChance Core.  The Workshop
+                # declares WHICH resources it needs; Core owns the physical
+                # runtime cache so every consumer (provisioner/engine) resolves
+                # the same file.
+                item["_weights_dir"] = str(WEIGHTS_DIR)
                 result[f"{workshop_id}::{name}"] = item
         except Exception as e:
             print(f"[MODELS] ⚠ Không đọc được {sources_path}: {e}")
@@ -331,11 +333,11 @@ def print_manual_links(failed_names):
     print("=" * 60)
     for name in failed_names:
         info = MODELS[name]
-        print(f"\n{name.split("::",1)[-1]} (~{info["size_mb"]} MB)")
+        print(f"\n{name.split('::', 1)[-1]} (~{info['size_mb']} MB)")
         for source in info["sources"]:
             label = "Google Drive (gdown)" if source.get("method") == "gdown" else "HTTP"
             print(f"   [{label}] {source.get('url')}")
-        print(f"   -> Lưu vào: {info.get("_weights_dir", WEIGHTS_DIR)}/{name.split("::",1)[-1]}")
+        print(f"   -> Lưu vào: {info.get('_weights_dir', WEIGHTS_DIR)}/{name.split('::', 1)[-1]}")
 
 
 def download_all_weights():
