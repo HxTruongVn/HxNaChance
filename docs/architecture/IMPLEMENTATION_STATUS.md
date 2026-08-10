@@ -59,3 +59,13 @@ Khi code thay đổi:
 | Preserve history for Redo | IMPLEMENTED | `history/*.png` |
 | Restore Photo state | IMPLEMENTED | generic UI fallback via `Document.load_state()` |
 | Cross-Workshop state handoff contract | PARTIAL | format carries workshop ID/state; target Workshop adapter still required |
+
+
+## Architectural Baseline — State & Workflow Contract
+
+**LOCKED**
+
+`docs/architecture/state_workflow_contract.md` is now the baseline for all
+future Workshop/state/history work. Photo-specific state persistence must be
+treated as an adapter/prototype until the generic Core implementation replaces
+it.

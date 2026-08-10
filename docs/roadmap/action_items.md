@@ -157,3 +157,11 @@ Expose safe pipeline checkpoints/artifacts as reversible execution history.
 Photo can save/load `.nachance-state` including current history cursor and
 checkpoint images. Cross-Workshop handoff requires the receiving Workshop to
 declare compatibility and implement its state adapter.
+
+
+## Architecture Gate — State Contract
+`LOCKED`
+
+Before adding more Workshop-specific Save/Undo/Redo behavior, implement the
+generic Core State/History/Checkpoint contract defined in
+`docs/architecture/state_workflow_contract.md`.
