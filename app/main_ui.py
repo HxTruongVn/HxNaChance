@@ -279,7 +279,7 @@ class NaChanceApp(
         khác cùng lúc; đổi engine giữa chừng rủi ro cao hơn giá trị nó
         mang lại. Chỉ báo cho người dùng biết, gợi ý khởi động lại.
 
-        Cũng được gọi TAY qua menu System -> Retry Weight Download (không
+        Cũng được gọi TAY qua menu Tool -> System -> Retry Weight Download (không
         chỉ tự động lúc thiếu weight) — self._download_in_progress chặn
         bấm 2 lần chồng nhau (vd tự động đang chạy, người dùng lại bấm
         tay) thay vì spawn 2 thread cùng tải 1 lúc.
@@ -752,26 +752,6 @@ class NaChanceApp(
             scrollbar_button_hover_color=self.COLORS['bg_hover']
         )
 
-        # NaChance Core is a host-level control surface, not another
-        # Workshop tab. It is always present even when no Workshop exists.
-        core_bar = ctk.CTkFrame(self.main_frame, fg_color="transparent", height=52)
-        core_bar.pack(fill="x", padx=10, pady=(10, 0))
-        core_bar.pack_propagate(False)
-
-        ctk.CTkButton(
-            core_bar, text="NaChance Core", width=150, height=34,
-            command=self._show_core_panel,
-            fg_color=self.COLORS['accent'],
-            hover_color=self.COLORS['accent_hover'],
-            font=self.F_NORMAL,
-        ).pack(side="left", padx=(4, 8), pady=8)
-
-        self.core_workshop_status = ctk.CTkLabel(
-            core_bar, text="", font=self.F_SMALL, justify="left",
-            text_color=self.COLORS['text_secondary'], anchor="w"
-        )
-        self.core_workshop_status.pack(side="left", fill="x", expand=True, padx=(0, 8))
-
         self.tabview = ctk.CTkTabview(
             self.main_frame, fg_color=self.COLORS['bg_card'],
             segmented_button_fg_color=self.COLORS['bg_hover'],
@@ -1117,7 +1097,7 @@ class NaChanceApp(
 
         dlg = ctk.CTkToplevel(self)
         self._core_panel = dlg
-        dlg.title("NaChance Core")
+        dlg.title("Runtime")
         dlg.geometry("520x560")
         dlg.minsize(460, 480)
         dlg.configure(fg_color=self.COLORS['bg_dark'])
@@ -1129,7 +1109,7 @@ class NaChanceApp(
         dlg.protocol("WM_DELETE_WINDOW", close)
 
         ctk.CTkLabel(
-            dlg, text="NaChance Core", font=self.F_LARGE,
+            dlg, text="Runtime", font=self.F_LARGE,
             text_color=self.COLORS['accent']
         ).pack(anchor="w", padx=24, pady=(24, 6))
 
@@ -1154,12 +1134,6 @@ class NaChanceApp(
         ).pack(fill="x", pady=5)
 
         ctk.CTkButton(
-            actions, text="Resource Compatibility...",
-            command=self._show_resource_compatibility,
-            height=38
-        ).pack(fill="x", pady=5)
-
-        ctk.CTkButton(
             actions, text="Workshop Requirements & Overlap...",
             command=self._show_workshop_requirements,
             height=38
@@ -1179,12 +1153,6 @@ class NaChanceApp(
         ctk.CTkLabel(quick,text='Quick Pipelines',font=self.F_HEADER,text_color=self.COLORS['text_primary']).pack(anchor='w',padx=12,pady=(10,4))
         ctk.CTkButton(quick,text='＋ Tạo Pipeline...',command=self._show_pipeline_builder,height=34).pack(fill='x',padx=12,pady=4)
         self.quick_pipeline_frame=ctk.CTkScrollableFrame(quick,fg_color='transparent',height=150); self.quick_pipeline_frame.pack(fill='both',expand=True,padx=6,pady=4); self._refresh_quick_pipelines()
-
-        ctk.CTkButton(
-            actions, text="About NaChance",
-            command=self._show_about,
-            height=38
-        ).pack(fill="x", pady=5)
 
         ctk.CTkLabel(
             dlg,

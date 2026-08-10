@@ -59,7 +59,7 @@ class MenuBarMixin:
             ("Edit", self._menu_edit),
             ("Window", self._menu_window),
             ("View", self._menu_view),
-            ("System", self._menu_system),
+            ("Tool", self._menu_tool),
             ("Help", self._menu_help),
         ]
         self._menu_buttons = {}
@@ -193,6 +193,36 @@ class MenuBarMixin:
                 command=lambda n=name: self._on_theme_change(n),
             )
         menu.add_cascade(label="Theme", menu=theme_menu)
+
+    # ===== TOOL — các công cụ quản trị NaChance =====
+    def _menu_tool(self, menu: tk.Menu):
+        """Công cụ quản trị được chia thành hai tầng rõ ràng:
+
+        NaChance Core = điều phối/host/workshop/pipeline của chính NaChance.
+        System = môi trường máy, package, weight và kiểm tra tương thích.
+
+        Không đưa các thao tác System vào Core để tránh hai nơi cùng quản lý
+        resource/environment.
+        """
+        core_menu = tk.Menu(
+            menu, tearoff=0,
+            bg=self.COLORS['bg_card'], fg=self.COLORS['text_primary'],
+            activebackground=self.COLORS['accent'], activeforeground="#ffffff",
+            relief="flat", borderwidth=1,
+        )
+        core_menu.add_command(label="Open Runtime", command=self._show_core_panel)
+        core_menu.add_command(label="Load Workshop Folder...", command=self._load_workshop_folder)
+        core_menu.add_command(label="Workshop Requirements & Overlap...", command=self._show_workshop_requirements)
+        menu.add_cascade(label="Runtime", menu=core_menu)
+
+        system_menu = tk.Menu(
+            menu, tearoff=0,
+            bg=self.COLORS['bg_card'], fg=self.COLORS['text_primary'],
+            activebackground=self.COLORS['accent'], activeforeground="#ffffff",
+            relief="flat", borderwidth=1,
+        )
+        self._menu_system(system_menu)
+        menu.add_cascade(label="System", menu=system_menu)
 
     # ===== SYSTEM — Bootstrap/Setup thao tác tay, ngoài luồng tự động =====
     def _menu_system(self, menu: tk.Menu):
