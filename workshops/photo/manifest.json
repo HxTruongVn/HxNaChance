@@ -4,14 +4,12 @@
   "workshop_name": "Xưởng Xử lý ảnh",
   "version": "1.0.0",
   "description": "Nhận ảnh chân dung gốc, phục hồi/làm đẹp khuôn mặt đúng vùng, căn chỉnh chuẩn ảnh thẻ, tách nền.",
-
   "environment": {
     "_comment": "ĐÃ có Bootstrap Controller đọc/enforce khối này — setup/runtime_manager.py::verify_workshop_environment(), nối vào NaChance.py + app/main.py. min_ram_gb/python_version được so sánh thật với máy, KHÔNG tự sửa được (không thể tự thêm RAM) nên chỉ cảnh báo, không chặn.",
     "python_version": ">=3.10",
     "device_preference": "auto",
     "min_ram_gb": 8
   },
-
   "ui": {
     "_comment": "Reception (app/main_ui.py) đọc khối này để TỰ PHÁT HIỆN Workshop — không hardcode tên class/tab nữa. module/mixin_class: import động qua importlib để lấy Mixin (multiple inheritance vào NaChanceApp). build_method: tên method Reception gọi để Xưởng tự vẽ tab của mình vào self.tabview (Xưởng tự quản UI, Reception chỉ gọi, không biết bên trong).",
     "module": "workshops.photo.ui",
@@ -23,22 +21,27 @@
     "menu_build_method": "_menu_photo_content",
     "open_method": "_run_single"
   },
-
-  "capabilities_required": ["face_parser", "face_restorer", "upscaler", "background_remover"],
-  "capabilities_optional": ["pose_estimator"],
-
+  "capabilities_required": [
+    "face_parser",
+    "face_restorer",
+    "upscaler",
+    "background_remover"
+  ],
+  "capabilities_optional": [
+    "pose_estimator"
+  ],
   "resources": {
     "_comment": "Nguồn sự thật thật sự — xem trực tiếp 2 file này (cùng thư mục, Xưởng tự quản), KHÔNG chép lại nội dung ở đây. Trước đây ở config/presets/, đã dời về đây.",
     "registry_file": "model_registry.json",
     "weight_sources_file": "weights_sources.json",
     "weights_directory": "weights/"
   },
-
   "default_spec": "13x18",
   "output_settings": {
     "_comment": "Khai báo mới — chưa có nơi nào đọc field này (app hiện luôn xuất .jpg, không có toggle auto_save). Để Bootstrap Controller/UI sau này dùng làm giá trị mặc định khi khởi tạo Xưởng lần đầu.",
     "format": "jpg",
     "dpi": 300,
     "auto_save": true
-  }
+  },
+  "about_file": "ABOUT.md"
 }

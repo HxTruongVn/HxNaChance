@@ -22,6 +22,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from workshops.photo import NaChanceEngine
 from app.photo_agent import PhotoQAAgent
 from app.workshop_discovery import discover_workshops
+from app.about_manager import load_nachance_about, load_workshop_about
 
 from ui.widget_helpers import WidgetHelpersMixin
 from ui.theme_mixin import ThemeMixin, THEMES
@@ -387,39 +388,27 @@ class NaChanceApp(
             print(f"[Icon] Không đặt được icon app: {e}")
 
     def _show_about(self):
-        """Dialog 'Giới thiệu' — logo + mô tả ngắn các tính năng chính,
-        cho người dùng cuối biết app làm gì mà không cần đọc README.
-
-        Toggle: nút ℹ (title bar) gọi đúng hàm này để MỞ dialog — bấm lần
-        nữa khi đang mở thì ĐÓNG luôn, không mở chồng thêm 1 dialog mới
-        (trước đây mỗi lần bấm luôn tạo Toplevel mới, không kiểm tra đã
-        có dialog mở sẵn hay chưa).
-
-        KHÔNG gọi grab_set() — dialog này chỉ hiển thị thông tin, không
-        có hành động nguy hiểm cần chặn thao tác khác trong lúc mở. Có
-        grab_set() (bản trước) sẽ chiếm hết input của cả app, kể cả nút
-        ℹ đứng sau dialog — khiến bấm ℹ lần 2 để đóng (toggle) không ăn,
-        vì click không bao giờ tới được nút đó nữa."""
+        """Hiển thị About lấy từ dữ liệu bên ngoài, không hard-code nội dung sản phẩm."""
         if self._about_dialog is not None and self._about_dialog.winfo_exists():
             self._about_dialog.destroy()
             self._about_dialog = None
             return
 
+        about = load_nachance_about()
         dlg = ctk.CTkToplevel(self)
         self._about_dialog = dlg
+        dlg.title(about.get("title", "Giới thiệu NaChance"))
+        dlg.geometry("500x680")
+        dlg.resizable(False, False)
+        dlg.configure(fg_color=self.COLORS['bg_dark'])
+        dlg.transient(self)
 
         def _close():
             self._about_dialog = None
             dlg.destroy()
 
-        dlg.title("Giới thiệu")
-        dlg.geometry("420x520")
-        dlg.resizable(False, False)
-        dlg.configure(fg_color=self.COLORS['bg_dark'])
-        dlg.transient(self)
-
         try:
-            icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo (1).ico"
+            icon_path = PROJECT_ROOT / "assets" / "icons" / "logo (1).ico"
             img = PILImage.open(icon_path)
             if getattr(img, "n_frames", 1) > 1:
                 best_frame, best_size = img, 0
@@ -430,57 +419,56 @@ class NaChanceApp(
                         best_frame = img.copy()
                 img = best_frame
             img = img.convert("RGBA")
-            img.thumbnail((120, 120), PILImage.LANCZOS)
+            img.thumbnail((110, 110), PILImage.LANCZOS)
             ctk_img = ctk.CTkImage(light_image=img, size=img.size)
-            ctk.CTkLabel(dlg, image=ctk_img, text="").pack(pady=(25, 10))
+            ctk.CTkLabel(dlg, image=ctk_img, text="").pack(pady=(20, 8))
         except Exception:
-            pass  # thiếu icon không ngăn hiện phần thông tin còn lại
+            pass
 
         ctk.CTkLabel(dlg, text="NaChance", font=self.F_BRAND_LARGE,
                      text_color=self.COLORS['accent']).pack(pady=(0, 4))
+        ctk.CTkLabel(dlg, text=about.get("tagline", ""), font=self.F_MEDIUM,
+                     text_color=self.COLORS['text_secondary'], wraplength=420,
+                     justify="center").pack(pady=(0, 10))
+        ctk.CTkLabel(dlg, text=about.get("description", ""), font=self.F_SMALL,
+                     text_color=self.COLORS['text_secondary'], wraplength=420,
+                     justify="left").pack(padx=35, pady=(0, 14))
+        ctk.CTkLabel(dlg, text=about.get("workshops_intro", ""), font=self.F_MEDIUM,
+                     text_color=self.COLORS['text_primary'], wraplength=420,
+                     justify="left").pack(padx=25, pady=(0, 8), anchor="w")
 
-        # NaChance là container/runtime host, KHÔNG phải một ứng dụng chỉ
-        # dành cho xử lý ảnh. Workshop mới là nơi cung cấp năng lực/chức năng.
-        # Quy mô môi trường phụ thuộc vào tập Workshop được triển khai.
-        ctk.CTkLabel(
-            dlg,
-            text=(
-                "NaChance là container/runtime host dùng để chứa và vận hành "
-                "các Workshop độc lập.\n\n"
-                "NaChance cung cấp môi trường chạy, tài nguyên và các cơ chế "
-                "nền cần thiết để Workshop hoạt động. Mỗi Workshop tự khai "
-                "báo nhu cầu về môi trường, dependency và tài nguyên của mình.\n\n"
-                "Vì vậy, NaChance không bị giới hạn trong một lĩnh vực cụ thể "
-                "và cũng không có quy mô cố định. Cấu hình và quy mô của mỗi "
-                "NaChance được hình thành theo các Workshop đi cùng nó.\n\n"
-                "Workshop quyết định NaChance cần gì — NaChance cung cấp nơi "
-                "để Workshop hoạt động."
-            ),
-            font=self.F_MEDIUM,
-            text_color=self.COLORS['text_secondary'],
-            wraplength=360,
-            justify="left"
-        ).pack(padx=25, pady=(0, 15))
-
-        # Danh sách Xưởng ĐỘNG (self._discovered_workshops, xem
-        # app/workshop_discovery.py) — không hardcode tên/mô tả ở đây,
-        # đúng bản chất "Xưởng tự quản": About chỉ hiển thị đúng những
-        # gì manifest.json từng Xưởng khai (workshop_name + description),
-        # thêm Xưởng mới tự động xuất hiện ở đây, không cần sửa file này.
-        box = ctk.CTkFrame(dlg, fg_color=self.COLORS['bg_card'], corner_radius=10)
-        box.pack(fill="x", padx=25, pady=(0, 15))
+        box = ctk.CTkScrollableFrame(dlg, fg_color=self.COLORS['bg_card'], corner_radius=10, height=260)
+        box.pack(fill="both", expand=True, padx=25, pady=(0, 12))
         for w in self._discovered_workshops:
-            ctk.CTkLabel(box, text=f"🧵 {w.workshop_name}", font=self.F_NORMAL,
-                         anchor="w", text_color=self.COLORS['accent'],
-                         wraplength=340, justify="left").pack(fill="x", padx=12, pady=(6, 0))
-            ctk.CTkLabel(box, text=w.description, font=self.F_SMALL, anchor="w",
-                         text_color=self.COLORS['text_secondary'], wraplength=340,
-                         justify="left").pack(fill="x", padx=12, pady=(0, 6))
+            row = ctk.CTkFrame(box, fg_color="transparent")
+            row.pack(fill="x", padx=8, pady=6)
+            ctk.CTkLabel(row, text=w.workshop_name, font=self.F_NORMAL,
+                         text_color=self.COLORS['accent'], anchor="w").pack(side="left", fill="x", expand=True)
+            ctk.CTkButton(row, text="About", width=72, height=28,
+                          fg_color=self.COLORS['accent'], hover_color=self.COLORS['accent_hover'],
+                          command=lambda workshop=w: self._show_workshop_about(workshop)).pack(side="right")
 
         ctk.CTkButton(dlg, text="Đóng", fg_color=self.COLORS['accent'],
-                      hover_color=self.COLORS['accent_hover'],
-                      command=_close).pack(pady=(5, 20), padx=25, fill="x")
+                      hover_color=self.COLORS['accent_hover'], command=_close).pack(pady=(0, 18), padx=25, fill="x")
         dlg.protocol("WM_DELETE_WINDOW", _close)
+
+    def _show_workshop_about(self, workshop):
+        """Mở About của Workshop từ file do chính Workshop khai báo."""
+        content = load_workshop_about(workshop)
+        dlg = ctk.CTkToplevel(self)
+        dlg.title(f"About — {workshop.workshop_name}")
+        dlg.geometry("560x520")
+        dlg.configure(fg_color=self.COLORS['bg_dark'])
+        dlg.transient(self)
+        ctk.CTkLabel(dlg, text=workshop.workshop_name, font=self.F_BRAND_LARGE,
+                     text_color=self.COLORS['accent']).pack(pady=(20, 10))
+        text = ctk.CTkTextbox(dlg, wrap="word", font=self.F_SMALL,
+                              fg_color=self.COLORS['bg_card'], text_color=self.COLORS['text_primary'])
+        text.pack(fill="both", expand=True, padx=25, pady=(0, 15))
+        text.insert("1.0", content or workshop.description)
+        text.configure(state="disabled")
+        ctk.CTkButton(dlg, text="Đóng", fg_color=self.COLORS['accent'],
+                      hover_color=self.COLORS['accent_hover'], command=dlg.destroy).pack(pady=(0, 18), padx=25, fill="x")
 
     def _build_title_bar(self):
         from pathlib import Path

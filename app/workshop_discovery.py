@@ -31,6 +31,7 @@ class WorkshopUI:
     workshop_id: str
     workshop_name: str
     description: str
+    about_path: Optional[Path]
     mixin_class: Type
     build_method: str      # tên method Mixin tự gọi để vẽ tab của mình
     tab_title: str
@@ -74,6 +75,7 @@ def discover_workshops(workshops_dir: Optional[Path] = None) -> List[WorkshopUI]
                 workshop_id=manifest.get("workshop_id", manifest_path.parent.name),
                 workshop_name=manifest.get("workshop_name", manifest_path.parent.name),
                 description=manifest.get("description", ""),
+                about_path=(manifest_path.parent / manifest["about_file"]).resolve() if manifest.get("about_file") else None,
                 mixin_class=mixin_class,
                 build_method=ui["build_method"],
                 tab_title=ui["tab_title"],

@@ -4,14 +4,12 @@
   "workshop_name": "Xưởng Xếp in",
   "version": "1.0.0",
   "description": "Xếp ảnh đã xử lý (hoặc ảnh bất kỳ) vào khổ in theo công thức bố cục, tối ưu số lượng ảnh trên tờ giấy.",
-
   "environment": {
     "_comment": "ĐÃ có Bootstrap Controller đọc/enforce khối này — setup/runtime_manager.py::verify_workshop_environment(). Nhẹ hơn hẳn Xưởng Xử lý ảnh — chỉ cần Pillow, không cần GPU/RAM lớn.",
     "python_version": ">=3.10",
     "device_preference": "cpu_only",
     "min_ram_gb": 2
   },
-
   "ui": {
     "_comment": "Reception (app/main_ui.py) đọc khối này để TỰ PHÁT HIỆN Workshop — không hardcode tên class/tab nữa.",
     "module": "workshops.layout.ui",
@@ -23,22 +21,19 @@
     "menu_build_method": "_menu_layout_content",
     "open_method": "_choose_layout_src"
   },
-
   "capabilities_required": [],
   "capabilities_optional": [],
-
   "resources": {
     "_comment": "Không có weight AI nào — chỉ cần dữ liệu công thức khổ in (cùng thư mục, Xưởng tự quản — trước đây ở config/presets/).",
     "layout_presets_file": "layout_presets.json"
   },
-
   "default_spec": null,
   "_default_spec_note": "Khác Xưởng Xử lý ảnh (1 spec mặc định duy nhất) — Xưởng này cho chọn NHIỀU khổ in cùng lúc (checkbox), không có khái niệm 1 preset 'mặc định'. null có chủ đích, không phải bỏ sót.",
-
   "output_settings": {
     "_comment": "Khai báo mới — chưa có nơi nào đọc field này.",
     "format": "jpg",
     "dpi": 300,
     "auto_save": false
-  }
+  },
+  "about_file": "ABOUT.md"
 }
