@@ -382,14 +382,33 @@ def verify_workshop_environment(manifest_path, report: "RuntimeReport") -> List[
             pass  # manifest ghi sai định dạng version — bỏ qua, không sập
 
     # min_ram_gb
+    # RAM vật lý thường được hệ điều hành báo lệch một chút so với
+    # "mốc danh nghĩa" (4/8/16/32GB). Không nên biến một chênh lệch
+    # rất nhỏ như 7.9GB so với mốc 8GB thành lỗi cứng.
+    # Mặc định cho phép dung sai 2% quanh mốc yêu cầu; Workshop có thể
+    # ghi đè bằng environment.ram_tolerance_ratio nếu trường hợp đặc biệt
+    # cần mức khác. min_ram_gb vẫn là mốc danh nghĩa, không bị thay đổi.
     min_ram = env.get("min_ram_gb")
     if min_ram is not None:
-        if report.ram_gb is None:
-            problems.append(f"[{workshop_name}] Không dò được RAM máy — bỏ qua kiểm tra "
-                             f"(yêu cầu tối thiểu {min_ram}GB)")
-        elif report.ram_gb < min_ram:
-            problems.append(
-                f"[{workshop_name}] Cần tối thiểu {min_ram}GB RAM, máy có {report.ram_gb}GB")
+        try:
+            min_ram = float(min_ram)
+            tolerance_ratio = float(env.get("ram_tolerance_ratio", 0.98))
+            if not 0 < tolerance_ratio <= 1:
+                tolerance_ratio = 0.98
+            effective_min_ram = min_ram * tolerance_ratio
+        except (TypeError, ValueError):
+            min_ram = None
+
+        if min_ram is not None:
+            if report.ram_gb is None:
+                problems.append(
+                    f"[{workshop_name}] Không dò được RAM máy — bỏ qua kiểm tra "
+                    f"(yêu cầu danh nghĩa {min_ram:g}GB)")
+            elif report.ram_gb < effective_min_ram:
+                problems.append(
+                    f"[{workshop_name}] Cần tối thiểu {min_ram:g}GB RAM "
+                    f"(ngưỡng chấp nhận {effective_min_ram:.2f}GB), "
+                    f"máy có {report.ram_gb:g}GB")
 
     # device_preference: "auto" không cần kiểm tra gì (chấp nhận cả
     # cpu lẫn cuda). Chỉ báo khi Xưởng ép buộc "cuda" mà máy không có.

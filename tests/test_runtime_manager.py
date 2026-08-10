@@ -179,6 +179,27 @@ def test_verify_workshop_environment_ram_too_low(tmp_path):
     assert "8GB" in problems[0] and "3.9GB" in problems[0]
 
 
+def test_verify_workshop_environment_ram_tolerance_accepts_just_below_nominal(tmp_path):
+    """Mốc 8GB với dung sai mặc định 2% chấp nhận 7.9GB (8 * 0.98 = 7.84)."""
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text('{"workshop_name": "Test Shop", '
+                         '"environment": {"min_ram_gb": 8}}', encoding="utf-8")
+    from setup.runtime_manager import verify_workshop_environment
+    problems = verify_workshop_environment(str(manifest), _make_report(ram_gb=7.9))
+    assert problems == []
+
+
+def test_verify_workshop_environment_ram_tolerance_rejects_below_effective_threshold(tmp_path):
+    """8GB với dung sai 2% phải báo thiếu khi RAM xuống dưới 7.84GB."""
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text('{"workshop_name": "Test Shop", '
+                         '"environment": {"min_ram_gb": 8}}', encoding="utf-8")
+    from setup.runtime_manager import verify_workshop_environment
+    problems = verify_workshop_environment(str(manifest), _make_report(ram_gb=7.8))
+    assert len(problems) == 1
+    assert "8GB" in problems[0] and "7.84GB" in problems[0]
+
+
 def test_verify_workshop_environment_ram_enough():
     manifest_content = '{"workshop_name": "Test Shop", "environment": {"min_ram_gb": 2}}'
     import tempfile, os as _os
