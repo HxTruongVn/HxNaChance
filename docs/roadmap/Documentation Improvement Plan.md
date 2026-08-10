@@ -2,285 +2,73 @@
 
 ## Mục tiêu
 
-Tăng tính nhất quán của hệ thống tài liệu NaChance, giúp tài liệu trở thành nguồn tham chiếu chính cho việc phát triển và bảo trì dự án.
+Biến `docs/` thành nguồn tham chiếu đáng tin cậy bằng cách tách ba loại tài liệu:
 
----
+```text
+Current State
+Architecture Target
+Roadmap
+```
 
-# Mức ưu tiên 1 (High)
+## Đã thực hiện
 
-## 1. Hoàn thiện Runtime Manager
+- đối chiếu Core docs với code hiện tại;
+- cập nhật meta architecture;
+- cập nhật current architecture;
+- cập nhật Bootstrap/Runtime;
+- cập nhật Workshop discovery boundary;
+- cập nhật Pipeline Core;
+- đánh dấu rõ PARTIAL/PLANNED/DEFERRED;
+- giữ bản cũ trong `docs/archive/pre_docs_reconciliation_2026-08-10/`.
 
-### Trạng thái
+## Nguyên tắc từ nay
 
-⚠ Chưa mô tả đầy đủ.
+### 1. Current docs phải kiểm chứng được
 
-### Cần bổ sung
+Không viết:
 
-- Vai trò
-- Trách nhiệm
-- Luồng hoạt động
-- Health Check
-- Auto Repair
-- Runtime Cache
-- GPU Detection
-- CUDA Detection
-- Python Detection
-- Venv Detection
-- Package Detection
-- Weight Detection
+> "đã có lazy loading"
 
----
+nếu code chỉ có discovery động.
 
-## 2. Chuẩn hóa trách nhiệm từng module
+Không viết:
 
-> Bảng dưới đây đã có mô hình chính thức hơn ở
-> [`../architecture/meta_architecture.md`](../architecture/meta_architecture.md)
-> (Bootstrap/Reception/Workshop/Warehouse/Infrastructure) — "MainApp" ở
-> đây tương ứng gộp chung Reception + Workshop, chưa tách theo đúng mô
-> hình đó. Khi viết ADR (mục 3 bên dưới), dùng tên trong
-> `meta_architecture.md`, không dùng "MainApp".
+> "đã có resource provisioning"
 
-Tạo bảng trách nhiệm.
+nếu code mới chỉ audit/download.
 
-| Module | Responsibility |
-|---------|----------------|
-| Bootstrap | Khởi động |
-| RuntimeManager | Chuẩn bị môi trường |
-| Installer | Cài đặt |
-| DependencyManager | Quản lý package |
-| ModelManager | Quản lý model |
-| UpdateManager | Cập nhật |
-| MainApp | Giao diện |
+### 2. Vision không được dùng làm bằng chứng implementation
 
-Nguyên tắc:
+Vision trả lời:
 
-- Một module chỉ có một trách nhiệm chính.
-- Tránh chồng chéo chức năng.
+> NaChance muốn trở thành gì?
 
----
+Current Architecture trả lời:
 
-## 3. Architecture Decision Records (ADR)
+> Code hiện đang làm gì?
 
-Đề xuất:
+Roadmap trả lời:
 
-docs/
-architecture/
-decisions/
+> Cần làm gì tiếp?
 
-Ví dụ:
+### 3. Không tạo hai nguồn sự thật
 
-ADR-001-bootstrap.md
+Cây thư mục thật chỉ mô tả tại:
 
-ADR-002-runtime.md
+```text
+docs/architecture/structure.md
+```
 
-ADR-003-weight.md
+Mô hình tổng chỉ mô tả tại:
 
-ADR-004-venv.md
+```text
+docs/architecture/meta_architecture.md
+```
 
-Mục tiêu:
+## Việc tiếp theo
 
-- Lưu lý do của mọi quyết định kiến trúc.
-- Tránh quên khi dự án phát triển.
+- thêm integration tests cho Core;
+- thống nhất Resource Contract;
+- sau đó mới cập nhật docs theo code mới.
 
----
-
-# Mức ưu tiên 2 (Medium)
-
-## 4. Weight Management
-
-Bổ sung tài liệu:
-
-architecture/weight_manager.md
-
-Bao gồm:
-
-- Cấu trúc weights
-- Version
-- Download
-- Checksum
-- Mirror
-- Cache
-- Update
-
----
-
-## 5. Dependency Management
-
-Bổ sung:
-
-architecture/dependency_manager.md
-
-Nội dung:
-
-- Python
-- Venv
-- pip
-- requirements
-- Repair
-- Retry
-- Mirror
-- Offline cache
-
----
-
-## 6. Bootstrap Lifecycle
-
-Tạo tài liệu:
-
-architecture/bootstrap_lifecycle.md
-
-Mô tả:
-
-Start
-
-↓
-
-Runtime Check
-
-↓
-
-Repair
-
-↓
-
-Launch
-
-↓
-
-Shutdown
-
-↓
-
-Cleanup
-
----
-
-# Mức ưu tiên 3 (Future)
-
-## 7. Plugin Architecture
-
-Bổ sung:
-
-architecture/plugin_system.md
-
-Bao gồm:
-
-- Plugin Interface
-- Plugin Manager
-- Discovery
-- Version
-- Compatibility
-
----
-
-## 8. Service Layer
-
-Bổ sung:
-
-architecture/services.md
-
-Ví dụ:
-
-ModelService
-
-PhotoService
-
-DownloadService
-
-CacheService
-
-LogService
-
-PrintService
-
----
-
-## 9. Runtime State Machine
-
-Tạo:
-
-architecture/runtime_state.md
-
-Các trạng thái:
-
-Not Installed
-
-↓
-
-Installing
-
-↓
-
-Repairing
-
-↓
-
-Ready
-
-↓
-
-Running
-
-↓
-
-Updating
-
-↓
-
-Error
-
----
-
-# Mức ưu tiên 4 (Long-term)
-
-Bổ sung:
-
-- Coding Convention
-- Folder Convention
-- Naming Convention
-- Logging Convention
-- Error Code Convention
-- Testing Strategy
-- Release Process
-- Migration Guide
-- Security Policy
-
----
-
-# Tài liệu đề xuất quan trọng nhất
-
-## architecture/philosophy.md
-
-Mục tiêu:
-
-Định nghĩa triết lý thiết kế của NaChance.
-
-Ví dụ:
-
-- Bootstrap càng nhỏ càng tốt.
-- Runtime chịu trách nhiệm chuẩn bị môi trường.
-- MainApp không xử lý cài đặt.
-- Không đóng gói Python.
-- Không đóng gói venv.
-- Không đóng gói weights.
-- Hệ thống có khả năng tự phục hồi (Self-Healing).
-- Mọi thành phần có thể thay thế độc lập.
-- Một module chỉ có một trách nhiệm.
-- Ưu tiên chạy offline.
-- Kiến trúc hướng mở rộng.
-
----
-
-# Ghi chú
-
-Không nhất thiết hoàn thành toàn bộ ngay từ đầu.
-
-Ưu tiên nên là:
-
-1. Runtime Manager
-2. Module Responsibility
-3. Dependency Manager
-4. Weight Manager
-5. Philosophy
-
-Các tài liệu còn lại có thể bổ sung dần theo quá trình phát triển dự án.
+Không tiếp tục mở rộng tài liệu Photo internals trong giai đoạn này.

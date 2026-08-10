@@ -1,365 +1,219 @@
 # NaChance Meta Architecture
 
-> **Vai trò của tài liệu này**: đây là tài liệu kiến trúc **ở tầng cao
-> nhất** — mọi tài liệu khác trong `docs/architecture/` và
-> `docs/roadmap/` là **cách hiện thực hoá** mô hình dưới đây, không
-> phải mô hình song song. Khi có xung đột giữa cách gọi tên/khái niệm
-> ở tài liệu khác và tài liệu này, **tài liệu này thắng**.
->
-> Quan hệ với [`NaChance Architecture Vision.md`](NaChance%20Architecture%20Vision.md):
-> Vision.md nói về triết lý cho riêng **AI/Model** (Capability, Adapter,
-> Registry). Tài liệu này bao trùm **toàn bộ hệ thống**, không riêng
-> AI — Vision.md là 1 lát cắt của mô hình này, áp cho đúng khu vực
-> "Production Line".
+> **Vai trò:** đây là mô hình kiến trúc cấp hệ thống. Nó mô tả **ranh giới
+> và trách nhiệm**, không tuyên bố rằng mọi cơ chế mục tiêu đã được triển khai.
 
----
+## 1. Mô hình tổng thể
 
-## Nguyên tắc gốc
+NaChance được tổ chức thành các khu vực:
 
-> Trong NaChance, **"code không phải trung tâm"**. Trung tâm là mô
-> hình khu phức hợp. Mọi package, module, class và UI chỉ là cách hiện
-> thực hoá mô hình đó.
-
-Nói cách khác: khi thêm/sửa bất kỳ thứ gì trong repo, câu hỏi đầu tiên
-không phải "file này nên đặt ở đâu", mà là **"thứ này thuộc khu vực
-nào của khu phức hợp, và nó có tự mô tả đúng theo Department Contract
-của khu vực đó không"**.
-
-## 1. Mô hình
-
-NaChance không được xem là một ứng dụng, mà mô hình hoá như một
-**Production Complex** (khu phức hợp sản xuất). Mọi thành phần trong
-repo đều phải ánh xạ vào 1 khu vực — không thiết kế từ góc nhìn
-package/module/class trước.
-
-```
-NaChance — Production Complex
-
-├── Bootstrap        — Independent Auditor
-├── Reception         — sảnh đón, điều hướng
-├── Workshop          — đơn vị sản xuất độc lập (1 tính năng)
-├── Warehouse         — kho tài nguyên (weight, cache, config)
-├── Infrastructure    — Runtime, môi trường thực thi
-└── Production Line   — pipeline xử lý ảnh thật sự chạy bên trong Workshop
+```text
+Bootstrap
+    │
+    ▼
+Reception / Core
+    │
+    ├── Workshop A
+    ├── Workshop B
+    └── ...
+    │
+    ├── Pipeline / Exchange
+    │
+    ▼
+Infrastructure
+    │
+    ├── Runtime
+    ├── Packages
+    └── Resources / Weights
 ```
 
-## 2. Reception
+Trong đó:
 
-Người dùng không mở trực tiếp 1 chức năng — người dùng bước vào
-Reception. Reception chỉ:
+- **Bootstrap**: kiểm tra và điều phối quá trình khởi động/setup.
+- **Reception / Core**: giao diện tổng, discovery, điều hướng, persistence và
+  các dịch vụ dùng chung.
+- **Workshop**: một đơn vị chức năng độc lập; tự mô tả metadata, UI và yêu cầu
+  của mình.
+- **Pipeline / Exchange**: Core kết nối các Workshop; Workshop không gọi
+  Workshop khác trực tiếp.
+- **Infrastructure**: môi trường thực thi và tài nguyên dùng chung.
+- **Warehouse / Resource store**: cách nhìn logic về nơi lưu resource; hiện
+  chưa phải một service độc lập.
 
-- hiển thị trạng thái khu phức hợp
-- liệt kê các Workshop
-- hiển thị khả năng của từng Workshop
-- điều hướng
+## 2. Nguyên tắc bất biến
 
-**Reception không chứa logic nghiệp vụ**, và **không được biết tên
-từng Workshop** — nó đọc danh sách Workshop từ khai báo (Department
-Contract), không hardcode.
+### Core không biết nghiệp vụ cụ thể của Workshop
 
-## 3. Workshop
+Reception phải discovery Workshop từ manifest, không duy trì danh sách
+Workshop bằng các import hard-code.
 
-Đơn vị sản xuất độc lập — 1 tính năng hoàn chỉnh. Mỗi Workshop tự mô
-tả chính nó: tên, khả năng, trạng thái, yêu cầu vận hành, UI, tài
-nguyên cần dùng. **Workshop không được khai báo ở UI chính** — Reception
-tự đọc mô tả của Workshop.
+### Workshop không biết Workshop khác
 
-## 4. Lazy Loading
+Nếu cần nối chức năng, kết nối thuộc Core/Pipeline.
 
-Khi khởi động: **không load UI của Workshop**, chỉ đọc metadata.
+### Metadata trước code
 
-```
-Workshop → Manifest → Capability → Status
-```
+Những thành phần có khả năng mở rộng nên được mô tả bằng manifest/config/registry
+khi điều đó làm giảm hard-code.
 
-Chỉ khi người dùng chọn Workshop mới:
+### Không nhầm mục tiêu với hiện trạng
 
-```
-Load Workshop UI → Load Plugin → Load Model
-```
+Ví dụ:
 
-## 5. Bootstrap
-
-Bootstrap **không thuộc khu phức hợp** — là 1 **Independent Auditor**.
-Bootstrap không biết Workshop làm gì, chỉ:
-
-- đọc mô tả của từng phòng ban
-- kiểm tra thực tế
-- tạo báo cáo
-- giao việc cho bộ cài đặt
-
-**Bootstrap không chứa logic riêng cho từng Workshop.**
-
-## 6. Department Contract
-
-Mỗi phòng ban tự khai báo:
-
-| Phòng ban | Tự khai báo |
-|---|---|
-| Reception | UI |
-| Workshop | Capability |
-| Warehouse | Resource |
-| Infrastructure | Runtime |
-
-Bootstrap chỉ đọc các khai báo này — không viết logic riêng cho từng
-phòng ban.
-
-## 7. Mục tiêu
-
-Toàn hệ thống phải mở rộng được: **thêm 1 Workshop mới không yêu cầu
-sửa Reception, Bootstrap, hay Workshop khác** — chỉ cần thêm Workshop
-mới cùng mô tả cần thiết.
-
----
-
-## Ánh xạ vào repo hiện tại
-
-> Đã xác minh trực tiếp trên code thật (không suy đoán) — ký hiệu
-> `()` = đã có trong repo, đặt đúng vị trí; `[]` = còn thiếu/cần hoàn
-> thiện để khớp đúng mô hình.
-
-```
-(Bootstrap — Independent Auditor)
-├── (NaChance.py)                          — entry point, dò môi trường → gọi setup
-├── (setup/runtime_manager.py)             — RuntimeManager, RuntimeReport
-├── (setup/debug.py)                       — kiểm tra môi trường độc lập
-├── (setup/installer.py)                   — SetupInstaller
-├── (setup/venv_bootstrap.py)              — quản lý venv
-└── [Bộ đọc Department Contract]           — hiện Bootstrap vẫn đọc
-                                              FEATURE_REQUIREMENTS hardcode
-                                              trong runtime_manager.py, chưa
-                                              đọc "khai báo" tự động từ từng
-                                              Workshop/Warehouse
-
-(Reception)
-├── (app/main_ui.py :: _build_main_panel)  — NHƯNG đang vi phạm mô hình: gọi
-│                                             thẳng _build_process_tab() /
-│                                             _build_layout_tab(), tức đang
-│                                             "biết tên" từng Workshop
-├── (ui/menu_bar_mixin.py)                 — gần nhất với "điều hướng", nhưng
-│                                             menu vẫn hardcode danh sách,
-│                                             không tự đọc từ Workshop
-├── [Danh sách Workshop + trạng thái]      — chưa có màn hình liệt kê
-│                                             workshop kiểu "sảnh chờ"
-└── [Lazy Loading]                          — TẤT CẢ tab dựng UI ngay lúc
-                                              khởi động, ngược nguyên tắc
-                                              "chỉ đọc metadata trước"
-
-(Workshop)
-├── (workshops/photo/ui.py)                — Workshop "Xử lý ảnh", đã
-│                                             chia 4 nhóm chức năng, VÀ
-│                                             đã dời về đúng thư mục
-│                                             Xưởng (trước ở ui/) — Xưởng
-│                                             tự quản UI của mình
-├── (workshops/photo/manifest.json)        — WorkshopManifest có DỮ
-│                                             LIỆU đầy đủ (environment/
-│                                             ui/capabilities_required/
-│                                             default_spec/output_settings,
-│                                             tham chiếu chứ không chép
-│                                             lại model_registry.json +
-│                                             weights_sources.json) — CÓ
-│                                             code đọc thật (bên dưới)
-├── (workshops/layout/ui.py)               — Workshop "Xếp in" — cùng
-│                                             tình trạng
-├── (workshops/layout/manifest.json)       — cùng tình trạng
-├── (app/workshop_discovery.py::discover_workshops) — Reception TỰ
-│                                             PHÁT HIỆN Workshop: quét
-│                                             workshops/*/manifest.json,
-│                                             đọc khối "ui" (module/
-│                                             mixin_class/build_method/
-│                                             tab_title/tab_order), import
-│                                             ĐỘNG qua importlib — không
-│                                             còn `from workshops.photo.ui
-│                                             import ProcessTabMixin` +
-│                                             `from workshops.layout.ui
-│                                             import LayoutTabMixin`
-│                                             hardcode trong app/main_ui.py
-│                                             nữa. Workshop nào manifest
-│                                             lỗi/import thất bại -> BỎ
-│                                             QUA, in cảnh báo, không
-│                                             crash cả app
-├── (app/main_ui.py::NaChanceApp)          — base list kế thừa ĐỘNG
-│                                             (`*[w.mixin_class for w in
-│                                             _DISCOVERED_WORKSHOPS]`,
-│                                             cú pháp Python hợp lệ —
-│                                             đã test); `_build_main_panel()`
-│                                             tạo tab + gọi build_method
-│                                             cho TỪNG Workshop phát hiện
-│                                             được qua vòng lặp, không
-│                                             hardcode tên tab/tên hàm.
-│                                             Test THẬT (Tkinter +
-│                                             customtkinter thật, Xvfb
-│                                             màn hình ảo — không phải
-│                                             giả lập): khởi tạo
-│                                             NaChanceApp thành công, cả
-│                                             2 tab hiện đúng tên đúng
-│                                             thứ tự, đóng app không lỗi
-│                                             .
-│                                             GIỚI HẠN THẬT (không giấu):
-│                                             discover_workshops() chạy
-│                                             Ở MODULE-LEVEL (lúc import
-│                                             app/main_ui.py) vì base
-│                                             list của `class` cần biết
-│                                             Mixin NGAY LÚC ĐỊNH NGHĨA
-│                                             — không thể hoãn tới
-│                                             runtime. Nghĩa là: thêm/
-│                                             sửa Workshop vẫn cần KHỞI
-│                                             ĐỘNG LẠI app để nhận,
-│                                             KHÔNG PHẢI hot-reload giữa
-│                                             phiên đang chạy (đúng chủ
-│                                             đích — tránh rủi ro đổi
-│                                             cấu trúc UI giữa chừng lúc
-│                                             người dùng đang dùng)
-├── (app/main_ui.py::_start_background_weight_download) — 1 PHẦN nhỏ
-│                                             của "Resolve": thiếu weight
-│                                             -> tự tải nền (thread daemon,
-│                                             không chặn khởi động), báo
-│                                             qua self.status khi xong.
-│                                             KHÔNG đọc manifest.json —
-│                                             gọi thẳng download_all_weights()
-│                                             (setup/setup_models.py) đọc
-│                                             weights_sources.json trực
-│                                             tiếp. Chỉ đúng phần Resolve,
-│                                             cho riêng weight thôi
-├── (setup/runtime_manager.py::_detect_ram_gb + _detect_gpu_hardware +
-│    _detect_os_name)                        — Audit đọc PHẦN CỨNG THẬT
-│                                             (RAM/GPU/OS/build Windows),
-│                                             không suy luận gián tiếp
-│                                             qua package Python nào —
-│                                             dùng API/lệnh gốc hệ điều
-│                                             hành (ctypes/proc/meminfo/
-│                                             nvidia-smi), không cài
-│                                             thêm gì (không psutil)
-├── (setup/runtime_manager.py::verify_workshop_environment)  — Verify
-│                                             THẬT đã có: đọc environment
-│                                             trong manifest.json 1
-│                                             Workshop, so với
-│                                             RuntimeReport (máy thật),
-│                                             trả về danh sách điểm
-│                                             KHÔNG đạt. ĐÃ NỐI vào cả
-│                                             2 luồng khởi động thật:
-│                                             `NaChance.py::check_environment()`
-│                                             (in cảnh báo trong log
-│                                             Bootstrap) VÀ
-│                                             `app/main.py::_detect_runtime()`
-│                                             (truyền vào NaChanceApp,
-│                                             hiện messagebox 1 lần sau
-│                                             khi UI sẵn sàng) — quét
-│                                             động mọi
-│                                             workshops/*/manifest.json,
-│                                             KHÔNG hardcode tên Workshop
-├── (app/main_ui.py::_show_workshop_problems_notice) — Resolve cho
-│                                             RAM/Python quá thấp: CỐ Ý
-│                                             KHÔNG tự sửa bằng code
-│                                             (không thể tự thêm RAM vào
-│                                             máy) — Resolve ở đây nghĩa
-│                                             là cảnh báo rõ 1 LẦN ngay
-│                                             lúc mở app, để người dùng
-│                                             tự quyết định thay vì tự
-│                                             đâm vào lỗi/crash giữa
-│                                             chừng lúc đang xử lý ảnh
-└── (Bootstrap Controller — Audit/Verify/Resolve/tự phát hiện Workshop)
-                                              ĐÃ XONG cả 4 phần chính,
-                                              nối vào luồng khởi động
-                                              thật. [ ] còn lại — thật
-                                              sự nhỏ, không phải toàn bộ
-                                              hệ thống: (1) UI "Lựa chọn
-                                              nguồn tải" khi 1 nguồn lỗi
-                                              (hiện tự thử tuần tự hết
-                                              nguồn, không hỏi người
-                                              dùng chọn); (2) Resolve tự
-                                              động sửa torch CPU-only ->
-                                              CUDA (hiện chỉ cảnh báo,
-                                              không tự gỡ/cài lại — rủi
-                                              ro cao nếu tự động, cố ý
-                                              chưa làm)
-
-(Warehouse)
-├── (weights/)                             — thư mục chứa weight thật
-├── (workshops/photo/weights_sources.json) — metadata nguồn tải, ĐÃ
-│                                             DỜI về đúng Xưởng (trước ở
-│                                             config/presets/, dùng
-│                                             chung — giờ Xưởng tự quản,
-│                                             đúng "Xưởng giống như 1
-│                                             container"). KHÔNG có
-│                                             checksum — không file nào
-│                                             (kể cả sau khi dời) có
-│                                             sha256/hash nào cả — tải
-│                                             weight xong không verify
-│                                             được tính toàn vẹn. Gap
-│                                             thật, chưa vá
-├── (workshops/photo/model_registry.json)  — gần nhất với Department
-│                                             Contract, nhưng CHỈ áp dụng
-│                                             cho AI model — cũng ĐÃ DỜI
-│                                             về đúng Xưởng, cùng đợt
-└── [Warehouse như 1 khu vực độc lập]       — vẫn chưa có vai trò/ranh
-                                              giới riêng thật sự — giờ
-                                              KHÔNG còn "tản mác giữa
-                                              config/ và weights/" nữa
-                                              (metadata đã dời hẳn về
-                                              workshops/photo/), nhưng
-                                              vẫn là 2 thứ khác nhau
-                                              (metadata trong Xưởng,
-                                              weight thật trong
-                                              weights/ chung ở root) —
-                                              chưa hợp nhất thành "Kho"
-                                              đúng nghĩa 1 khu vực
-
-(Infrastructure — Runtime)
-├── (setup/runtime_manager.py :: RuntimeReport) — Device/OS/package/model detect
-├── (config/model_manager.py)              — resolver đường dẫn weight
-│                                             (phạm vi hẹp: chỉ tra path,
-│                                             chưa tự khởi tạo model)
-├── (workshops/photo/capabilities/face_parser.py + processors/face_parser.py
-│    :: BiSeNetFaceParserAdapter)          — Giai đoạn 4 ĐÃ XONG, model
-│                                             đầu tiên làm mẫu kiến trúc
-└── [Adapter cho 4 model còn lại]           — Giai đoạn 5 (roadmap.md):
-                                              face_restorer/upscaler/
-                                              background_remover/
-                                              pose_estimator vẫn gọi
-                                              thẳng class cụ thể
-
-(Production Line — pipeline xử lý ảnh, bên trong Workshop "Xử lý ảnh")
-├── (workshops/photo/engine.py)          — NaChanceEngine — pipeline VẪN
-│                                             cố định cứng (if/else), chưa
-│                                             phải dữ liệu
-├── (workshops/photo/processors/*.py)    — 6 processor
-├── (workshops/photo/analyzers/*.py)     — face_analyzer, shoulder_analyzer
-├── (workshops/photo/document.py)        — Document/PipelineStep (Undo/Redo)
-└── [PipelineComposer]                      — tổ hợp/sắp thứ tự capability
-                                              tuỳ ý — Giai đoạn 11, chưa xây
+```text
+"Core có thể discovery Workshop"
+≠
+"Core đã lazy-load toàn bộ Workshop"
 ```
 
-**Nhận xét quan trọng nhất**: `[...]` dồn nhiều nhất ở **Reception** và
-**Adapter/PipelineComposer** — 2 chỗ là "cửa vào" và "trục nối" của
-toàn mô hình. Từng phòng ban riêng lẻ đã có sẵn phần thô, nhưng
-**thứ kết nối chúng lại theo đúng mô hình thì gần như chưa có**.
+## 3. Hiện trạng đã xác nhận
 
----
+### Bootstrap — `IMPLEMENTED`
 
-## Cách các tài liệu khác liên hệ với mô hình này
+Có:
 
-| Tài liệu | Vai trò trong mô hình |
-|---|---|
-| `NaChance Architecture Vision.md` | Triết lý cho riêng khu vực Production Line (AI/Capability) |
-| `roadmap.md` (Giai đoạn 1-15) | Kế hoạch xây `[Adapter]`, `[PipelineComposer]` — thuộc Infrastructure + Production Line |
-| `document_manager.md` | Thiết kế `Document`/Undo — thuộc Production Line |
-| `ui.md` | Mô tả thực trạng `ui/*_mixin.py` — chính là các Workshop hiện có, chưa có Manifest |
-| `command_system.md` | Thanh menu — 1 phần của Reception hiện tại |
-| `structure.md` | Cây thư mục — ánh xạ vật lý (file nằm đâu), khác với ánh xạ khái niệm ở tài liệu này |
-| `model_manager_plan.md` | Kế hoạch chi tiết `config/model_manager.py` — thuộc Infrastructure |
+- `NaChance.py`
+- `setup/runtime_manager.py`
+- `setup/installer.py`
+- `setup/venv_bootstrap.py`
+- `setup/debug.py`
 
-**Nguyên tắc cập nhật**: khi 1 tài liệu con nói về khái niệm đã có tên
-trong mô hình này (Workshop, Reception, Department Contract...), dùng
-đúng tên đó — không đặt tên khác cho cùng 1 khái niệm.
+Bootstrap gọi RuntimeManager để kiểm tra môi trường và chuyển sang Setup khi
+chưa sẵn sàng.
 
----
+Bootstrap vẫn có một số logic compatibility/path handling và chưa phải một
+"contract interpreter" tổng quát cho mọi khu vực.
 
-## Trạng thái tài liệu
+### Reception / Workshop discovery — `IMPLEMENTED / PARTIAL`
 
-Bản thân tài liệu này **mới mô tả mô hình, chưa có code triển khai**
-(giống ghi chú "hiện trạng" trong Vision.md — 1 số ý tưởng chỉ đóng vai
-trò định hướng). Việc triển khai (viết `WorkshopManifest`, sửa
-`Reception` đọc động thay vì hardcode...) nằm ngoài phạm vi tài liệu
-này — cần 1 kế hoạch riêng khi bắt đầu code, theo đúng thói quen của
-repo: viết tài liệu trước, thí điểm 1 khu vực trước khi làm toàn bộ.
+`app/workshop_discovery.py` quét:
+
+```text
+workshops/*/manifest.json
+```
+
+và `app/main_ui.py` xây danh sách Mixin động từ kết quả discovery.
+
+Giới hạn quan trọng:
+
+- discovery diễn ra ở **module import time** để tạo multiple-inheritance class;
+- thêm/sửa Workshop cần **khởi động lại app**;
+- đây **không phải hot reload**;
+- UI hiện tại vẫn là desktop UI tích hợp, chưa phải một Reception độc lập hoàn
+  toàn theo nghĩa kiến trúc.
+
+### Workshop requirements — `PARTIAL`
+
+`app/workshop_requirements.py` đã đọc manifest, requirements và registry của
+Workshop để tổng hợp package/model/capability.
+
+Đây là **discovery/audit**, chưa phải một Resource Provisioning Engine hoàn chỉnh.
+
+### Runtime — `IMPLEMENTED / PARTIAL`
+
+`RuntimeManager` có kiểm tra:
+
+- Python;
+- package;
+- GPU/CUDA;
+- resource/weight;
+- trạng thái Workshop theo manifest.
+
+Nó tạo báo cáo runtime. Việc cài đặt/tải resource vẫn do Setup/logic liên quan
+thực hiện.
+
+### Pipeline Core — `PARTIAL`
+
+`app/pipeline_store.py` và `docs/pipeline_model.md` đã đặt ranh giới để Core
+lưu Pipeline và snapshot cấu hình.
+
+Đây là nền tảng kết nối Workshop, chưa phải một pipeline engine tổng quát.
+
+### Weight/resource management — `PARTIAL`
+
+Có:
+
+- registry/source metadata;
+- thư mục `weights/`;
+- kiểm tra/tải resource;
+- background download trong UI.
+
+Chưa nên gọi đây là một Resource Manager hoàn chỉnh: lifecycle, checksum,
+versioning và hot replacement chưa được chuẩn hóa thành một contract duy nhất.
+
+## 4. Lazy loading
+
+Mục tiêu:
+
+```text
+startup
+  ↓
+read metadata
+  ↓
+show Workshop
+  ↓
+user activates Workshop
+  ↓
+load Workshop UI / runtime resources
+```
+
+Hiện trạng:
+
+- Workshop discovery đã tách khỏi việc import tên Workshop bằng tay.
+- Nhưng class UI được dựng từ discovery ở module import time.
+- Không có cơ chế hot-reload Workshop giữa một phiên đang chạy.
+- Không được mô tả hiện tại là "lazy loading hoàn chỉnh".
+
+**Kết luận:** `PARTIAL`.
+
+## 5. Department Contract
+
+Manifest của Workshop đã tồn tại và được Core đọc.
+
+Tuy nhiên, kiến trúc hiện chưa có một contract engine duy nhất bao phủ:
+
+```text
+Workshop
+Resource
+Runtime
+Provision
+Verify
+Lifecycle
+```
+
+Do đó:
+
+> `manifest.json` hiện là **metadata contract**, chưa phải một hệ thống
+> provisioning contract hoàn chỉnh.
+
+## 6. Mục tiêu kiến trúc
+
+Mục tiêu dài hạn vẫn giữ:
+
+```text
+Thêm Workshop mới
+        ↓
+thêm Workshop + manifest
+        ↓
+Core tự discovery
+        ↓
+không sửa Workshop khác
+```
+
+Nhưng các bước như provisioning, capability resolution, model adapter và
+hot reload chỉ được coi là **mục tiêu**, cho tới khi code thật được triển khai.
+
+## 7. Phạm vi tài liệu hiện tại
+
+Đợt chỉnh docs này **không thiết kế lại phần bên trong Workshop**.
+
+Đặc biệt chưa dùng docs Core để kết luận về:
+
+- model adapter bên trong Photo;
+- pipeline processor;
+- garment replacement;
+- shoulder alignment;
+- inpainting;
+- model lifecycle bên trong Workshop.
+
+Các vấn đề đó là một workstream riêng.

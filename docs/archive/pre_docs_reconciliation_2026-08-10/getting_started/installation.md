@@ -10,9 +10,9 @@ python NaChance.py
 ```
 
 `NaChance.py` tự động:
-1. Kiểm tra môi trường (Python, package, GPU/CUDA và resource được khai báo).
+1. Kiểm tra môi trường (Python, package, weights).
 2. Nếu chưa sẵn sàng → gọi setup tự động.
-3. Tạo `.venv/` + cài dependencies + chuẩn bị/tải resource khi Setup yêu cầu.
+3. Tạo `.venv/` + cài dependencies + tải weights.
 4. Khởi động ứng dụng.
 
 ## Kiểm tra môi trường thủ công (không cài gì)

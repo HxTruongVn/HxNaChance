@@ -1,50 +1,88 @@
-# Khắc phục sự cố
-
-Tóm tắt các lỗi thường gặp. README có thêm mục ngắn tương tự.
+# Troubleshooting — Core
 
 ## Kiểm tra nhanh
 
 ```bash
-python debug.py
-python runtime_manager.py
+python setup/debug.py
+python setup/runtime_manager.py
 python -m pytest -q
 ```
 
-## Cài đặt
+## App không khởi động
 
-| Triệu chứng | Cách xử lý |
-|-------------|------------|
-| Thiếu package sau `setup_models.py` | Chạy `main.py` từ repo gốc — script tự dùng `.venv/` nếu có. Hoặc `\.venv\Scripts\activate` (Windows) rồi chạy lại. |
-| GPU không được dùng trên Windows | Chạy `python setup_models.py` (không `--cpu-only`) để cài torch từ index CUDA của PyTorch. `pip install torch` thuần trên Windows thường là bản CPU. |
-| `No module named 'codeformer'` | `pip install codeformer-pip` hoặc `python setup_models.py` |
-| `No module named 'realesrgan'` | `pip install realesrgan` hoặc `python setup_models.py` |
-| `cv2.ximgproc` không tồn tại | `pip install opencv-contrib-python` (không cài song song `opencv-python`) |
-| NumPy 2.x gây lỗi dependency | `pip install "numpy<2.0.0"` — `setup_models.py` cũng cố hạ lại sau khi cài |
-
-## Weights
-
-- Thư mục chuẩn: **`weights/`** ở thư mục gốc repo (gitignore — không có trong clone sạch).
-- Tải: `python setup_models.py` hoặc tải tay theo bảng trong README.
-
-## API / Docker
+Chạy:
 
 ```bash
-pip install -r api/requirements.txt
-uvicorn api.main:app --host 0.0.0.0 --port 8000
+python NaChance.py
 ```
 
-Docker cần mount weights:
+và kiểm tra:
 
-```bash
-docker run -p 8000:8000 -v $(pwd)/weights:/app/weights nachance-api
+```text
+logs/nachance_boot.log
 ```
 
-Test thủ công: `python scripts/manual_api_test.py --image photo.jpg`
+Bootstrap ghi log phiên khởi động.
 
-## Tính năng AI tắt im lặng (Lite Mode)
+## Thiếu package
 
-Xem báo cáo `RuntimeManager`: thiếu file trong `weights/` hoặc package tuỳ chọn (torch, codeformer, …) sẽ tắt từng tính năng mà không crash app.
+Kiểm tra RuntimeManager trước khi chạy Setup.
 
-## Kiến trúc / mở rộng model
+Nếu package thuộc Workshop, kiểm tra `workshops/<id>/requirements.txt`.
 
-Refactor lớn (Model Manager, thay BiSeNet/CodeFormer không sửa engine) nằm trong [roadmap.md](../roadmap/roadmap.md) — chưa triển khai trong code hiện tại.
+## Thiếu resource/weight
+
+Kiểm tra:
+
+```text
+weights/
+```
+
+và metadata resource của Workshop.
+
+Không kết luận rằng "Workshop tự tải model" chỉ vì UI có background download;
+resource lifecycle hiện vẫn là `PARTIAL`.
+
+## Workshop không xuất hiện
+
+Kiểm tra:
+
+1. `workshops/<id>/manifest.json`;
+2. manifest có `workshop_id`;
+3. metadata UI hợp lệ;
+4. import của module UI;
+5. restart app.
+
+**Workshop discovery hiện không hot-reload.**
+
+## Pipeline
+
+Nếu pipeline persistence lỗi, kiểm tra `data/pipelines.db` và
+`app/pipeline_store.py`.
+
+## API
+
+API là entry surface riêng:
+
+```text
+api/
+```
+
+Các vấn đề production như auth/rate limiting vẫn nằm trong roadmap.
+
+## Quy tắc debug
+
+Trước khi sửa code:
+
+```text
+Claim trong docs
+      ↓
+đối chiếu code
+      ↓
+đối chiếu runtime/test
+      ↓
+mới sửa
+```
+
+Không sửa code để làm cho code "khớp docs" nếu docs đang mô tả một mục tiêu
+chưa triển khai.

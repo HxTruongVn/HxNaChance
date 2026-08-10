@@ -1,112 +1,72 @@
-# Kiến trúc `ui/`
+# UI / Reception Architecture
 
-> `ui/*_mixin.py` là phần **Reception** trong mô hình tổng — UI tổng,
-> không thuộc riêng Xưởng nào. UI của từng Xưởng (`ProcessTabMixin`,
-> `LayoutTabMixin`) đã dời sang chính thư mục Xưởng đó
-> (`workshops/photo/ui.py`, `workshops/layout/ui.py`) — Xưởng tự quản
-> UI của mình, đúng tinh thần mỗi Xưởng tự quản mọi thứ thuộc về nó
-> (UI, README, code logic, requirements). Reception giờ **TỰ PHÁT
-> HIỆN** Xưởng qua `manifest.json` (khối `ui`) — xem
-> [`app/workshop_discovery.py`](../../app/workshop_discovery.py) — chứ
-> không còn hardcode `from workshops.photo.ui import ProcessTabMixin`
-> nữa. Chi tiết cơ chế + giới hạn thật xem
-> [`meta_architecture.md`](meta_architecture.md).
+## Vai trò
 
-`app/main_ui.py` từng là 1 file 1665 dòng, 1 class `NaChanceApp` với 61
-method ("God Object"). Đã tách theo chiến lược **Mixin** (không phải
-package con độc lập kiểu `workshops/photo/`) — vì mọi method đều thao
-tác chung 1 cửa sổ Tkinter (`self.tabview`, `self.status`...), tách
-thành class riêng vẫn cần dùng chung `self`, nên dùng multiple
-inheritance thay vì composition. 2 Mixin của từng Xưởng
-(`ProcessTabMixin`, `LayoutTabMixin`) giữ nguyên chiến lược Mixin này
-dù đã dời thư mục — chỉ khác: trước đây `NaChanceApp` liệt kê thẳng tên
-2 Mixin này trong base list (`class NaChanceApp(..., ProcessTabMixin,
-LayoutTabMixin, ...)`), giờ base list được RÁP ĐỘNG lúc import
-(`*[w.mixin_class for w in _DISCOVERED_WORKSHOPS]`) — cú pháp Python
-hợp lệ (unpack list vào base list của `class`), đã test bằng cách
-khởi tạo thật `NaChanceApp` qua Xvfb, xác nhận MRO/tab đều đúng.
+`ui/` chứa UI dùng chung cho Reception/Core.
 
-## Cấu trúc file
+UI riêng của Workshop nằm trong chính Workshop.
 
-| File | Mixin | Nội dung |
-|---|---|---|
-| `utils.py` | — (hàm module-level) | `safe_float`, `safe_int`, `imwrite_unicode`, `open_folder` |
-| `widget_helpers.py` | `WidgetHelpersMixin` | `_section_header`, `_chk`, `_slider` — dùng chung nhiều tab |
-| `theme_mixin.py` | `ThemeMixin` | Load `config/presets/themes.json`, `_on_theme_change` (rebuild toàn bộ UI theo theme mới) |
-| `menu_bar_mixin.py` | `MenuBarMixin` | Thanh menu — xem [command_system.md](command_system.md) |
-| `side_panel_mixin.py` | `SidePanelMixin` | Panel phụ (preview/orient/result) |
-| `orientation_mixin.py` | `OrientationMixin` | Luồng xác nhận chiều ảnh trước khi xử lý |
-| `pipeline_mixin.py` | `PipelineMixin` | Chạy xử lý (đơn + hàng loạt) qua worker thread |
-| `config_mixin.py` | `ConfigMixin` | Đọc/ghi `~/.nachance_ai.json` |
+## Cấu trúc hiện tại
 
-**Không còn ở `ui/`** — đã dời sang đúng thư mục Xưởng, Xưởng tự quản,
-**và được Reception nạp ĐỘNG** qua `app/workshop_discovery.py` (đọc
-khối `ui` trong `manifest.json`, không hardcode tên class):
+```text
+app/main_ui.py
+    │
+    ├── WidgetHelpersMixin
+    ├── ThemeMixin
+    ├── MenuBarMixin
+    ├── SidePanelMixin
+    ├── OrientationMixin
+    ├── PipelineMixin
+    └── ConfigMixin
+          +
+    Workshop UI Mixins discovered from manifest
+```
 
-| File (vị trí mới) | Mixin | Nội dung | `workshop_id` (manifest.json) | Menu "Window" |
-|---|---|---|---|---|
-| `workshops/photo/ui.py` | `ProcessTabMixin` | Tab "🖼 Photo Processing" | `photo` (`tab_order: 1`) | `_menu_photo_content` |
-| `workshops/layout/ui.py` | `LayoutTabMixin` | Tab "🖨 Layout" | `layout` (`tab_order: 2`) | `_menu_layout_content` |
+`NaChanceApp` là facade/lifecycle của cửa sổ chính.
 
-Menu (`Window`, gộp từ 2 menu ngang hàng "Xử lý"/"Bố cục" trước đây)
-cũng theo đúng cơ chế này — mỗi Xưởng tự khai `menu_label`/
-`menu_build_method` trong `manifest.json`, chi tiết xem
-[`command_system.md`](command_system.md).
+## Discovery
 
-Quy ước tên thuộc tính tab: `self.tab_<workshop_id>` — Reception tạo
-(`setattr(self, f"tab_{w.workshop_id}", ...)`), Mixin tự đọc
-(`workshops/photo/ui.py` đọc `self.tab_photo`). Thêm Xưởng mới KHÔNG
-cần sửa `app/main_ui.py` — chỉ cần thư mục `workshops/<tên>/` +
-`manifest.json` khai đủ khối `ui`. Giới hạn thật: cần KHỞI ĐỘNG LẠI app
-để nhận Xưởng mới (`discover_workshops()` chạy lúc import module, base
-list của `class NaChanceApp` cần biết Mixin ngay lúc định nghĩa — không
-hot-reload giữa phiên đang chạy).
+`app/workshop_discovery.py`:
 
-`app/main_ui.py` (Core) giờ chỉ còn: `__init__`, lifecycle
-(`_on_close`, `_set_app_icon`, `_show_about`), title bar
-(`_build_title_bar`, `_toggle_panel`, kéo thả cửa sổ), và
-`_build_main_panel` (điểm lắp ráp gọi các tab).
-(`_build_title_bar`, `_toggle_panel`, kéo thả cửa sổ), và
-`_build_main_panel` (điểm lắp ráp gọi các tab).
+```text
+workshops/*/manifest.json
+        ↓
+metadata
+        ↓
+dynamic import of declared UI
+        ↓
+NaChanceApp inheritance
+```
 
-## Nhóm tùy chọn nâng cao
+Điều này loại bỏ việc `app/main_ui.py` phải import tên từng Workshop bằng tay.
 
-Tab "🖼 Photo Processing" (trước đây "Xử lý ảnh") chia 11 tùy chọn thành 4 nhóm, khớp đúng ranh giới
-`capability` trong `workshops/photo/model_registry.json`:
+### Giới hạn
 
-- **🧑 Khuôn mặt** — `chk_face_restore` + `sld_fidelity`, `chk_skin` +
-  `sld_skin`, `chk_eye`, `chk_teeth`
-- **🧍 Tư thế & Bố cục** — `chk_auto_rotate`, `chk_confirm_orientation`,
-  `chk_shoulder_warp`
-- **🖼 Độ phân giải & Hậu kỳ** — `chk_upscale`, `chk_remove_bg`
-- **✅ Kiểm tra & An toàn** — `chk_validate`, `chk_preview`
+Vì Python cần biết base classes khi định nghĩa `NaChanceApp`, discovery hiện
+được thực hiện ở module import time.
 
-`_get_options()` vẫn trả về 1 dict phẳng như trước — việc nhóm chỉ đổi
-hiển thị, không đổi dữ liệu gửi cho `engine.process()`.
+Do đó:
 
-## Vì sao cửa sổ tự vẽ (`overrideredirect(True)`)
+> thêm/sửa Workshop → restart app.
 
-App dùng title bar tự vẽ (logo + nút RUN + thông tin + đóng), không
-dùng khung cửa sổ hệ điều hành. Hệ quả: menu bar gốc của Tk
-(`self.config(menu=...)`) không hiển thị trên Windows khi
-`overrideredirect(True)` đang bật — xem giải pháp trong
-[command_system.md](command_system.md). Hệ quả thứ 2: mất luôn khả
-năng KÉO VIỀN để đổi kích thước (resize) — hệ điều hành không còn vẽ
-viền cửa sổ để kéo. Giải pháp: `_build_resize_grip()`
-(`app/main_ui.py`) — 1 ô nhỏ `.place()` cố định góc dưới-phải, tự tính
-lại `geometry()` khi kéo (`_start_resize`/`_do_resize`), y hệt cách
-`_start_drag`/`_do_drag` đã tự làm cho việc DI CHUYỂN cửa sổ.
+Đây là **dynamic discovery**, nhưng chưa phải **runtime hot loading**.
 
-**Bẫy thật đã gặp khi làm resize grip**: `CTkLabel` là widget TỔNG HỢP
-— khung ngoài không tự nhận sự kiện chuột, bấm/kéo thật sự xảy ra ở
-`CTkCanvas`/`Label` CON bên trong (`.bind()` gọi trên khung ngoài tự
-chuyển xuống đúng widget con, nhưng test tự động nhắm event vào khung
-ngoài sẽ KHÔNG thấy gì xảy ra — phải nhắm đúng `widget.winfo_children()[0]`
-khi viết test giả lập chuột cho bất kỳ `CTkLabel`/`CTkButton` nào).
-**Bẫy thứ 2**: `resize_grip` tạo trong `_build_title_bar()` — TRƯỚC
-`main_frame` (tạo sau, trong `_build_main_panel()`). Tk mặc định xếp
-widget tạo SAU đè lên widget tạo TRƯỚC cùng 1 parent, nên `main_frame`
-(`pack(fill="both")`) che mất góc chứa grip dù grip vẫn hiển thị đúng vị
-trí — phải gọi `self.resize_grip.lift()` SAU KHI mọi widget khác đã
-dựng xong (`__init__` VÀ `ui/theme_mixin.py::_on_theme_change`, vì
-theme đổi thì dựng lại toàn bộ UI).
+## Reception không sở hữu nghiệp vụ Workshop
+
+Reception chỉ:
+
+- hiển thị/điều hướng;
+- gọi interface đã khai báo;
+- quản lý trạng thái tổng;
+- quản lý pipeline/persistence ở Core.
+
+Không chuyển processor/model logic của Workshop vào `ui/`.
+
+## Phạm vi chưa làm
+
+- Reception độc lập hoàn toàn khỏi Tk/CustomTkinter;
+- Workshop lifecycle UI chuẩn hóa;
+- runtime hot reload;
+- capability UI schema tổng quát.
+
+Các mục này là roadmap, không phải hiện trạng.

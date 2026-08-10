@@ -1,26 +1,108 @@
 # Workshop Resource Contract
 
-## Purpose
+> Tài liệu này chỉ mô tả **ranh giới Core ↔ Workshop**.
+> Nó cố ý không đi vào implementation bên trong Workshop.
 
-A Workshop declares its own packages, models, capabilities and download sources. NaChance Core does not hard-code Workshop-specific model names or URLs.
+## Mục tiêu
 
-## Resource lifecycle
+Workshop phải tự khai báo những gì Core cần biết để:
+
+- discovery;
+- audit;
+- kiểm tra môi trường;
+- chuẩn bị resource;
+- hiển thị trạng thái.
+
+Core không nên chứa danh sách model/package riêng cho từng Workshop.
+
+## Metadata hiện có
+
+Workshop hiện có thể khai báo thông qua manifest và resource metadata:
 
 ```text
-Workshop discovery
-    -> read manifest/model registry/source registry
-    -> resolve required resources
-    -> provision missing resources
-    -> verify files
-    -> create/load Workshop engine
+Workshop
+├── identity
+├── environment
+├── UI metadata
+├── capabilities
+└── resource references
 ```
 
-The engine must not be expected to download a required weight after it has already been initialized. Missing resources may disable only the affected optional capability; required resources should be reported explicitly.
+Core đã có code đọc một phần các khai báo này.
 
-## Runtime weight ownership
+## Luồng hiện tại
 
-Workshop metadata declares the resource requirement. The physical runtime cache is owned by NaChance Core under `weights/`. This keeps the provisioner and Workshop engines on the same path and avoids downloading a model into one directory while the engine looks in another.
+```text
+manifest
+   ↓
+workshop_discovery
+   ↓
+workshop_requirements
+   ↓
+RuntimeManager
+   ↓
+report
+   ↓
+Setup / resource download khi cần
+```
 
-## Workshop independence
+## Điều đã làm
 
-A Workshop must not call another Workshop directly. Connections between Workshop inputs and outputs are owned by NaChance Core pipelines/exchange.
+`IMPLEMENTED / PARTIAL`:
+
+- dynamic Workshop discovery;
+- manifest reading;
+- requirements collection;
+- capability/model metadata collection;
+- runtime verification;
+- shared resource directory at repo level;
+- background resource download.
+
+## Điều chưa nên tuyên bố là đã có
+
+`PLANNED / PARTIAL`:
+
+- một contract schema duy nhất cho mọi resource;
+- dependency resolver hoàn chỉnh;
+- provisioning plan;
+- checksum/version state machine;
+- transactional installation;
+- resource rollback;
+- hot replacement của resource đang được dùng.
+
+## Ownership
+
+Workshop sở hữu **khai báo nhu cầu** của mình.
+
+Core/Infrastructure sở hữu việc:
+
+- kiểm tra máy;
+- điều phối setup;
+- quản lý môi trường chung;
+- lưu trữ resource theo chính sách hệ thống.
+
+Workshop không được tự ý sửa môi trường của Workshop khác.
+
+## Nguyên tắc quan trọng
+
+```text
+Declare → Resolve → Provision → Verify
+```
+
+Đây là **mô hình mục tiêu**.
+
+Trong code hiện tại, `Declare` và `Verify` đã khá rõ; `Resolve/Provision` vẫn
+đang phân tán và chưa phải một engine độc lập.
+
+## Phạm vi
+
+Không mô tả:
+
+- model adapter;
+- processor;
+- garment replacement;
+- shoulder alignment;
+- inpainting;
+- Photo pipeline nội bộ.
+
+Các phần đó được tạm thời `DEFERRED`.

@@ -1,11 +1,33 @@
-# Kiến trúc `workshops/photo/`
+# Photo Workshop — Documentation Boundary
 
-Nội dung thật (input/output, pipeline, cấu hình) đã viết đầy đủ tại
-[`../../workshops/photo/README.md`](../../workshops/photo/README.md) —
-không lặp lại ở đây, xem trực tiếp file đó.
+## Trạng thái
 
-Package đã tách từ `photo_engine.py` monolith (spec.py, utils.py,
-analyzers/, processors/, engine.py), sau đó dời từ `photo_engine/` vào
-`workshops/photo/` (mỗi Xưởng tự quản thư mục riêng) — nội dung chi
-tiết từng bước tách nằm trong lịch sử git (đã bị xoá khỏi docs/ theo
-quy ước cũ, xem docs/archive/README.md).
+`DEFERRED` đối với đợt tái cấu trúc tài liệu Core này.
+
+Photo Workshop tồn tại trong repo và có manifest/UI/implementation riêng.
+Tuy nhiên, tài liệu `docs/architecture/` ở cấp Core **không dùng chi tiết
+nội bộ của Photo Workshop để chứng minh Core đã hoàn thành kiến trúc mục tiêu**.
+
+## Core chỉ cần biết
+
+Ở cấp hệ thống, Core quan tâm:
+
+- Workshop ID;
+- manifest;
+- UI metadata;
+- capabilities;
+- environment/resource declarations;
+- input/output contract;
+- status.
+
+## Chưa đánh giá ở tài liệu này
+
+- model adapters;
+- processor architecture;
+- model loading internals;
+- shoulder alignment;
+- clothing replacement;
+- inpainting;
+- Photo-specific pipeline.
+
+Xem tài liệu bên trong `workshops/photo/` khi workstream Photo được mở lại.
