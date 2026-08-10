@@ -51,4 +51,4 @@ Photoshop) trên máy có hoặc không có GPU.
 | **Tách nền (isnet)** | Thay thế u2net mặc định, viền tóc mịn hơn; đổi màu nền trắng/xanh/đỏ/tuỳ chỉnh. |
 | **Căn chỉnh chuẩn** | Tự nhận diện mắt/mũi/cằm, xoay + scale đúng tỷ lệ đầu/mắt theo từng loại giấy tờ (CMND, hộ chiếu, visa từng nước...). |
 | **Kiểm tra chuẩn tự động** | Báo lỗi nếu đầu quá to/nhỏ, mắt nhắm, ảnh nghiêng, mắt quá gần nhau... trước khi giao khách. |
-| **Undo/Redo** | Lùi/tiến theo từng bước đã áp dụng cho ảnh đang xử lý (`Document`, xem [`../../docs/architecture/document_manager.md`](../../docs/architecture/document_manager.md)). |
+| **Undo/Redo** | Lùi/tiến theo từng bước đã áp dụng cho ảnh đang xử lý (`Document`). `Ctrl+S` lưu state hiện tại thành `.nachance-state`, gồm history + output hiện tại để có thể tiếp tục hoặc chuyển cho Workshop tương thích. |

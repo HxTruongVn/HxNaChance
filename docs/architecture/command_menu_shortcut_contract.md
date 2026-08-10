@@ -140,3 +140,55 @@ The current desktop UI now binds:
 This is the first UI migration step. The next step is to let each Workshop
 register additional Edit commands and to route all remaining menu actions
 through the shared Command Registry.
+
+
+## Ctrl+S — Save State, không chỉ Save ảnh
+
+Trong NaChance, `Ctrl+S` ở context Workshop có Document active được hiểu là
+**Save State**.
+
+Mục đích là lưu đúng trạng thái người dùng đang đứng:
+
+```text
+Execute
+  ↓
+Step 1 → Step 2 → Step 3 → Step 4
+                    ↑
+                  Undo
+                    ↑
+                 current
+                    ↓
+                 Ctrl+S
+```
+
+Nếu người dùng lùi về Step 2 rồi `Ctrl+S`, state lưu `cursor=Step 2`.
+Ảnh hiện tại ở Step 2 trở thành `current_output`, đồng thời các checkpoint
+được giữ lại để có thể Redo khi mở state.
+
+File `.nachance-state` là ZIP portable, gồm:
+
+```text
+manifest.json
+original.png
+current.png
+history/001.png
+history/002.png
+...
+```
+
+`manifest.json` chứa:
+
+- Workshop ID/version;
+- source path (chỉ metadata, không phụ thuộc đường dẫn để khôi phục);
+- cursor hiện tại;
+- capability + parameters của từng bước;
+- Workshop pipeline state.
+
+Điều này cho phép:
+
+1. lưu một nhánh xử lý cụ thể làm output;
+2. mở lại để tiếp tục/Redo;
+3. lặp lại quy trình từ state đã lưu;
+4. chuyển state cho Workshop khác nếu Workshop đó khai báo khả năng đọc format.
+
+`Ctrl+O` vẫn là Open input thông thường. `Ctrl+Shift+O` là Open Saved State.

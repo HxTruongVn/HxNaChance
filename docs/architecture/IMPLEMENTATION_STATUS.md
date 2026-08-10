@@ -47,3 +47,15 @@ Khi code thay đổi:
 | Workshop-adaptive Edit UI | PARTIAL | Edit hides unavailable Undo/Redo and supports future Workshop-provided Edit items |
 | Photo document history adapter | PLANNED | not migrated |
 | Photo execution-step undo | PLANNED | checkpoint contract only |
+
+
+## Saved State
+
+| Area | Status | Evidence |
+|---|---|---|
+| Ctrl+S Save State | IMPLEMENTED | `ui/menu_bar_mixin.py` + `workshops/photo/document.py` |
+| Portable `.nachance-state` format | IMPLEMENTED | `Document.save_state/load_state()` |
+| Save current history cursor | IMPLEMENTED | manifest `cursor` + `current.png` |
+| Preserve history for Redo | IMPLEMENTED | `history/*.png` |
+| Restore Photo state | IMPLEMENTED | generic UI fallback via `Document.load_state()` |
+| Cross-Workshop state handoff contract | PARTIAL | format carries workshop ID/state; target Workshop adapter still required |

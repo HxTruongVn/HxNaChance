@@ -86,6 +86,7 @@ class MenuBarMixin:
         # Command shortcuts: đi thẳng vào cùng action mà menu gọi.
         # Không dùng một implementation khác cho hotkey.
         self.bind_all("<Control-o>", self._shortcut_open)
+        self.bind_all("<Control-s>", self._shortcut_save_state)
         self.bind_all("<Control-z>", self._shortcut_undo)
         self.bind_all("<Control-y>", self._shortcut_redo)
 
@@ -128,6 +129,18 @@ class MenuBarMixin:
             command=self._open_active_workshop,
             state="normal" if (active_workshop and active_workshop.open_method) else "disabled",
             accelerator="Ctrl+O",
+        )
+        menu.add_command(
+            label="Open Saved State...",
+            command=self._open_saved_state,
+            accelerator="Ctrl+Shift+O",
+        )
+        menu.add_separator()
+        menu.add_command(
+            label="Save State...",
+            command=self._save_current_state,
+            state="normal" if getattr(self, "current_document", None) is not None else "disabled",
+            accelerator="Ctrl+S",
         )
         menu.add_separator()
         menu.add_command(label="Choose Save Folder...", command=self._choose_save_dir)
@@ -196,6 +209,93 @@ class MenuBarMixin:
     def _shortcut_open(self, _event=None):
         self._open_active_workshop()
         return "break"
+
+    def _shortcut_save_state(self, event=None):
+        focus = self.focus_get()
+        if self._is_text_editing_focus(focus):
+            return None
+        self._save_current_state()
+        return "break"
+
+    def _save_current_state(self):
+        """Persist the exact current Document cursor + Workshop configuration."""
+        from tkinter import filedialog, messagebox
+
+        doc = getattr(self, "current_document", None)
+        if doc is None:
+            self.status.configure(
+                text="Chưa có trạng thái để lưu.",
+                text_color=self.COLORS['text_secondary'],
+            )
+            return None
+
+        path = filedialog.asksaveasfilename(
+            title="Save NaChance State",
+            defaultextension=".nachance-state",
+            filetypes=[("NaChance State", "*.nachance-state"), ("All files", "*.*")],
+        )
+        if not path:
+            return None
+
+        state = {}
+        getter = getattr(self, "get_pipeline_state", None)
+        if callable(getter):
+            try:
+                state = getter() or {}
+            except Exception:
+                state = {}
+
+        try:
+            saved = doc.save_state(
+                path,
+                workshop_id=getattr(self, "workshop_id", "photo"),
+                workshop_version=getattr(self, "workshop_version", None),
+                workshop_state=state,
+            )
+            self.status.configure(
+                text=f"Đã lưu trạng thái tại bước {doc.cursor + 1}/{len(doc.steps)}.",
+                text_color=self.COLORS['success'],
+            )
+            return saved
+        except Exception as exc:
+            messagebox.showerror("Save State", f"Không thể lưu trạng thái:\n{exc}")
+            return None
+
+    def _open_saved_state(self):
+        """Restore a portable state into the active Workshop when supported."""
+        from tkinter import filedialog, messagebox
+
+        path = filedialog.askopenfilename(
+            title="Open NaChance State",
+            filetypes=[("NaChance State", "*.nachance-state"), ("All files", "*.*")],
+        )
+        if not path:
+            return None
+
+        doc = getattr(self, "current_document", None)
+        loader = getattr(self, "load_saved_state", None)
+        if callable(loader):
+            try:
+                return loader(path)
+            except Exception as exc:
+                messagebox.showerror("Open Saved State", f"Không thể mở trạng thái:\n{exc}")
+                return None
+
+        # Generic fallback: Photo Document is restored directly when present.
+        try:
+            from workshops.photo.document import Document
+            restored, manifest = Document.load_state(path)
+            self.current_document = restored
+            self.last_result = restored.current_image
+            self._show_preview()
+            self.status.configure(
+                text=f"Đã mở trạng thái: bước {restored.cursor + 1}/{len(restored.steps)}.",
+                text_color=self.COLORS['success'],
+            )
+            return manifest
+        except Exception as exc:
+            messagebox.showerror("Open Saved State", f"Workshop hiện tại chưa hỗ trợ state này:\n{exc}")
+            return None
 
     def _shortcut_undo(self, event=None):
         # Khi người dùng đang gõ vào Entry/Text, nhường Ctrl+Z cho widget đó.

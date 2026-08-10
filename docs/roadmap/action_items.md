@@ -149,3 +149,11 @@ Adapt existing Workshop document state to `HistoryProvider`.
 `PLANNED`
 
 Expose safe pipeline checkpoints/artifacts as reversible execution history.
+
+
+## P1.12 — Portable Saved State
+`PARTIAL`
+
+Photo can save/load `.nachance-state` including current history cursor and
+checkpoint images. Cross-Workshop handoff requires the receiving Workshop to
+declare compatibility and implement its state adapter.

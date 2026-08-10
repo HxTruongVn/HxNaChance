@@ -283,3 +283,7 @@ Xem file `LICENSE` trong repository.
 
 
 > UI note: File > Open uses `Ctrl+O`; Edit Undo/Redo use `Ctrl+Z`/`Ctrl+Y` when the active Workshop exposes those history steps. Menu and shortcut integration is being migrated incrementally.
+
+
+### State persistence
+`Ctrl+S` saves the active Workshop Document state as a portable `.nachance-state` bundle; `Ctrl+Shift+O` restores a saved state when the active Workshop supports it.
