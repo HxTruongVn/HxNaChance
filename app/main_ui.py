@@ -265,6 +265,131 @@ class NaChanceApp(
 
         threading.Thread(target=_worker, daemon=True, name="NaChanceWeightDownload").start()
 
+    def _show_resource_compatibility(self):
+        """System -> Resource Compatibility. Policy is editable here and
+        resource compatibility is re-evaluated immediately after Apply.
+        Workshop manifests keep nominal requirements; tolerance belongs to
+        NaChance system policy.
+        """
+        from app.resource_policy import load_policy, save_policy
+
+        policy = load_policy()
+        # Detect hardware once so controls reflect the actual machine.
+        # VRAM is only meaningful when a dedicated/usable NVIDIA VRAM value
+        # can be detected; otherwise the control is visibly disabled rather
+        # than pretending the machine has "0 GB VRAM".
+        from setup.runtime_manager import RuntimeManager
+        try:
+            hardware_report = RuntimeManager(weights_dir="weights").detect()
+        except Exception:
+            hardware_report = None
+        has_vram = bool(hardware_report and hardware_report.vram_gb is not None)
+
+        resources = [
+            ("ram", "RAM tolerance (%)", "Example: 98% means an 8 GB requirement accepts down to 7.84 GB.", True),
+            ("vram", "VRAM tolerance (%)", "Applied to min_vram_gb; disabled when no usable dedicated VRAM is detected.", has_vram),
+            ("storage", "Storage tolerance (%)", "Applied to min_storage_gb free space on the NaChance volume.", True),
+            ("cpu_cores", "CPU cores tolerance (%)", "Applied to min_cpu_cores (logical cores).", True),
+        ]
+
+        dlg = ctk.CTkToplevel(self)
+        dlg.title("Resource Compatibility")
+        dlg.geometry("700x620")
+        dlg.configure(fg_color=self.COLORS['bg_dark'])
+        dlg.transient(self)
+        dlg.grab_set()
+
+        ctk.CTkLabel(
+            dlg, text="System Resource Compatibility",
+            font=("Segoe UI", 16, "bold"),
+            text_color=self.COLORS['text_primary'],
+        ).pack(anchor="w", padx=20, pady=(18, 4))
+        ctk.CTkLabel(
+            dlg,
+            text="Các Workshop khai báo nhu cầu danh nghĩa. NaChance dùng policy này để cho phép sai số đo/khác biệt báo cáo tài nguyên.",
+            wraplength=650, justify="left", text_color=self.COLORS['text_secondary']
+        ).pack(anchor="w", padx=20, pady=(0, 12))
+
+        form = ctk.CTkFrame(dlg, fg_color=self.COLORS['bg_card'], corner_radius=10)
+        form.pack(fill="x", padx=20, pady=(0, 12))
+        entries = {}
+        for key, label, hint_text, enabled in resources:
+            row = ctk.CTkFrame(form, fg_color="transparent")
+            row.pack(fill="x", padx=14, pady=(10, 2))
+            ctk.CTkLabel(row, text=label, width=190, anchor="w").pack(side="left")
+            entry = ctk.CTkEntry(row, width=120)
+            current = float(policy["resource_tolerance"].get(key, 0.98)) * 100.0
+            entry.insert(0, f"{current:.2f}")
+            entry.pack(side="left")
+            ctk.CTkLabel(row, text="%", width=24, anchor="w").pack(side="left", padx=(5, 0))
+            entries[key] = entry
+            if not enabled:
+                entry.configure(state="disabled")
+                ctk.CTkLabel(row, text="Không áp dụng", text_color=self.COLORS['text_secondary'], anchor="w").pack(side="left", padx=(10, 0))
+            ctk.CTkLabel(form, text=hint_text, text_color=self.COLORS['text_secondary'], anchor="w").pack(fill="x", padx=14, pady=(0, 7))
+
+        result_label = ctk.CTkLabel(
+            dlg, text="Chưa đánh giá lại sau khi thay đổi.", justify="left", anchor="w",
+            wraplength=650, text_color=self.COLORS['text_secondary']
+        )
+        result_label.pack(fill="x", padx=20, pady=(0, 10))
+
+        buttons = ctk.CTkFrame(dlg, fg_color="transparent")
+        buttons.pack(fill="x", padx=20, pady=(0, 18))
+
+        def reevaluate():
+            """Detect fresh hardware resources and re-check every Workshop."""
+            try:
+                from setup.runtime_manager import RuntimeManager, verify_workshop_environment
+                from pathlib import Path
+                root = Path(__file__).resolve().parent.parent
+                report = RuntimeManager(weights_dir="weights").detect()
+                problems = []
+                workshops_dir = root / "workshops"
+                for manifest_path in sorted(workshops_dir.glob("*/manifest.json")):
+                    problems.extend(verify_workshop_environment(str(manifest_path), report))
+                self.workshop_problems = problems
+                lines = [
+                    f"RAM: {report.ram_gb if report.ram_gb is not None else '?'} GB",
+                    f"VRAM: {report.vram_gb if report.vram_gb is not None else '?'} GB",
+                    f"Storage trống: {report.storage_free_gb if report.storage_free_gb is not None else '?'} GB",
+                    f"CPU cores: {report.cpu_cores if report.cpu_cores is not None else '?'}",
+                ]
+                if problems:
+                    result_label.configure(
+                        text="⚠️ Máy chưa đủ yêu cầu của một số Xưởng:\n" + "\n".join("• " + x for x in problems) + "\n\n" + " | ".join(lines),
+                        text_color=self.COLORS['warning'])
+                    self.status.configure(text=f"⚠️ Resource Compatibility: {len(problems)} vấn đề", text_color=self.COLORS['warning'])
+                else:
+                    result_label.configure(text="✅ Tất cả Workshop hiện tại đều đạt Resource Compatibility.\n" + " | ".join(lines), text_color=self.COLORS['success'])
+                    self.status.configure(text="✓ Resource Compatibility: tất cả Workshop đều đạt", text_color=self.COLORS['success'])
+            except Exception as exc:
+                result_label.configure(text=f"⚠ Không thể đánh giá lại: {exc}", text_color=self.COLORS['warning'])
+
+        def save():
+            try:
+                values = {}
+                for key, entry in entries.items():
+                    percent = float(entry.get().strip())
+                    if not 1.0 <= percent <= 100.0:
+                        raise ValueError(f"{key}: 1–100")
+                    values[key] = percent / 100.0
+            except ValueError:
+                messagebox.showerror("Invalid value", "Mỗi tolerance phải nằm trong khoảng 1–100%.", parent=dlg)
+                return
+            policy["resource_tolerance"].update(values)
+            try:
+                save_policy(policy)
+            except OSError as exc:
+                messagebox.showerror("Save failed", str(exc), parent=dlg)
+                return
+            # Không restart: policy mới có hiệu lực ngay và được đánh giá lại.
+            reevaluate()
+
+        ctk.CTkButton(buttons, text="Apply", command=save,
+                      fg_color=self.COLORS['accent'], hover_color=self.COLORS['accent_hover']).pack(side="right", padx=(8, 0))
+        ctk.CTkButton(buttons, text="Close", command=dlg.destroy).pack(side="right")
+
     def _show_environment_report(self):
         """Menu System -> Show Environment Report. Trước đây chỉ in ra
         console lúc khởi động (mất luôn nếu đóng console/không kịp xem)

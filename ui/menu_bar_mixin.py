@@ -200,6 +200,7 @@ class MenuBarMixin:
         — không viết logic mới ở đây, đúng nguyên tắc chung của file này."""
         menu.add_command(label="Retry Weight Download", command=self._start_background_weight_download)
         menu.add_command(label="Install Missing Packages...", command=self._install_missing_packages)
+        menu.add_command(label="Resource Compatibility...", command=self._show_resource_compatibility)
         menu.add_separator()
         menu.add_command(label="Show Environment Report", command=self._show_environment_report)
         menu.add_command(label="Open Weights Folder", command=self._open_weights_folder)

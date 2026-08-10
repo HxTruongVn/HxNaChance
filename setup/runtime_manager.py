@@ -31,7 +31,9 @@ nó chỉ BÁO CÁO model nào đang thiếu.
 from __future__ import annotations
 
 import importlib
+import os
 import platform
+import shutil
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -101,6 +103,9 @@ class RuntimeReport:
     torch_build_info: Optional[str] = None  # vd "torch 2.1.0 (CUDA build: KHÔNG CÓ — bản CPU-only)"
     gpu_hardware_detected: Optional[str] = None  # tên GPU thật qua nvidia-smi, độc lập với torch
     ram_gb: Optional[float] = None  # RAM vật lý thật của máy, None nếu không dò được
+    vram_gb: Optional[float] = None  # VRAM GPU NVIDIA, None nếu không dò được
+    storage_free_gb: Optional[float] = None  # dung lượng trống trên ổ chứa NaChance
+    cpu_cores: Optional[int] = None  # số logical CPU cores
     package_status: Dict[str, bool] = field(default_factory=dict)
     model_status: Dict[str, bool] = field(default_factory=dict)
     feature_available: Dict[str, bool] = field(default_factory=dict)
@@ -135,6 +140,9 @@ class RuntimeReport:
                           "Rất có thể do cài nhầm bản torch CPU-only — gỡ torch/"
                           "torchvision rồi cài lại đúng bản CUDA.")
         lines.append(f"RAM: {self.ram_gb} GB" if self.ram_gb is not None else "RAM: (không dò được)")
+        lines.append(f"VRAM: {self.vram_gb} GB" if self.vram_gb is not None else "VRAM: (không dò được)")
+        lines.append(f"Storage trống: {self.storage_free_gb} GB" if self.storage_free_gb is not None else "Storage: (không dò được)")
+        lines.append(f"CPU logical cores: {self.cpu_cores}" if self.cpu_cores is not None else "CPU cores: (không dò được)")
         lines.append("")
         lines.append("Packages:")
         for name, ok in self.package_status.items():
@@ -184,6 +192,9 @@ class RuntimeManager:
         device, gpu_name, torch_build_info = self._detect_device(package_status.get("torch", False))
         gpu_hardware_detected = self._detect_gpu_hardware()
         ram_gb = self._detect_ram_gb()
+        vram_gb = self._detect_vram_gb()
+        storage_free_gb = self._detect_storage_free_gb()
+        cpu_cores = self._detect_cpu_cores()
         model_status = self._detect_models()
         feature_available = self._detect_features(package_status, model_status)
 
@@ -199,6 +210,9 @@ class RuntimeManager:
             torch_build_info=torch_build_info,
             gpu_hardware_detected=gpu_hardware_detected,
             ram_gb=ram_gb,
+            vram_gb=vram_gb,
+            storage_free_gb=storage_free_gb,
+            cpu_cores=cpu_cores,
             package_status=package_status,
             model_status=model_status,
             feature_available=feature_available,
@@ -256,6 +270,38 @@ class RuntimeManager:
         except Exception:
             pass
         return None
+
+    @staticmethod
+    def _detect_vram_gb() -> Optional[float]:
+        """Dò tổng VRAM GPU NVIDIA qua nvidia-smi, độc lập với torch."""
+        import subprocess
+        try:
+            result = subprocess.run(
+                ["nvidia-smi", "--query-gpu=memory.total", "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=5)
+            if result.returncode == 0 and result.stdout.strip():
+                values = [float(x.strip()) for x in result.stdout.splitlines() if x.strip()]
+                if values:
+                    return round(max(values) / 1024.0, 2)
+        except (FileNotFoundError, OSError, ValueError, subprocess.TimeoutExpired):
+            pass
+        return None
+
+    @staticmethod
+    def _detect_storage_free_gb() -> Optional[float]:
+        """Dò dung lượng trống trên volume chứa mã NaChance."""
+        try:
+            root = Path(__file__).resolve().parent.parent
+            return round(shutil.disk_usage(root).free / (1024 ** 3), 2)
+        except (OSError, ValueError):
+            return None
+
+    @staticmethod
+    def _detect_cpu_cores() -> Optional[int]:
+        try:
+            return os.cpu_count()
+        except Exception:
+            return None
 
     @staticmethod
     def _detect_gpu_hardware() -> Optional[str]:
@@ -382,20 +428,15 @@ def verify_workshop_environment(manifest_path, report: "RuntimeReport") -> List[
             pass  # manifest ghi sai định dạng version — bỏ qua, không sập
 
     # min_ram_gb
-    # RAM vật lý thường được hệ điều hành báo lệch một chút so với
-    # "mốc danh nghĩa" (4/8/16/32GB). Không nên biến một chênh lệch
-    # rất nhỏ như 7.9GB so với mốc 8GB thành lỗi cứng.
-    # Mặc định cho phép dung sai 2% quanh mốc yêu cầu; Workshop có thể
-    # ghi đè bằng environment.ram_tolerance_ratio nếu trường hợp đặc biệt
-    # cần mức khác. min_ram_gb vẫn là mốc danh nghĩa, không bị thay đổi.
+    # Workshop giữ mốc RAM danh nghĩa. Dung sai là SYSTEM POLICY, không
+    # nằm trong manifest của Workshop. Điều này cho phép quản trị viên
+    # điều chỉnh chính sách mà không phải sửa từng Workshop.
     min_ram = env.get("min_ram_gb")
     if min_ram is not None:
         try:
             min_ram = float(min_ram)
-            tolerance_ratio = float(env.get("ram_tolerance_ratio", 0.98))
-            if not 0 < tolerance_ratio <= 1:
-                tolerance_ratio = 0.98
-            effective_min_ram = min_ram * tolerance_ratio
+            from app.resource_policy import get_effective_minimum
+            effective_min_ram = get_effective_minimum(min_ram, "ram")
         except (TypeError, ValueError):
             min_ram = None
 
@@ -409,6 +450,29 @@ def verify_workshop_environment(manifest_path, report: "RuntimeReport") -> List[
                     f"[{workshop_name}] Cần tối thiểu {min_ram:g}GB RAM "
                     f"(ngưỡng chấp nhận {effective_min_ram:.2f}GB), "
                     f"máy có {report.ram_gb:g}GB")
+
+    # VRAM / Storage / CPU cores — cùng dùng SYSTEM POLICY tolerance.
+    for env_key, report_value, resource_key, label, unit in (
+        ("min_vram_gb", report.vram_gb, "vram", "VRAM", "GB"),
+        ("min_storage_gb", report.storage_free_gb, "storage", "Storage trống", "GB"),
+        ("min_cpu_cores", report.cpu_cores, "cpu_cores", "CPU logical cores", "cores"),
+    ):
+        required = env.get(env_key)
+        if required is None:
+            continue
+        try:
+            required = float(required)
+            from app.resource_policy import get_effective_minimum
+            effective = get_effective_minimum(required, resource_key)
+        except (TypeError, ValueError):
+            continue
+        if report_value is None:
+            problems.append(f"[{workshop_name}] Không dò được {label} — bỏ qua kiểm tra (yêu cầu {required:g}{unit})")
+        elif float(report_value) < effective:
+            actual = f"{report_value:g}"
+            problems.append(
+                f"[{workshop_name}] Cần tối thiểu {required:g}{unit} {label} "
+                f"(ngưỡng chấp nhận {effective:.2f}{unit}), máy có {actual}{unit}")
 
     # device_preference: "auto" không cần kiểm tra gì (chấp nhận cả
     # cpu lẫn cuda). Chỉ báo khi Xưởng ép buộc "cuda" mà máy không có.

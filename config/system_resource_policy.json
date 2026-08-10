@@ -1,0 +1,8 @@
+{
+  "resource_tolerance": {
+    "ram": 0.98,
+    "vram": 0.98,
+    "storage": 0.98,
+    "cpu_cores": 0.98
+  }
+}
