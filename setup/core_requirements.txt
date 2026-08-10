@@ -1,0 +1,3 @@
+# NaChance Core runtime dependencies
+Pillow
+customtkinter

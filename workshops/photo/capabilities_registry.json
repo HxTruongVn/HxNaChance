@@ -1,0 +1,49 @@
+{
+  "face_parser": {
+    "packages": [
+      "torch",
+      "torchvision"
+    ],
+    "models": [
+      "79999_iter.pth"
+    ]
+  },
+  "face_restorer": {
+    "packages": [
+      "torch",
+      "torchvision",
+      "codeformer-pip"
+    ],
+    "models": [
+      "codeformer.pth"
+    ]
+  },
+  "upscaler": {
+    "packages": [
+      "torch",
+      "torchvision",
+      "realesrgan",
+      "facexlib"
+    ],
+    "models": [
+      "RealESRGAN_x2plus.pth"
+    ]
+  },
+  "background_remover": {
+    "packages": [
+      "rembg",
+      "onnxruntime"
+    ],
+    "models": [
+      "isnet-general-use.onnx"
+    ]
+  },
+  "pose_estimator": {
+    "packages": [
+      "mediapipe"
+    ],
+    "models": [
+      "pose_landmarker_lite.task"
+    ]
+  }
+}

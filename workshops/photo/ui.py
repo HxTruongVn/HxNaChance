@@ -201,13 +201,6 @@ class ProcessTabMixin:
                                         text_color=self.COLORS['accent'], corner_radius=8)
         self.btn_batch.pack(side="left", fill="x", expand=True, padx=(4, 0))
 
-        self.btn_to_layout = ctk.CTkButton(fa, text="➡ Đưa sang Xếp in", command=self._send_to_layout,
-                                            height=35, fg_color=self.COLORS['bg_card'],
-                                            hover_color=self.COLORS['bg_hover'], border_width=1,
-                                            border_color=self.COLORS['success'], font=self.F_MEDIUM,
-                                            text_color=self.COLORS['success'], corner_radius=8)
-        self.btn_to_layout.pack(fill="x")
-
         self.btn_preview = ctk.CTkButton(tab, text="👁 Xem trước", command=self._show_preview,
                                           height=35, fg_color=self.COLORS['bg_card'],
                                           hover_color=self.COLORS['bg_hover'], border_width=1,
@@ -264,6 +257,24 @@ class ProcessTabMixin:
             self.save_dir = folder.replace("\\", "/")
             self.lbl_save_dir.configure(text=self.save_dir)
             self._save_config()
+
+    def get_pipeline_state(self):
+        """Snapshot current Photo Workshop options for a Core-owned Pipeline."""
+        state={}
+        if hasattr(self,"combo_preset"): state["preset"]=self.combo_preset.get()
+        if hasattr(self,"bg_mode"): state["background_mode"]=self.bg_mode.get()
+        if hasattr(self,"entry_hex"): state["background_hex"]=self.entry_hex.get().strip()
+        for name in ("chk_face_restore","chk_skin","chk_eye","chk_teeth","chk_auto_rotate","chk_confirm_orientation","chk_shoulder_warp","chk_upscale","chk_remove_bg","chk_validate","chk_preview"):
+            w=getattr(self,name,None)
+            if w is not None: state[name]=bool(w.get())
+        for name in ("sld_fidelity","sld_skin"):
+            w=getattr(self,name,None)
+            if w is not None: state[name]=float(w.get())
+        for name in ("sld_tỷ_lệ_mặt","sld_độ_cao_mặt","sld_chất_lượng"):
+            w=getattr(self,name,None)
+            if w is not None: state[name]=float(w.get())
+        if hasattr(self,"entry_dpi"): state["dpi"]=self.entry_dpi.get().strip()
+        return state
 
     def _get_bg_color(self):
         mode = self.bg_mode.get()

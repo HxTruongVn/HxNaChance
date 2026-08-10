@@ -34,7 +34,8 @@
     "_comment": "Nguồn sự thật thật sự — xem trực tiếp 2 file này (cùng thư mục, Xưởng tự quản), KHÔNG chép lại nội dung ở đây. Trước đây ở config/presets/, đã dời về đây.",
     "registry_file": "model_registry.json",
     "weight_sources_file": "weights_sources.json",
-    "weights_directory": "weights/"
+    "weights_directory": "weights/",
+    "capabilities_file": "capabilities_registry.json"
   },
   "default_spec": "13x18",
   "output_settings": {
@@ -43,5 +44,10 @@
     "dpi": 300,
     "auto_save": true
   },
-  "about_file": "ABOUT.md"
+  "about_file": "ABOUT.md",
+  "io": {
+    "produces": [
+      "image"
+    ]
+  }
 }

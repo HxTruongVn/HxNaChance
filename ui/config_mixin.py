@@ -7,8 +7,21 @@ khỏi workshops/layout/ui.py (cùng phụ thuộc, xem mục 4.2).
 """
 import json
 
-from workshops.layout.print_layout import LAYOUT_PRESETS
-from workshops.photo import SPEC_PRESETS
+
+# Workshop data is optional. Core UI must import even when no Workshop is installed.
+def _get_spec_presets():
+    try:
+        from workshops.photo import SPEC_PRESETS
+        return SPEC_PRESETS
+    except Exception:
+        return {}
+
+def _get_layout_presets():
+    try:
+        from workshops.layout.print_layout import LAYOUT_PRESETS
+        return LAYOUT_PRESETS
+    except Exception:
+        return {}
 from ui.utils import safe_float, safe_int
 
 
@@ -26,7 +39,7 @@ class ConfigMixin:
                 # nhớ giữa các lần mở app, mọi checkbox/slider/preset ở tab
                 # Xử lý ảnh reset về mặc định code mỗi lần khởi động lại.
                 pc = cfg.get("process", {})
-                if "preset" in pc and hasattr(self, "combo_preset") and pc["preset"] in SPEC_PRESETS:
+                if "preset" in pc and hasattr(self, "combo_preset") and pc["preset"] in _get_spec_presets():
                     self.combo_preset.set(pc["preset"])
                     self._update_preset_info()  # set() không tự bắn command=, phải gọi tay
                 if "bg_mode" in pc and hasattr(self, "bg_mode"):

@@ -108,15 +108,12 @@ except SystemExit:
     raise
 except Exception:
     print("=" * 60)
-    print("LỖI KHỞI ĐỘNG — KIỂM TRA CÁC VẤN ĐỀ SAU:")
+    print("LỖI KHỞI ĐỘNG CORE — TRACEBACK:")
     print("=" * 60)
     traceback.print_exc()
     print("=" * 60)
-    print("\nCác nguyên nhân phổ biến:")
-    print("1. Chưa cài dependencies:  pip install -r requirements.txt")
-    print("2. Chưa cài customtkinter: pip install customtkinter")
-    print("3. Chưa cài torch:         pip install torch torchvision")
-    print("4. Lỗi import engine:    kiểm tra console phía trên")
+    print("\nNaChance Core không thể khởi động.")
+    print("Không có Workshop nào được phép làm lỗi Core.")
     input("\nNhấn Enter để thoát...")
     sys.exit(1)
 

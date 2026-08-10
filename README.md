@@ -196,7 +196,6 @@ python app/main.py
 2. **CTkEntry/CTkCheckBox**: Không còn gọi `.set()` (không tồn tại), dùng `delete+insert` / `select+deselect`.
 3. **`save_layout` kwargs**: Chỉ truyền đúng 3 tham số.
 4. **Timer leak**: Lưu `after_id` và hủy trước khi đặt timer mới.
-5. **`_send_to_layout`**: Luôn cập nhật ảnh mới nhất.
 6. **Xoay align**: Đã fix `-angle` trong `getRotationMatrix2D`.
 7. **Lazy loading**: Engine không crash khi thiếu weights/dependencies — tự chuyển Lite Mode.
 8. **Global exception handler**: `app/main.py` bắt lỗi toàn cục, log chi tiết ra console.

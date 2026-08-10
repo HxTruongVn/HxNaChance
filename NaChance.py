@@ -243,10 +243,13 @@ def main():
     log.info("\n" + "=" * 60)
     if env_status["can_run"]:
         log.info("✅ Môi trường sẵn sàng")
-        if env_status["can_run_full_ai"]:
-            log.info("   Full AI Mode — all features available")
+        if not env_status.get("workshops"):
+            log.info("   Core Mode — No Workshops")
+            log.info("   Không có Workshop nào được phát hiện.")
+        elif env_status["can_run_full_ai"]:
+            log.info("   Full Mode — declared Workshop capabilities available")
         else:
-            log.info("   Lite Mode — AI features disabled")
+            log.info("   Compatibility Mode — một số Workshop chưa đủ yêu cầu")
         log.info("\n▶️  Khởi động ứng dụng...")
         log.info("=" * 60 + "\n")
         run_main()

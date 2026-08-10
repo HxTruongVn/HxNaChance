@@ -1,12 +1,4 @@
-# Requirements TỔNG cho cả app — mỗi Xưởng giờ tự quản requirements
-# riêng (workshops/<tên xưởng>/requirements.txt), file này chỉ gom lại
-# + phần dùng chung ở tầng Bootstrap (không thuộc riêng Xưởng nào).
-#
-# Cài lẻ 1 Xưởng (không cần cả app): pip install -r workshops/photo/requirements.txt
--r ../workshops/photo/requirements.txt
--r ../workshops/layout/requirements.txt
-
-# Bootstrap — tải weight, không thuộc Xưởng nào (setup/setup_models.py)
-tqdm>=4.65.0
-requests>=2.31.0
-gdown>=4.7.0
+# Compatibility file.
+# Workshop dependencies are NOT maintained here.
+# setup/setup_models.py scans workshops/*/requirements.txt dynamically.
+-r core_requirements.txt

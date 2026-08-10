@@ -207,6 +207,24 @@ class LayoutTabMixin:
                                                text_color=self.COLORS['info'], corner_radius=8)
         self.btn_layout_print.pack(fill="x")
 
+    def receive_input(self, source_path):
+        """Core Exchange API: nhận một ảnh từ NaChance Core.
+
+        Workshop Layout không biết Workshop nguồn là ai; Core chịu trách
+        nhiệm kết nối các Workshop.
+        """
+        source_path = os.path.abspath(str(source_path))
+        if not os.path.isfile(source_path):
+            raise FileNotFoundError(source_path)
+        self.layout_src_path = source_path
+        if hasattr(self, "lbl_layout_src"):
+            self.lbl_layout_src.configure(text=os.path.basename(source_path))
+        if hasattr(self, "tabview"):
+            try:
+                self.tabview.set("🖨 Layout")
+            except Exception:
+                pass
+
     # ===== HELPERS =====
     def _choose_layout_src(self):
         path = filedialog.askopenfilename(title="Chọn ảnh nguồn",

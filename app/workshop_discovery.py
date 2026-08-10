@@ -90,3 +90,35 @@ def discover_workshops(workshops_dir: Optional[Path] = None) -> List[WorkshopUI]
 
     found.sort(key=lambda w: w.tab_order)
     return found
+
+
+def discover_workshop_at(workshop_dir: Path) -> Optional[WorkshopUI]:
+    """Discover exactly one Workshop directory without touching the rest."""
+    workshop_dir = Path(workshop_dir)
+    manifest_path = workshop_dir / "manifest.json"
+    if not manifest_path.is_file():
+        return None
+    try:
+        with open(manifest_path, encoding="utf-8") as f:
+            manifest = json.load(f)
+        ui = manifest.get("ui") or {}
+        if not ui.get("module") or not ui.get("mixin_class"):
+            return None
+        module = importlib.import_module(ui["module"])
+        mixin_class = getattr(module, ui["mixin_class"])
+        return WorkshopUI(
+            workshop_id=manifest.get("workshop_id", workshop_dir.name),
+            workshop_name=manifest.get("workshop_name", workshop_dir.name),
+            description=manifest.get("description", ""),
+            about_path=(manifest_path.parent / manifest["about_file"]).resolve() if manifest.get("about_file") else None,
+            mixin_class=mixin_class,
+            build_method=ui["build_method"],
+            tab_title=ui["tab_title"],
+            tab_order=ui.get("tab_order", 999),
+            menu_label=ui.get("menu_label"),
+            menu_build_method=ui.get("menu_build_method"),
+            open_method=ui.get("open_method"),
+        )
+    except Exception as exc:
+        print(f"[WorkshopDiscovery] ⚠ Bỏ qua {manifest_path}: {exc}")
+        return None

@@ -40,9 +40,23 @@ from config.model_registry import load_registry, get_capability
 
 
 class ModelManager:
-    def __init__(self, weights_dir, registry: Optional[dict] = None):
+    def __init__(self, weights_dir, registry: Optional[dict] = None, registry_path: Optional[Path] = None):
         self.weights_dir = Path(weights_dir)
-        self.registry = registry if registry is not None else load_registry()
+        if registry is not None:
+            self.registry = registry
+        elif registry_path is not None:
+            self.registry = load_registry(registry_path)
+        else:
+            self.registry = self._discover_registries()
+
+    @staticmethod
+    def _discover_registries() -> dict:
+        """Ghép registry từ các Workshop đang tồn tại; Core không biết tên Workshop."""
+        project_root = Path(__file__).resolve().parent.parent
+        merged = {}
+        for path in sorted(project_root.glob("workshops/*/model_registry.json")):
+            merged.update(load_registry(path))
+        return merged
 
     def weight_path(self, capability: str) -> Optional[Path]:
         """Đường dẫn đầy đủ tới file weight của 1 capability, tra theo

@@ -22,75 +22,46 @@ from typing import Dict, List, Optional
 
 _REQUIRED_KEYS = ("provider", "version", "adapter", "weight")
 
-# Fallback an toàn nếu workshops/photo/model_registry.json thiếu/hỏng — khớp với
-# 4 capability BẮT BUỘC hiện có trong package workshops/photo/ (chưa tính
-# pose_estimator vì đó là tính năng tuỳ chọn, không cần trong fallback tối
-# thiểu).
-_REGISTRY_FALLBACK = {
-    "face_parser": {
-        "provider": "bisenet", "version": "1.0",
-        "adapter": "bisenet_face_parser", "weight": "79999_iter.pth",
-        "optional": False,
-    },
-    "face_restorer": {
-        "provider": "codeformer", "version": "1.0",
-        "adapter": "codeformer_face_restorer", "weight": "codeformer.pth",
-        "optional": False,
-    },
-    "upscaler": {
-        "provider": "realesrgan", "version": "1.0",
-        "adapter": "realesrgan_upscaler", "weight": "RealESRGAN_x2plus.pth",
-        "optional": False,
-    },
-    "background_remover": {
-        "provider": "isnet", "version": "1.0",
-        "adapter": "isnet_background_remover", "weight": "isnet-general-use.onnx",
-        "optional": False,
-    },
-}
-
-
-def _photo_workshop_dir() -> Path:
-    # config/model_registry.py -> workshops/photo/ — registry.py Ở LẠI
-    # config/ (cơ chế đọc dùng chung, Infrastructure), nhưng DỮ LIỆU nó
-    # đọc đã dời sang workshops/photo/ (Xưởng tự quản model_registry.json/
-    # weights_sources.json của mình — trước đây ở config/presets/).
-    return Path(__file__).parent.parent / "workshops" / "photo"
-
+# Core không có fallback capability của bất kỳ Workshop nào.
+# Workshop tự quản model_registry.json; thiếu/hỏng => registry rỗng.
 
 def load_registry(registry_path: Optional[Path] = None) -> Dict[str, dict]:
-    """Đọc workshops/photo/model_registry.json. Chỉ nhận entry có đủ field bắt
-    buộc — 1 capability khai sai (lỗi gõ tay JSON) không được làm hỏng
-    toàn bộ registry. Trả về fallback built-in nếu file thiếu/hỏng."""
-    path = registry_path or (_photo_workshop_dir() / "model_registry.json")
+    """Đọc registry do Workshop/caller cung cấp. Core không chọn Workshop mặc định."""
+    if registry_path is None:
+        return {}
+    path = Path(registry_path)
     try:
         with open(path, "r", encoding="utf-8") as f:
             raw = json.load(f)
+        if not isinstance(raw, dict):
+            raise ValueError("registry phải là object JSON")
         result = {}
         for name, info in raw.items():
+            if not isinstance(info, dict):
+                continue
             missing = [k for k in _REQUIRED_KEYS if k not in info]
             if missing:
                 print(f"[MODEL_REGISTRY] ⚠ Bỏ qua capability '{name}': thiếu field {missing}")
                 continue
             result[name] = info
-        if not result:
-            raise ValueError("File model_registry.json rỗng hoặc không có capability hợp lệ")
         return result
     except Exception as e:
-        print(f"[MODEL_REGISTRY] ⚠ Không đọc được {path} ({e}) — "
-              f"dùng {len(_REGISTRY_FALLBACK)} capability mặc định built-in.")
-        return dict(_REGISTRY_FALLBACK)
+        print(f"[MODEL_REGISTRY] ⚠ Không đọc được {path} ({e}) — registry rỗng.")
+        return {}
+
 
 
 def validate_weight_refs(registry: Dict[str, dict],
                           weights_manifest_path: Optional[Path] = None) -> List[str]:
     """Đối chiếu field 'weight' của mỗi capability với
-    workshops/photo/weights_sources.json — bắt lỗi LỆCH DỮ LIỆU giữa 2 file (ví
+    weights_sources.json do Workshop — bắt lỗi LỆCH DỮ LIỆU giữa 2 file (ví
     dụ registry trỏ tới 1 tên weight đã đổi/xoá bên weights_sources.json
     mà quên cập nhật). Trả về danh sách cảnh báo dạng chuỗi (rỗng nếu mọi
     thứ khớp) — hàm này KHÔNG raise, để 1 registry lệch không làm crash
     ứng dụng, chỉ để phát hiện sớm lúc dev/test."""
-    manifest_path = weights_manifest_path or (_photo_workshop_dir() / "weights_sources.json")
+    manifest_path = Path(weights_manifest_path) if weights_manifest_path is not None else None
+    if manifest_path is None:
+        return []
     try:
         with open(manifest_path, "r", encoding="utf-8") as f:
             known_weights = set(json.load(f).keys())

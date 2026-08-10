@@ -162,8 +162,7 @@ class PipelineMixin:
                 _open_folder(folder)
 
         # FIX: last_result trước đây chỉ được gán khi tick "Preview", khiến
-        # _send_to_layout ghi ảnh None (lỗi) nếu người dùng không tick
-        # preview trước khi xử lý. Giờ luôn cập nhật last_result khi có
+        # Luôn cập nhật last_result khi có
         # ảnh xử lý thành công; nút xem trước vẫn ẩn/hiện riêng theo
         # checkbox preview.
         if self.last_results:
@@ -175,27 +174,6 @@ class PipelineMixin:
         if self._process_timer_id is not None:
             self.after_cancel(self._process_timer_id)
         self._process_timer_id = self.after(3000, self._reset_ui)
-
-    def _send_to_layout(self):
-        if not self.last_results:
-            messagebox.showinfo("Thông báo", "Chưa có ảnh nào! Hãy xử lý ảnh trước.")
-            return
-
-        # Phòng hờ: nếu vì lý do gì đó last_result chưa đồng bộ với
-        # last_results (ví dụ code khác gán last_results trực tiếp),
-        # luôn lấy ảnh mới nhất từ last_results thay vì tin last_result.
-        if self.last_result is None:
-            self.last_result = self.last_results[-1]
-
-        # FIX: Luôn lưu ảnh mới nhất vào temp, không giữ ảnh cũ vô hạn
-        now = datetime.now()
-        tmp = os.path.join(tempfile.gettempdir(), f"pmp_layout_src_{now.timestamp()}.png")
-        _imwrite_unicode(tmp, self.last_result)
-        self.layout_src_path = tmp
-        self.lbl_layout_src.configure(text=f"Ảnh đã xử lý: {os.path.basename(tmp)}")
-
-        self.tabview.set("🖨 Xếp in")
-        self.status.configure(text="✓ Đã chuyển sang tab Xếp in", text_color=self.COLORS['success'])
 
     def _undo(self):
         """Lùi 1 bước trên Document đang active (ảnh xử lý gần nhất) —

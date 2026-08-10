@@ -11,7 +11,6 @@ này khớp vào đâu trong mô hình tổng (Production Complex).
 
 ## Đối tượng dùng
 
-Cùng người dùng [Xưởng Xử lý ảnh](../photo/README.md) — bước
 cuối trước khi gửi máy in, sau khi đã có ảnh thẻ đạt chuẩn.
 
 ## Input / Output

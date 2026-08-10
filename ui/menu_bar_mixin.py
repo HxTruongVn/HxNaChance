@@ -117,7 +117,7 @@ class MenuBarMixin:
         khai open_method (hoặc không khớp tab nào đang active — không
         nên xảy ra trong vận hành bình thường, nhưng không giả định) ->
         mục "Open..." xám đi, không đoán mò gọi nhầm hành động."""
-        active_tab = self.tabview.get()
+        active_tab = self.tabview.get() if getattr(self, "tabview", None) is not None else ""
         active_workshop = next(
             (w for w in self._discovered_workshops if w.tab_title == active_tab), None)
 
@@ -146,8 +146,11 @@ class MenuBarMixin:
         menu.add_command(label="Redo", command=self._redo,
                           state="normal" if can_redo else "disabled")
 
-    # ===== WINDOW — gộp submenu từng Xưởng, phát hiện ĐỘNG =====
+    # ===== WINDOW — thao tác host + submenu từng Xưởng =====
     def _menu_window(self, menu: tk.Menu):
+        menu.add_command(label="Load Workshop Folder...", command=self._load_workshop_folder)
+        if self._discovered_workshops:
+            menu.add_separator()
         for w in self._discovered_workshops:
             if not w.menu_build_method:
                 continue  # Xưởng không khai menu_label/menu_build_method -> bỏ qua, không lỗi

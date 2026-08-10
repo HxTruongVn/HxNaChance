@@ -31,6 +31,8 @@ nó chỉ BÁO CÁO model nào đang thiếu.
 from __future__ import annotations
 
 import importlib
+import json
+import re
 import os
 import platform
 import shutil
@@ -41,44 +43,95 @@ from typing import Dict, List, Optional
 
 
 # ------------------------------------------------------------------
-# 1. Khai báo package / model / tính năng cần gì
+# 1. Discovery dữ liệu Workshop
 # ------------------------------------------------------------------
+#
+# RuntimeManager KHÔNG sở hữu danh sách package/model/feature của
+# bất kỳ Workshop cụ thể nào. Mỗi Workshop tự cung cấp:
+#   - requirements.txt
+#   - manifest.json
+#   - resources.model_registry / weights_sources
+#   - resources.capabilities_file (nếu cần mô tả capability)
+#
+# Core chỉ đọc các nguồn này và kiểm tra máy hiện tại.
 
-# Package bắt buộc để app chạy được ở mức tối thiểu (Lite Mode)
-REQUIRED_PACKAGES: Dict[str, str] = {
-    "numpy": "numpy",
-    "cv2": "opencv-contrib-python",
-    "PIL": "Pillow",
-    "customtkinter": "customtkinter",
-    "mediapipe": "mediapipe",
-    "rembg": "rembg",
-}
+def _parse_requirement_names(requirements_path: Path) -> List[str]:
+    """Đọc tên distribution từ requirements.txt của chính Workshop."""
+    names: List[str] = []
+    if not requirements_path.is_file():
+        return names
+    for raw in requirements_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line or line.startswith(("-", "--")):
+            continue
+        # Tên distribution đứng trước version/extras/marker.
+        m = re.match(r"^([A-Za-z0-9_.-]+)", line)
+        if m:
+            name = m.group(1)
+            if name.lower() not in {n.lower() for n in names}:
+                names.append(name)
+    return names
 
-# Package tuỳ chọn — thiếu thì chỉ tắt tính năng AI tương ứng, không crash app
-OPTIONAL_PACKAGES: Dict[str, str] = {
-    "torch": "torch torchvision (pip install torch torchvision)",
-    "torchvision": "torchvision",
-    "codeformer": "codeformer-pip (pip install codeformer-pip; hoặc chạy python setup_models.py)",
-    "realesrgan": "realesrgan (pip install git+https://github.com/xinntao/Real-ESRGAN.git)",
-    "basicsr": "basicsr",
-}
 
-# File weights cần có trong thư mục weights/
-MODEL_FILES: Dict[str, str] = {
-    "codeformer.pth": "CodeFormer (face restore)",
-    "RealESRGAN_x2plus.pth": "Real-ESRGAN (upscale x2)",
-    "79999_iter.pth": "BiSeNet (face parsing — skin/eye/teeth mask)",
-    "isnet-general-use.onnx": "rembg isnet (tách nền; rembg có thể tự tải nếu thiếu)",
-}
+def _workshop_specs(workshops_dir: Optional[Path] = None) -> List[dict]:
+    """Quét động manifest của mọi Workshop và đọc metadata của chính nó."""
+    if workshops_dir is None:
+        workshops_dir = Path(__file__).resolve().parent.parent / "workshops"
+    workshops_dir = Path(workshops_dir)
+    specs: List[dict] = []
+    if not workshops_dir.is_dir():
+        return specs
 
-# Một tính năng cần những package + model nào mới bật được
-FEATURE_REQUIREMENTS: Dict[str, Dict[str, List[str]]] = {
-    "face_align": {"packages": ["mediapipe"], "models": []},
-    "remove_bg": {"packages": ["rembg"], "models": []},
-    "face_restore": {"packages": ["torch", "codeformer"], "models": ["codeformer.pth"]},
-    "upscale": {"packages": ["torch", "realesrgan", "basicsr"], "models": ["RealESRGAN_x2plus.pth"]},
-    "face_parsing": {"packages": ["torch", "torchvision"], "models": ["79999_iter.pth"]},
-}
+    for manifest_path in sorted(workshops_dir.glob("*/manifest.json")):
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            workshop_dir = manifest_path.parent
+            resources = manifest.get("resources", {})
+            req_path = workshop_dir / "requirements.txt"
+            package_names = _parse_requirement_names(req_path)
+
+            registry = {}
+            registry_file = resources.get("registry_file")
+            if registry_file:
+                p = workshop_dir / registry_file
+                if p.is_file():
+                    raw = json.loads(p.read_text(encoding="utf-8"))
+                    if isinstance(raw, dict):
+                        registry = raw
+
+            weights = {}
+            weights_file = resources.get("weight_sources_file")
+            if weights_file:
+                p = workshop_dir / weights_file
+                if p.is_file():
+                    raw = json.loads(p.read_text(encoding="utf-8"))
+                    if isinstance(raw, dict):
+                        weights = raw
+
+            capabilities = {}
+            capabilities_file = resources.get("capabilities_file")
+            if capabilities_file:
+                p = workshop_dir / capabilities_file
+                if p.is_file():
+                    raw = json.loads(p.read_text(encoding="utf-8"))
+                    if isinstance(raw, dict):
+                        capabilities = raw
+
+            weights_dir = workshop_dir / resources.get("weights_directory", "weights")
+            specs.append({
+                "id": manifest.get("workshop_id", workshop_dir.name),
+                "name": manifest.get("workshop_name", workshop_dir.name),
+                "dir": workshop_dir,
+                "manifest": manifest,
+                "requirements": package_names,
+                "registry": registry,
+                "weights": weights,
+                "capabilities": capabilities,
+                "weights_dir": weights_dir,
+            })
+        except Exception as exc:
+            print(f"[RuntimeDiscovery] ⚠ Bỏ qua {manifest_path}: {exc}")
+    return specs
 
 
 def _is_importable(module_name: str) -> bool:
@@ -106,26 +159,35 @@ class RuntimeReport:
     vram_gb: Optional[float] = None  # VRAM GPU NVIDIA, None nếu không dò được
     storage_free_gb: Optional[float] = None  # dung lượng trống trên ổ chứa NaChance
     cpu_cores: Optional[int] = None  # số logical CPU cores
+    # Các trạng thái này được tổng hợp từ metadata của Workshop đang tồn tại.
     package_status: Dict[str, bool] = field(default_factory=dict)
     model_status: Dict[str, bool] = field(default_factory=dict)
     feature_available: Dict[str, bool] = field(default_factory=dict)
     missing_required_packages: List[str] = field(default_factory=list)
     missing_models: List[str] = field(default_factory=list)
+    workshop_reports: Dict[str, dict] = field(default_factory=dict)
 
     @property
     def can_run_lite(self) -> bool:
-        """Lite Mode: căn mặt + tách nền + validate, không cần AI nặng."""
-        return (
-            self.feature_available.get("face_align", False)
-            and self.feature_available.get("remove_bg", False)
-        )
+        # Lite mode is a CORE startup capability, not a Workshop capability.
+        # NaChance is a container and must still open when no Workshop is
+        # installed or when every Workshop is temporarily unavailable.
+        # Workshop compatibility is reported separately in workshop_reports.
+        return True
 
     @property
     def can_run_full_ai(self) -> bool:
-        return all(
-            self.feature_available.get(f, False)
-            for f in ("face_restore", "face_parsing", "remove_bg", "face_align")
-        )
+        # Không còn biết "Full AI" là gì. Nếu mọi capability BẮT BUỘC
+        # do các Workshop khai báo đều sẵn sàng thì coi môi trường đầy đủ.
+        required = [
+            cap for report in self.workshop_reports.values()
+            for cap in report.get("required_capabilities", [])
+        ]
+        return bool(required) and all(self.feature_available.get(cap, False) for cap in required)
+
+    @property
+    def workshop_count(self) -> int:
+        return len(self.workshop_reports)
 
     def summary_text(self) -> str:
         lines: List[str] = []
@@ -134,43 +196,75 @@ class RuntimeReport:
         lines.append(f"Device: {self.device}{gpu}")
         if self.torch_build_info:
             lines.append(f"  ↳ {self.torch_build_info}")
-        if self.gpu_hardware_detected and self.device == "cpu":
-            lines.append(f"  ⚠ Phần cứng THẬT có GPU ({self.gpu_hardware_detected}, "
-                          "theo nvidia-smi — độc lập với torch) nhưng đang chạy CPU. "
-                          "Rất có thể do cài nhầm bản torch CPU-only — gỡ torch/"
-                          "torchvision rồi cài lại đúng bản CUDA.")
         lines.append(f"RAM: {self.ram_gb} GB" if self.ram_gb is not None else "RAM: (không dò được)")
-        lines.append(f"VRAM: {self.vram_gb} GB" if self.vram_gb is not None else "VRAM: (không dò được)")
+        lines.append(f"VRAM: {self.vram_gb} GB" if self.vram_gb is not None else "VRAM: (không áp dụng/không dò được)")
         lines.append(f"Storage trống: {self.storage_free_gb} GB" if self.storage_free_gb is not None else "Storage: (không dò được)")
         lines.append(f"CPU logical cores: {self.cpu_cores}" if self.cpu_cores is not None else "CPU cores: (không dò được)")
         lines.append("")
-        lines.append("Packages:")
-        for name, ok in self.package_status.items():
-            lines.append(f"  {'✓' if ok else '✗'} {name}")
-        lines.append("")
-        lines.append(f"Models ({self.weights_dir}):")
-        for name, ok in self.model_status.items():
-            lines.append(f"  {'✓' if ok else '✗'} {name} — {MODEL_FILES.get(name, '')}")
-        lines.append("")
-        lines.append("Tính năng khả dụng:")
-        for name, ok in self.feature_available.items():
-            lines.append(f"  {'✓' if ok else '✗'} {name}")
-        lines.append("")
-        if self.can_run_full_ai:
-            lines.append("=> Sẵn sàng chạy Full AI.")
-        elif self.can_run_lite:
-            lines.append("=> Chỉ đủ điều kiện chạy Lite Mode (thiếu model/package AI nâng cao).")
-        else:
-            lines.append("=> CHƯA đủ điều kiện chạy — thiếu package bắt buộc: "
-                          f"{', '.join(self.missing_required_packages) or '(xem chi tiết ở trên)'}")
+        if not self.workshop_reports:
+            lines.append("Workshops: (không có Workshop nào được phát hiện)")
+            return "\n".join(lines)
+
+        lines.append(f"Workshops: {len(self.workshop_reports)}")
+        for wid, wr in self.workshop_reports.items():
+            lines.append("")
+            lines.append(f"[Workshop: {wr['name']}]")
+            lines.append("Packages:")
+            for name, ok in wr.get("packages", {}).items():
+                lines.append(f"  {'✓' if ok else '✗'} {name}")
+            lines.append("Models:")
+            if wr.get("models"):
+                for name, ok in wr["models"].items():
+                    lines.append(f"  {'✓' if ok else '✗'} {name}")
+            else:
+                lines.append("  (Workshop không khai báo model)")
+            lines.append("Capabilities:")
+            for name, ok in wr.get("capabilities", {}).items():
+                lines.append(f"  {'✓' if ok else '✗'} {name}")
         return "\n".join(lines)
 
+
+
+
+# Backward-compatible dynamic views for legacy callers/tests.
+# These are generated from Workshop metadata; they are NOT a list of
+# Photo/AI components owned by Core.
+def _legacy_workshop_metadata():
+    result = {"models": {}, "features": {}}
+    for spec in _workshop_specs():
+        result["models"].update(spec.get("weights", {}))
+        result["features"].update(spec.get("capabilities", {}))
+    return result
+
+_legacy_meta = _legacy_workshop_metadata()
+MODEL_FILES = {
+    name: (info.get("description", "") if isinstance(info, dict) else "")
+    for name, info in _legacy_meta["models"].items()
+}
+FEATURE_REQUIREMENTS = _legacy_meta["features"]
 
 # ------------------------------------------------------------------
 # 3. RuntimeManager — điểm vào duy nhất để dò môi trường
 # ------------------------------------------------------------------
 
 class RuntimeManager:
+    def _detect_models(self):
+        """Legacy-compatible view: check Workshop-declared model names in weights_dir."""
+        return {name: (self.weights_dir / name).is_file() for name in MODEL_FILES}
+
+    @staticmethod
+    def _detect_features(package_status, model_status):
+        """Legacy-compatible view derived from Workshop capability metadata."""
+        features = {}
+        for name, req in FEATURE_REQUIREMENTS.items():
+            pkgs = req.get("packages", []) if isinstance(req, dict) else []
+            models = req.get("models", []) if isinstance(req, dict) else []
+            features[name] = (
+                all(package_status.get(p, False) for p in pkgs)
+                and all(model_status.get(m, False) for m in models)
+            )
+        return features
+
     """
     Chạy 1 lần lúc khởi động app, trước khi tạo Engine/UI.
     Không tải model, không cài package — chỉ BÁO CÁO hiện trạng máy.
@@ -186,27 +280,82 @@ class RuntimeManager:
         python_version = sys.version.split()[0]
         os_name = self._detect_os_name()
 
-        all_packages = {**REQUIRED_PACKAGES, **OPTIONAL_PACKAGES}
-        package_status = {name: _is_importable(name) for name in all_packages}
+        specs = _workshop_specs()
+        package_status: Dict[str, bool] = {}
+        model_status: Dict[str, bool] = {}
+        feature_available: Dict[str, bool] = {}
+        workshop_reports: Dict[str, dict] = {}
+        missing_required: List[str] = []
+        missing_models: List[str] = []
 
-        device, gpu_name, torch_build_info = self._detect_device(package_status.get("torch", False))
+        for spec in specs:
+            pkg_status = {
+                name: self._distribution_installed(name)
+                for name in spec["requirements"]
+            }
+            package_status.update({f"{spec['id']}::{k}": v for k, v in pkg_status.items()})
+
+            model_names = set(spec["weights"].keys())
+            # Registry có thể khai báo weight mà weights_sources chưa có.
+            model_names.update(
+                entry.get("weight") for entry in spec["registry"].values()
+                if isinstance(entry, dict) and entry.get("weight")
+            )
+            model_status_local = {
+                name: (spec["weights_dir"] / name).is_file()
+                for name in sorted(model_names)
+            }
+            model_status.update({f"{spec['id']}::{k}": v for k, v in model_status_local.items()})
+
+            caps = spec["capabilities"]
+            cap_status = {}
+            for cap_name, req in caps.items():
+                req_pkgs = req.get("packages", [])
+                req_models = req.get("models", [])
+                pkgs_ok = all(pkg_status.get(p, self._distribution_installed(p)) for p in req_pkgs)
+                models_ok = all(model_status_local.get(m, False) for m in req_models)
+                cap_status[cap_name] = pkgs_ok and models_ok
+                feature_available[cap_name] = cap_status[cap_name]
+
+            required_caps = spec["manifest"].get("capabilities_required", [])
+            optional_caps = spec["manifest"].get("capabilities_optional", [])
+            # Nếu Workshop chưa có capabilities_registry, chỉ ghi capability
+            # là "không đủ dữ liệu" thay vì Core tự đoán package/model.
+            for cap_name in required_caps + optional_caps:
+                cap_status.setdefault(cap_name, False)
+                feature_available.setdefault(cap_name, cap_status[cap_name])
+
+            for name, ok in pkg_status.items():
+                if not ok:
+                    missing_required.append(f"{spec['id']}::{name}")
+            for name, ok in model_status_local.items():
+                if not ok and not spec["weights"].get(name, {}).get("optional", False):
+                    missing_models.append(f"{spec['id']}::{name}")
+
+            workshop_reports[spec["id"]] = {
+                "name": spec["name"],
+                "packages": pkg_status,
+                "models": model_status_local,
+                "capabilities": cap_status,
+                "required_capabilities": required_caps,
+                "optional_capabilities": optional_caps,
+            }
+
+        device, gpu_name, torch_build_info = self._detect_device(
+            any(name.endswith("::torch") and ok for name, ok in package_status.items())
+        )
         gpu_hardware_detected = self._detect_gpu_hardware()
         ram_gb = self._detect_ram_gb()
         vram_gb = self._detect_vram_gb()
         storage_free_gb = self._detect_storage_free_gb()
         cpu_cores = self._detect_cpu_cores()
-        model_status = self._detect_models()
-        feature_available = self._detect_features(package_status, model_status)
-
-        missing_required = [name for name in REQUIRED_PACKAGES if not package_status.get(name, False)]
-        missing_models = [name for name, ok in model_status.items() if not ok]
 
         return RuntimeReport(
             python_version=python_version,
             os_name=os_name,
             device=device,
             gpu_name=gpu_name,
-            weights_dir=str(self.weights_dir),
+            weights_dir="",
             torch_build_info=torch_build_info,
             gpu_hardware_detected=gpu_hardware_detected,
             ram_gb=ram_gb,
@@ -218,10 +367,59 @@ class RuntimeManager:
             feature_available=feature_available,
             missing_required_packages=missing_required,
             missing_models=missing_models,
+            workshop_reports=workshop_reports,
         )
 
     @staticmethod
-    def _detect_ram_gb() -> Optional[float]:
+    def _distribution_installed(name: str) -> bool:
+        try:
+            from importlib import metadata
+            metadata.version(re.split(r"[<>=!~;\[]", name, 1)[0].strip())
+            return True
+        except Exception:
+            return False
+
+    def _detect_os_name(self) -> str:
+        """platform.release() có lỗ hổng nổi tiếng trên Windows: Windows
+        11 vẫn báo "10" (cùng version nội bộ "10.0" với Windows 10, chỉ
+        khác build number — Windows 11 bắt đầu từ build 22000). Ca thật
+        gặp: máy Win11 log báo "OS: Windows 10", người dùng tưởng cơ chế
+        dò máy sai hoàn toàn. Soi thêm build number qua
+        sys.getwindowsversion() (chỉ có trên Windows) để phân biệt đúng."""
+        os_name = f"{platform.system()} {platform.release()}"
+        if platform.system() == "Windows" and hasattr(sys, "getwindowsversion"):
+            try:
+                build = sys.getwindowsversion().build
+                if build >= 22000:
+                    os_name = f"Windows 11 (build {build})"
+                else:
+                    os_name = f"Windows 10 (build {build})"
+            except Exception:
+                pass
+        return os_name
+
+    @staticmethod
+    def _detect_device(has_torch: bool):
+        """Trả (device, gpu_name, torch_build_info). torch_build_info
+        luôn có nếu có torch — kể cả khi cuda.is_available()=False, để
+        biết NGAY lý do (bản CPU-only hay có GPU nhưng driver/CUDA
+        không khớp) mà không cần chạy lệnh tay riêng để kiểm tra."""
+        if not has_torch:
+            return "cpu", None, None
+        try:
+            import torch
+            cuda_build = torch.version.cuda  # None nếu bản CPU-only
+            build_info = f"torch {torch.__version__} (CUDA build: {cuda_build or 'KHÔNG CÓ — bản CPU-only'})"
+            if torch.cuda.is_available():
+                return "cuda", torch.cuda.get_device_name(0), build_info
+            return "cpu", None, build_info
+        except Exception:
+            pass
+        return "cpu", None, None
+
+
+
+    def _detect_ram_gb(self) -> Optional[float]:
         """RAM VẬT LÝ thật của máy — dùng API/lệnh GỐC hệ điều hành,
         KHÔNG cài thêm package nào (không psutil) — giữ đúng nguyên tắc
         Bootstrap "không phụ thuộc gì phải cài trước": RAM cần biết
@@ -271,8 +469,7 @@ class RuntimeManager:
             pass
         return None
 
-    @staticmethod
-    def _detect_vram_gb() -> Optional[float]:
+    def _detect_vram_gb(self) -> Optional[float]:
         """Dò tổng VRAM GPU NVIDIA qua nvidia-smi, độc lập với torch."""
         import subprocess
         try:
@@ -287,8 +484,7 @@ class RuntimeManager:
             pass
         return None
 
-    @staticmethod
-    def _detect_storage_free_gb() -> Optional[float]:
+    def _detect_storage_free_gb(self) -> Optional[float]:
         """Dò dung lượng trống trên volume chứa mã NaChance."""
         try:
             root = Path(__file__).resolve().parent.parent
@@ -296,8 +492,7 @@ class RuntimeManager:
         except (OSError, ValueError):
             return None
 
-    @staticmethod
-    def _detect_cpu_cores() -> Optional[int]:
+    def _detect_cpu_cores(self) -> Optional[int]:
         try:
             return os.cpu_count()
         except Exception:
@@ -328,57 +523,6 @@ class RuntimeManager:
         except subprocess.TimeoutExpired:
             pass
         return None
-
-    @staticmethod
-    def _detect_os_name() -> str:
-        """platform.release() có lỗ hổng nổi tiếng trên Windows: Windows
-        11 vẫn báo "10" (cùng version nội bộ "10.0" với Windows 10, chỉ
-        khác build number — Windows 11 bắt đầu từ build 22000). Ca thật
-        gặp: máy Win11 log báo "OS: Windows 10", người dùng tưởng cơ chế
-        dò máy sai hoàn toàn. Soi thêm build number qua
-        sys.getwindowsversion() (chỉ có trên Windows) để phân biệt đúng."""
-        os_name = f"{platform.system()} {platform.release()}"
-        if platform.system() == "Windows" and hasattr(sys, "getwindowsversion"):
-            try:
-                build = sys.getwindowsversion().build
-                if build >= 22000:
-                    os_name = f"Windows 11 (build {build})"
-                else:
-                    os_name = f"Windows 10 (build {build})"
-            except Exception:
-                pass
-        return os_name
-
-    @staticmethod
-    def _detect_device(has_torch: bool):
-        """Trả (device, gpu_name, torch_build_info). torch_build_info
-        luôn có nếu có torch — kể cả khi cuda.is_available()=False, để
-        biết NGAY lý do (bản CPU-only hay có GPU nhưng driver/CUDA
-        không khớp) mà không cần chạy lệnh tay riêng để kiểm tra."""
-        if not has_torch:
-            return "cpu", None, None
-        try:
-            import torch
-            cuda_build = torch.version.cuda  # None nếu bản CPU-only
-            build_info = f"torch {torch.__version__} (CUDA build: {cuda_build or 'KHÔNG CÓ — bản CPU-only'})"
-            if torch.cuda.is_available():
-                return "cuda", torch.cuda.get_device_name(0), build_info
-            return "cpu", None, build_info
-        except Exception:
-            pass
-        return "cpu", None, None
-
-    def _detect_models(self) -> Dict[str, bool]:
-        return {fname: (self.weights_dir / fname).exists() for fname in MODEL_FILES}
-
-    @staticmethod
-    def _detect_features(package_status: Dict[str, bool], model_status: Dict[str, bool]) -> Dict[str, bool]:
-        result = {}
-        for feature, req in FEATURE_REQUIREMENTS.items():
-            pkgs_ok = all(package_status.get(p, False) for p in req["packages"])
-            models_ok = all(model_status.get(m, False) for m in req["models"])
-            result[feature] = pkgs_ok and models_ok
-        return result
 
 
 # ------------------------------------------------------------------

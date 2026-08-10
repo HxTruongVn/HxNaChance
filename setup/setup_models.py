@@ -38,97 +38,48 @@ from setup.venv_bootstrap import PROJECT_ROOT, VENV_DIR, in_venv, ensure_venv_an
 WEIGHTS_DIR = PROJECT_ROOT / "weights"
 WEIGHTS_DIR.mkdir(exist_ok=True)
 
-# MODELS TRƯỚC ĐÂY hard-code trực tiếp trong file này (khoá cứng đúng 2
-# "slot" nguồn tải "hf"/"gh" cho mỗi weight) — giờ đọc từ
-# workshops/photo/weights_sources.json (Xưởng tự quản dữ liệu của
-# mình — trước đây ở config/presets/, cùng pattern
-# workshops/photo/spec_presets.json/workshops/layout/layout_presets.json).
-# Lợi ích:
-#   - Thêm weight mới sau này = thêm 1 mục trong JSON, KHÔNG cần sửa file
-#     .py này.
-#   - Thêm/đổi link dự phòng cho 1 weight = sửa JSON, không đụng code.
-#   - Mỗi weight có DANH SÁCH nguồn dài tuỳ ý (không giới hạn 2 slot cố
-#     định "hf"/"gh" như trước) — download_weight() thử lần lượt hết
-#     danh sách "sources", dừng ở nguồn đầu tiên thành công.
-# Dict dưới đây CHỈ còn vai trò fallback an toàn nếu file JSON bị
-# thiếu/hỏng — giữ đúng tinh thần graceful-degrade của các loader khác.
-_MODELS_FALLBACK = {
-  "codeformer.pth": {
-    "size_mb": 359,
-    "sources": [
-      {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/codeformer.pth"},
-      {"method": "http", "url": "https://huggingface.co/sczhou/CodeFormer/resolve/main/codeformer.pth"},
-      {"method": "http", "url": "https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth"}
-    ]
-  },
-  "RealESRGAN_x2plus.pth": {
-    "size_mb": 64,
-    "sources": [
-      {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/RealESRGAN_x2plus.pth"},
-      {"method": "http", "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth"},
-      {"method": "http", "url": "https://huggingface.co/2kpr/Real-ESRGAN/resolve/main/RealESRGAN_x2plus.pth"}
-    ]
-  },
-  "79999_iter.pth": {
-    "size_mb": 50,
-    "sources": [
-      {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/79999_iter.pth"},
-      {"method": "http", "url": "https://huggingface.co/spaces/ysharma/FaceParsing/resolve/main/79999_iter.pth"},
-      {"method": "gdown", "url": "https://drive.google.com/uc?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812"}
-    ]
-  },
-  "isnet-general-use.onnx": {
-    "size_mb": 170,
-    "sources": [
-      {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/isnet-general-use.onnx"},
-      {"method": "http", "url": "https://huggingface.co/OzzyGT/REMBG/resolve/main/isnet-general-use.onnx"},
-      {"method": "http", "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx"}
-    ]
-  },
-  "pose_landmarker_lite.task": {
-    "size_mb": 5,
-    "optional": True,
-    "_comment": "Dùng cho tính năng 'Cân vai theo sống mũi' (ShoulderAnalyzer). Tuỳ chọn — pipeline vẫn chạy bình thường nếu thiếu, tính năng tự tắt (.available=False).",
-    "sources": [
-      {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/pose_landmarker_lite.task"},
-      {"method": "http", "url": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"}
-    ]
-  }
-}
+# MODEL SOURCES — Workshop tự quản.
+# Mỗi workshops/<id>/weights_sources.json mô tả model, nguồn tải và size.
+# Core chỉ quét và tải; không chứa tên model cụ thể của bất kỳ Workshop nào.
 
 _REQUIRED_MODEL_KEYS = ("size_mb", "sources")
 
 
 def _load_models() -> dict:
-    models_path = PROJECT_ROOT / "workshops" / "photo" / "weights_sources.json"
-    try:
-        with open(models_path, "r", encoding="utf-8") as f:
-            raw = json.load(f)
-        # Chỉ nhận entry có đủ field bắt buộc + sources không rỗng — 1
-        # weight khai sai trong JSON (lỗi gõ tay) không được làm hỏng
-        # toàn bộ danh sách model cần tải.
-        result = {}
-        for name, info in raw.items():
-            if not all(k in info for k in _REQUIRED_MODEL_KEYS):
-                print(f"[MODELS] ⚠ Bỏ qua '{name}': thiếu field {_REQUIRED_MODEL_KEYS}")
-                continue
-            if not info["sources"]:
-                print(f"[MODELS] ⚠ Bỏ qua '{name}': danh sách sources rỗng")
-                continue
-            result[name] = info
-        if not result:
-            raise ValueError("File weights_sources.json rỗng hoặc không có model hợp lệ")
+    workshops_dir = PROJECT_ROOT / "workshops"
+    result = {}
+    if not workshops_dir.is_dir():
         return result
-    except Exception as e:
-        print(f"[MODELS] ⚠ Không đọc được {models_path} ({e}) — "
-              f"dùng {len(_MODELS_FALLBACK)} model mặc định built-in.")
-        return dict(_MODELS_FALLBACK)
+
+    for sources_path in sorted(workshops_dir.glob("*/weights_sources.json")):
+        workshop_dir = sources_path.parent
+        workshop_id = workshop_dir.name
+        try:
+            raw = json.loads(sources_path.read_text(encoding="utf-8"))
+            if not isinstance(raw, dict):
+                continue
+            for name, info in raw.items():
+                if not isinstance(info, dict) or not all(k in info for k in _REQUIRED_MODEL_KEYS):
+                    print(f"[MODELS] ⚠ Bỏ qua '{workshop_id}/{name}': thiếu metadata")
+                    continue
+                if not info.get("sources"):
+                    print(f"[MODELS] ⚠ Bỏ qua '{workshop_id}/{name}': sources rỗng")
+                    continue
+                item = dict(info)
+                item["_workshop_id"] = workshop_id
+                item["_workshop_dir"] = str(workshop_dir)
+                item["_weights_dir"] = str(
+                    workshop_dir / "weights"
+                )
+                result[f"{workshop_id}::{name}"] = item
+        except Exception as e:
+            print(f"[MODELS] ⚠ Không đọc được {sources_path}: {e}")
+    return result
 
 
 MODELS = _load_models()
 
 
-# ------------------------------------------------------------------
 # PIP INSTALL (requirements.txt + facexlib/CodeFormer/Real-ESRGAN)
 # ------------------------------------------------------------------
 
@@ -140,44 +91,39 @@ def run_cmd(cmd, desc=""):
     return result.returncode == 0
 
 
+def _workshop_requirement_files():
+    workshops_dir = PROJECT_ROOT / "workshops"
+    if not workshops_dir.is_dir():
+        return []
+    return sorted(workshops_dir.glob("*/requirements.txt"))
+
+
 def install_requirements(cpu_only: bool = False):
-    """Mặc định: chỉ cài requirements.txt — NHƯNG trên Windows/macOS, đây
-    là chỗ dễ gây hiểu lầm nhất của toàn bộ setup: PyPI (index mặc định
-    của pip) chỉ host bản torch CPU-only cho 2 platform này — bản có
-    CUDA CHỈ có trên index riêng của PyTorch (download.pytorch.org/whl/
-    cuXXX). Trên Linux thì PyPI mặc định đã là bản có CUDA nên không
-    sao — nhưng trên Windows, dù máy có GPU CUDA 12 thật, chạy đúng
-    `pip install -r requirements.txt` (không chỉ định index) VẪN cài
-    bản CPU-only, không phải do máy thiếu gì.
-
-    Nên: trên Windows/macOS, nếu KHÔNG chọn --cpu-only, tự dò GPU qua
-    nvidia-smi và cài đúng bản torch CUDA từ index PyTorch TRƯỚC khi cài
-    requirements.txt (torch trong requirements.txt đã thoả version nên
-    pip tự bỏ qua, không tải đè lại bằng bản CPU — đã kiểm chứng hành vi
-    này ở commit trước).
-
-    Với --cpu-only: cài requirements-cpu.txt TRƯỚC (ép version cụ thể +
-    --index-url CPU-only cho torch/torchvision), rồi mới cài
-    requirements.txt SAU."""
-    # Requirements files nằm ở setup/ (cùng thư mục với setup_models.py)
-    setup_dir = Path(__file__).parent
-    req_file = setup_dir / "requirements.txt"
-    if not req_file.exists():
-        print(f"Không thấy {req_file.name}, bỏ qua bước này.")
+    """Cài dependencies từ requirements.txt do từng Workshop tự quản.
+    Core không giữ danh sách package của Workshop."""
+    req_files = _workshop_requirement_files()
+    if not req_files:
+        print("[Packages] Không có Workshop nào khai báo requirements.txt.")
         return
 
-    if cpu_only:
-        cpu_file = setup_dir / "requirements-cpu.txt"
+    needs_torch = any(
+        re.search(r"(?im)^\\s*torch(?:[<>=!~;\\[]|\\s|$)", p.read_text(encoding="utf-8", errors="ignore"))
+        for p in req_files
+    )
+
+    if cpu_only and needs_torch:
+        cpu_file = Path(__file__).parent / "requirements-cpu.txt"
         if cpu_file.exists():
             run_cmd(f'"{sys.executable}" -m pip install -r "{cpu_file}"',
                     "Đang cài torch CPU-only (requirements-cpu.txt)...")
-        else:
-            print("Không thấy requirements-cpu.txt, bỏ qua ép CPU-only.")
-    else:
+    elif needs_torch:
         _install_cuda_torch_if_windows_or_mac()
 
-    run_cmd(f'"{sys.executable}" -m pip install -r "{req_file}"',
-            f"Đang cài {req_file.name}...")
+    for req_file in req_files:
+        run_cmd(
+            f'"{sys.executable}" -m pip install -r "{req_file}"',
+            f"Đang cài dependencies của Workshop: {req_file.parent.name}..."
+        )
     _ensure_numpy_below_2()
 
 
@@ -285,48 +231,12 @@ def install_fonts():
 
 
 def install_github_deps():
-    """Cài đặt các phụ thuộc đặc thù. Xử lý riêng basicsr & realesrgan 
-    để tránh lỗi 'functional_tensor' do torchvision mới gây ra."""
-    deps = [
-        ("facexlib", "facexlib"),
-        ("codeformer", "codeformer-pip"),
-    ]
-    for name, pip_name in deps:
-        try:
-            __import__(name)
-            print(f"{name} đã có sẵn.")
-        except ImportError:
-            run_cmd(f'"{sys.executable}" -m pip install {pip_name}', f"Đang cài {name}...")
+    """Compatibility hook. Workshop dependencies phải nằm trong requirements.txt.
+    Core không còn biết package đặc thù của bất kỳ Workshop nào."""
+    print("[Packages] Workshop dependencies được cài từ requirements.txt; không có package hard-code trong Core.")
+    return True
 
-    # Cài đặt & Patch lỗi basicsr / realesrgan
-    try:
-        __import__("realesrgan")
-        print("realesrgan đã có sẵn.")
-    except ImportError:
-        print("\nĐang xử lý cài đặt Real-ESRGAN & BasicSR...")
-        # 1. Cài basicsr không kèm deps để không bị đè torch
-        run_cmd(f'"{sys.executable}" -m pip install --no-deps basicsr', "Cài basicsr...")
-        run_cmd(f'"{sys.executable}" -m pip install realesrgan', "Cài realesrgan...")
-        
-        # 2. Tự động patch file degradations.py của basicsr nếu dính lỗi functional_tensor
-        try:
-            import site
-            import os
-            for site_p in site.getsitepackages():
-                target_file = os.path.join(site_p, "basicsr", "data", "degradations.py")
-                if os.path.exists(target_file):
-                    with open(target_file, "r", encoding="utf-8") as f:
-                        content = f.read()
-                    if "torchvision.transforms.functional_tensor" in content:
-                        new_content = content.replace(
-                            "torchvision.transforms.functional_tensor", 
-                            "torchvision.transforms.functional"
-                        )
-                        with open(target_file, "w", encoding="utf-8") as f:
-                            f.write(new_content)
-                        print("✓ Đã tự động patch sửa lỗi functional_tensor cho BasicSR!")
-        except Exception as e:
-            print(f"⚠ Không thể auto-patch BasicSR: {e}")
+
 # ------------------------------------------------------------------
 # TẢI WEIGHTS: thử Hugging Face trước, GitHub sau, gdown (Google
 # Drive) làm phương án cuối. Hỗ trợ resume nếu tải bị đứt giữa chừng.
@@ -370,9 +280,12 @@ def _download_with_progress(url: str, dest: Path) -> tuple:
 
 
 def download_weight(name: str, info: dict) -> bool:
-    dest = WEIGHTS_DIR / name
+    weights_dir = Path(info.get("_weights_dir") or WEIGHTS_DIR)
+    weights_dir.mkdir(parents=True, exist_ok=True)
+    dest = weights_dir / name.split("::", 1)[-1]
+    display_name = name.split("::", 1)[-1]
     if dest.exists() and dest.stat().st_size > 1_000_000:
-        print(f"✓ {name} đã có ({dest.stat().st_size // 1024 // 1024} MB)")
+        print(f"✓ {display_name} đã có ({dest.stat().st_size // 1024 // 1024} MB)")
         return True
 
     # Thử LẦN LƯỢT hết danh sách sources (dài tuỳ ý, không giới hạn 2
@@ -384,7 +297,7 @@ def download_weight(name: str, info: dict) -> bool:
             continue
 
         if method == "gdown":
-            print(f"\n↓ [{i}/{len(info['sources'])}] Đang tải {name} bằng gdown (Google Drive)...")
+            print(f"\n↓ [{i}/{len(info['sources'])}] Đang tải {display_name} bằng gdown (Google Drive)...")
             try:
                 try:
                     import gdown
@@ -393,16 +306,16 @@ def download_weight(name: str, info: dict) -> bool:
                     import gdown
                 gdown.download(url, str(dest), quiet=False, fuzzy=True)
                 if dest.exists() and dest.stat().st_size > 1_000_000:
-                    print(f"✓ {name} tải xong (gdown).")
+                    print(f"✓ {display_name} tải xong (gdown).")
                     return True
                 print(f"✗ gdown tải xong nhưng file quá nhỏ/không hợp lệ.")
             except Exception as e:
                 print(f"✗ Lỗi gdown: {e}")
         else:
-            print(f"\n↓ [{i}/{len(info['sources'])}] Đang tải {name} từ {url}...")
+            print(f"\n↓ [{i}/{len(info['sources'])}] Đang tải {display_name} từ {url}...")
             ok, err = _download_with_progress(url, dest)
             if ok:
-                print(f"✓ {name} tải xong.")
+                print(f"✓ {display_name} tải xong.")
                 return True
             print(f"✗ Lỗi: {err}")
 
@@ -418,11 +331,11 @@ def print_manual_links(failed_names):
     print("=" * 60)
     for name in failed_names:
         info = MODELS[name]
-        print(f"\n{name} (~{info['size_mb']} MB)")
+        print(f"\n{name.split("::",1)[-1]} (~{info["size_mb"]} MB)")
         for source in info["sources"]:
             label = "Google Drive (gdown)" if source.get("method") == "gdown" else "HTTP"
             print(f"   [{label}] {source.get('url')}")
-        print(f"   -> Lưu vào: weights/{name}")
+        print(f"   -> Lưu vào: {info.get("_weights_dir", WEIGHTS_DIR)}/{name.split("::",1)[-1]}")
 
 
 def download_all_weights():
@@ -467,13 +380,6 @@ def setup_weights(cpu_only: bool = False):
     install_fonts()
     failed = download_all_weights()
 
-    print("\nKiểm tra rembg models...")
-    try:
-        from rembg.session_factory import new_session
-        new_session("isnet-general-use")
-        print("rembg isnet-general-use sẵn sàng.")
-    except Exception as e:
-        print(f"rembg: {e}")
 
     print("\n" + "=" * 60)
     if failed:

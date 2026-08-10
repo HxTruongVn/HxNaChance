@@ -2,7 +2,7 @@
 # Cài trực tiếp: pip install -r workshops/layout/requirements.txt
 # (setup/requirements.txt gom tất cả Xưởng lại — dùng file đó nếu chạy cả app.)
 #
-# Nhẹ hơn hẳn Xưởng Xử lý ảnh — print_layout.py chỉ dùng PIL để ghép ảnh
+# print_layout.py chỉ dùng PIL để ghép ảnh
 # vào khổ in, không cần torch/opencv/AI model nào (đã grep xác nhận toàn
 # bộ import trong workshops/layout/*.py: chỉ stdlib + Pillow).
 

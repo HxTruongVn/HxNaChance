@@ -7,10 +7,19 @@ import tempfile
 from tkinter import messagebox
 
 import cv2
+import numpy as np
 import customtkinter as ctk
 from PIL import Image as PILImage
 
-from workshops.photo import _imread_unicode
+
+def _imread_unicode(path):
+    # Photo Workshop is optional; provide a neutral OpenCV fallback for Core UI.
+    try:
+        from workshops.photo import _imread_unicode as reader
+        return reader(path)
+    except Exception:
+        data = cv2.imdecode(np.fromfile(path, dtype=np.uint8), cv2.IMREAD_COLOR)
+        return data
 from ui.utils import imwrite_unicode as _imwrite_unicode
 
 
