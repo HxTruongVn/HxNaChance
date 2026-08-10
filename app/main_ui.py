@@ -438,11 +438,29 @@ class NaChanceApp(
 
         ctk.CTkLabel(dlg, text="NaChance", font=self.F_BRAND_LARGE,
                      text_color=self.COLORS['accent']).pack(pady=(0, 4))
-        ctk.CTkLabel(dlg, text="Nền tảng xử lý ảnh mở rộng được cho tiệm ảnh/studio —\n"
-                                "mỗi Xưởng (Workshop) đảm nhận 1 việc, thêm Xưởng mới\n"
-                                "không cần sửa lại toàn bộ hệ thống",
-                     font=self.F_MEDIUM, text_color=self.COLORS['text_secondary'],
-                     wraplength=360, justify="center").pack(pady=(0, 15))
+
+        # NaChance là container/runtime host, KHÔNG phải một ứng dụng chỉ
+        # dành cho xử lý ảnh. Workshop mới là nơi cung cấp năng lực/chức năng.
+        # Quy mô môi trường phụ thuộc vào tập Workshop được triển khai.
+        ctk.CTkLabel(
+            dlg,
+            text=(
+                "NaChance là container/runtime host dùng để chứa và vận hành "
+                "các Workshop độc lập.\n\n"
+                "NaChance cung cấp môi trường chạy, tài nguyên và các cơ chế "
+                "nền cần thiết để Workshop hoạt động. Mỗi Workshop tự khai "
+                "báo nhu cầu về môi trường, dependency và tài nguyên của mình.\n\n"
+                "Vì vậy, NaChance không bị giới hạn trong một lĩnh vực cụ thể "
+                "và cũng không có quy mô cố định. Cấu hình và quy mô của mỗi "
+                "NaChance được hình thành theo các Workshop đi cùng nó.\n\n"
+                "Workshop quyết định NaChance cần gì — NaChance cung cấp nơi "
+                "để Workshop hoạt động."
+            ),
+            font=self.F_MEDIUM,
+            text_color=self.COLORS['text_secondary'],
+            wraplength=360,
+            justify="left"
+        ).pack(padx=25, pady=(0, 15))
 
         # Danh sách Xưởng ĐỘNG (self._discovered_workshops, xem
         # app/workshop_discovery.py) — không hardcode tên/mô tả ở đây,
