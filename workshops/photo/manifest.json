@@ -1,7 +1,6 @@
 {
   "_comment": "WorkshopManifest (docs/architecture/meta_architecture.md, mục [ ] còn thiếu). THAM CHIẾU model_registry.json + weights_sources.json (resources.*_file) thay vì chép lại URL/adapter/weight — tránh 2 nguồn sự thật lệch nhau theo thời gian. Chỉ khai báo ở đây phần THẬT SỰ chưa có chỗ nào khai báo.",
   "workshop_id": "photo",
-  "workshop_name": "Xưởng Xử lý ảnh",
   "version": "1.0.0",
   "description": "Nhận ảnh chân dung gốc, phục hồi/làm đẹp khuôn mặt đúng vùng, căn chỉnh chuẩn ảnh thẻ, tách nền.",
   "environment": {
@@ -11,13 +10,10 @@
     "min_ram_gb": 8
   },
   "ui": {
-    "_comment": "Reception (app/main_ui.py) đọc khối này để TỰ PHÁT HIỆN Workshop — không hardcode tên class/tab nữa. module/mixin_class: import động qua importlib để lấy Mixin (multiple inheritance vào NaChanceApp). build_method: tên method Reception gọi để Xưởng tự vẽ tab của mình vào self.tabview (Xưởng tự quản UI, Reception chỉ gọi, không biết bên trong).",
+    "_comment": "Core đọc khối này để TỰ PHÁT HIỆN Workshop. module/mixin_class chỉ là entry point tương thích cho UI hiện có; build_method được gọi trong WorkshopWindow, KHÔNG đưa Workshop vào multiple inheritance của NaChanceApp. session_priority chỉ dùng để tạo thứ tự phiên mới lúc khởi động, không lưu trạng thái điều hướng giữa các lần chạy.",
     "module": "workshops.photo.ui",
     "mixin_class": "ProcessTabMixin",
     "build_method": "_build_process_tab",
-    "tab_title": "🖼 Photo Processing",
-    "tab_order": 1,
-    "menu_label": "Photo Processing",
     "menu_build_method": "_menu_photo_content",
     "open_method": "_run_single"
   },

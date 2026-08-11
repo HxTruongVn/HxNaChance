@@ -1,7 +1,6 @@
 {
   "_comment": "WorkshopManifest (docs/architecture/meta_architecture.md, mục [ ] còn thiếu). Xưởng này KHÔNG dùng AI model nào — capabilities_required rỗng có chủ đích, không phải thiếu sót.",
   "workshop_id": "layout",
-  "workshop_name": "Xưởng Xếp in",
   "version": "1.0.0",
   "description": "Xếp ảnh đã xử lý (hoặc ảnh bất kỳ) vào khổ in theo công thức bố cục, tối ưu số lượng ảnh trên tờ giấy.",
   "environment": {
@@ -11,13 +10,10 @@
     "min_ram_gb": 2
   },
   "ui": {
-    "_comment": "Reception (app/main_ui.py) đọc khối này để TỰ PHÁT HIỆN Workshop — không hardcode tên class/tab nữa.",
+    "_comment": "Core đọc khối này để TỰ PHÁT HIỆN Workshop — không hardcode tên Workshop.",
     "module": "workshops.layout.ui",
     "mixin_class": "LayoutTabMixin",
     "build_method": "_build_layout_tab",
-    "tab_title": "🖨 Layout",
-    "tab_order": 2,
-    "menu_label": "Layout",
     "menu_build_method": "_menu_layout_content",
     "open_method": "_choose_layout_src"
   },

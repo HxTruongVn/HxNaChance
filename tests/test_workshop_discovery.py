@@ -25,12 +25,16 @@ def test_discover_workshops_finds_both_real_workshops():
     assert "layout" in ids
 
 
-def test_discover_workshops_sorted_by_tab_order():
+def test_discover_workshops_get_fresh_folder_based_session_order():
     workshops = discover_workshops()
-    orders = [w.tab_order for w in workshops]
-    assert orders == sorted(orders)
-    # Đúng thứ tự thật đã khai trong manifest.json: photo (1) trước layout (2)
-    assert [w.workshop_id for w in workshops] == ["photo", "layout"]
+    # Identity and display name come from the Workshop directory, never from
+    # hard-coded Vietnamese labels or manifest workshop_name/window_title.
+    assert [w.workshop_id for w in workshops] == ["layout", "photo"]
+    assert [w.workshop_name for w in workshops] == ["layout", "photo"]
+    assert [w.session_priority for w in workshops] == [0, 1]
+    assert [w.window_title for w in workshops] == [
+        "NaChance — layout", "NaChance — photo"
+    ]
 
 
 def test_discover_workshops_mixin_class_has_declared_build_method():
@@ -52,21 +56,12 @@ def test_discover_workshops_menu_fields_present_and_valid():
             f"{w.mixin_class} thiếu method {w.menu_build_method} đã khai trong manifest.json")
 
 
-def test_discover_workshops_open_method_present_and_valid():
-    """File > Open (ui/menu_bar_mixin.py::_menu_file) đọc open_method.
-    KHÁC build_method/menu_build_method (bắt buộc thuộc chính Mixin
-    Xưởng) — open_method được phép trỏ tới hành động dùng CHUNG ở
-    Reception (vd _run_single sống trong ui/pipeline_mixin.py, không
-    phải workshops/photo/ui.py — giống cách Undo/Redo dùng chung dù
-    hiện chỉ Photo Workshop tạo Document). Vì vậy kiểm tra trên
-    NaChanceApp đã RÁP ĐẦY ĐỦ (đúng những gì self.open_method thấy lúc
-    chạy thật), không phải trên w.mixin_class riêng lẻ."""
-    from app.main_ui import NaChanceApp
+def test_discover_workshops_open_method_is_declared():
+    """open_method được gọi trên WorkshopWindow, không còn yêu cầu
+    NaChanceApp phải kế thừa UI mixin của từng Workshop."""
     workshops = discover_workshops()
     for w in workshops:
         assert w.open_method, f"{w.workshop_id} thiếu open_method trong manifest.json"
-        assert hasattr(NaChanceApp, w.open_method), (
-            f"NaChanceApp thiếu method {w.open_method} đã khai trong manifest.json ({w.workshop_id})")
 
 
 def test_discover_workshops_description_present():
@@ -99,8 +94,8 @@ def test_discover_workshops_skips_manifest_with_bad_module(tmp_path):
             "module": "module_khong_ton_tai_xyz",
             "mixin_class": "FakeMixin",
             "build_method": "_build_fake_tab",
-            "tab_title": "Fake",
-            "tab_order": 1,
+            "window_title": "Fake",
+            "session_priority": 1,
         },
     }), encoding="utf-8")
 
@@ -111,3 +106,24 @@ def test_discover_workshops_skips_manifest_with_bad_module(tmp_path):
 def test_discover_workshops_missing_dir_returns_empty():
     workshops = discover_workshops(workshops_dir="/duong/dan/khong_ton_tai")
     assert workshops == []
+
+
+def test_discover_workshops_uses_folder_name_as_identity_and_display_name(tmp_path, monkeypatch):
+    """A manifest cannot rename a Workshop away from its directory."""
+    shop = tmp_path / "my_shop"
+    shop.mkdir()
+    (shop / "manifest.json").write_text(json.dumps({
+        "workshop_id": "totally_different",
+        "workshop_name": "Tên tự chế",
+        "description": "demo",
+        "ui": {
+            "module": "json",
+            "mixin_class": "JSONDecoder",
+            "build_method": "__init__",
+        },
+    }), encoding="utf-8")
+    workshops = discover_workshops(workshops_dir=tmp_path)
+    assert len(workshops) == 1
+    assert workshops[0].workshop_id == "my_shop"
+    assert workshops[0].workshop_name == "my_shop"
+    assert workshops[0].window_title == "NaChance — my_shop"

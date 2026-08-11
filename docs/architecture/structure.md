@@ -12,6 +12,8 @@ NaChance/
 │   ├── main_ui.py
 │   ├── workshop_discovery.py
 │   ├── workshop_watcher.py
+│   ├── workshop_window.py
+│   ├── window_manager.py
 │   ├── workshop_requirements.py
 │   ├── resource_policy.py
 │   ├── pipeline_store.py
@@ -67,7 +69,8 @@ Environment preparation và setup tooling.
 
 UI dùng chung cho Reception/Core.
 
-UI riêng của Workshop thuộc Workshop.
+UI riêng của Workshop thuộc Workshop; `WorkshopWindow` là host/lifecycle
+container do Core tạo, không phải nơi chứa business UI của Workshop.
 
 ### `workshops/`
 
@@ -94,7 +97,8 @@ Workshop ✕ Workshop trực tiếp
 
 ## Giới hạn hiện tại
 
-- Workshop discovery chưa hot-reload.
+- Workshop discovery chưa hot-reload; thay đổi Workshop có hiệu lực ở lần khởi động tiếp theo.
+- Workshop UI không còn được mount vào `CTkTabview`; `WindowManager` chịu trách nhiệm vị trí cửa sổ.
 - Resource provisioning chưa phải một service contract thống nhất.
 - Một số compatibility import/path handling vẫn tồn tại.
 - Chi tiết bên trong Workshop không được xem là tiêu chí hoàn thành Core.

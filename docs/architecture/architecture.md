@@ -67,21 +67,24 @@ app/main.py
     ↓
 app/main_ui.py
     ↓
-ui/*_mixin.py
-    +
-Workshop UI Mixins được discovery từ manifest
+app/workshop_discovery.py
+    ↓
+WorkshopWindowManager
+    ↓
+WorkshopWindow
+    ↓
+workshops/<id>/ui.py
 ```
 
-`app/main_ui.py` không còn import cứng tên Photo/Layout Workshop để dựng class.
-Nó lấy danh sách từ `discover_workshops()`.
+`app/main_ui.py` không còn đưa UI mixin của Photo/Layout vào multiple
+inheritance và không còn dựng `CTkTabview` cho Workshop.
 
-Tuy nhiên discovery được thực hiện ở module-level để tạo multiple inheritance,
-nên:
+Core tạo một session order mới mỗi lần khởi động. Workshop window được mở theo
+nhu cầu; WindowManager chịu trách nhiệm geometry và focus.
 
-> **Workshop mới chỉ được nhận sau khi restart app.**
+> **Workshop mới/sửa manifest chỉ được nhận ở lần restart tiếp theo.**
 
-Đây là giới hạn thiết kế hiện tại, không phải lỗi cần "sửa thành hot reload"
-trong giai đoạn này.
+Chi tiết contract xem `docs/architecture/workshop_window_navigation.md`.
 
 ## 5. Workshop boundary
 

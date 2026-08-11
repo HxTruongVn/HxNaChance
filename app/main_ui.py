@@ -12,7 +12,6 @@ import sys
 import threading
 import shutil
 import importlib
-import types
 from tkinter import filedialog
 from pathlib import Path
 from PIL import Image as PILImage, ImageTk
@@ -24,12 +23,11 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.workshop_discovery import discover_workshops
-from app.workshop_watcher import WorkshopWatcher
 from app.workshop_requirements import analyze as analyze_workshop_requirements
 from app.about_manager import load_nachance_about, load_workshop_about
 from app.pipeline_store import PipelineStore
+from app.window_manager import WorkshopWindowManager
 
-from ui.widget_helpers import WidgetHelpersMixin
 from ui.theme_mixin import ThemeMixin, THEMES
 from ui.menu_bar_mixin import MenuBarMixin
 from ui.side_panel_mixin import SidePanelMixin
@@ -51,10 +49,8 @@ _DISCOVERED_WORKSHOPS = discover_workshops()
 
 class NaChanceApp(
     ctk.CTk,
-    WidgetHelpersMixin,
     ThemeMixin,
     MenuBarMixin,
-    *[w.mixin_class for w in _DISCOVERED_WORKSHOPS],
     SidePanelMixin,
     OrientationMixin,
     PipelineMixin,
@@ -78,13 +74,8 @@ class NaChanceApp(
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.geometry("480x780")
         self._workshop_problems = workshop_problems or []
+        # Session order is computed fresh at every startup. It is not persisted.
         self._discovered_workshops = list(_DISCOVERED_WORKSHOPS)
-        for _workshop in self._discovered_workshops:
-            for _name, _value in _workshop.mixin_class.__dict__.items():
-                if _name == "receive_input" and callable(_value):
-                    setattr(self, f"receive_input_{_workshop.workshop_id}", types.MethodType(_value, self))
-        self._workshop_watcher = None
-        self._workshop_refresh_after_id = None
         self._workshop_roots = [PROJECT_ROOT / "workshops"]
         self._download_in_progress = False  # tránh 2 thread tải weight cùng lúc (tự động lúc mở app + bấm tay trong menu System)
         self._install_in_progress = False   # tương tự, cho "Install Missing Packages..."
@@ -119,6 +110,8 @@ class NaChanceApp(
         self.last_layout = None
         self.config_path = Path.home() / ".nachance_ai.json"
         self.pipeline_store = PipelineStore(PROJECT_ROOT / "data" / "pipelines.db")
+        # WindowManager owns Workshop window placement + current-session navigation.
+        self._window_manager = WorkshopWindowManager(self, self._discovered_workshops)
 
         # runtime_report: do main.py dò 1 lần qua RuntimeManager rồi truyền xuống
         self.runtime_report = runtime_report
@@ -176,9 +169,7 @@ class NaChanceApp(
         self._build_title_bar()
         self._build_menu_bar()
         self._build_main_panel()
-        self._lock_unavailable_features()
         self._refresh_title_run_state()
-        self._start_workshop_watcher()
         # resize_grip tạo trong _build_title_bar() (TRƯỚC main_frame) —
         # Tk mặc định xếp widget tạo SAU đè lên widget tạo TRƯỚC cùng 1
         # parent, nên main_frame (pack fill="both") che mất góc chứa
@@ -310,6 +301,12 @@ class NaChanceApp(
         threading.Thread(target=_worker, daemon=True, name="NaChanceWeightDownload").start()
 
     def _show_resource_compatibility(self):
+        existing = getattr(self, "_resource_compatibility_dialog", None)
+        if existing is not None and existing.winfo_exists():
+            existing.destroy()
+            self._resource_compatibility_dialog = None
+            return
+
         """System -> Resource Compatibility. Policy is editable here and
         resource compatibility is re-evaluated immediately after Apply.
         Workshop manifests keep nominal requirements; tolerance belongs to
@@ -337,6 +334,7 @@ class NaChanceApp(
         ]
 
         dlg = ctk.CTkToplevel(self)
+        self._resource_compatibility_dialog = dlg
         dlg.title("Resource Compatibility")
         dlg.geometry("700x620")
         dlg.configure(fg_color=self.COLORS['bg_dark'])
@@ -432,15 +430,28 @@ class NaChanceApp(
 
         ctk.CTkButton(buttons, text="Apply", command=save,
                       fg_color=self.COLORS['accent'], hover_color=self.COLORS['accent_hover']).pack(side="right", padx=(8, 0))
-        ctk.CTkButton(buttons, text="Close", command=dlg.destroy).pack(side="right")
+        def _close_resource_compatibility():
+            self._resource_compatibility_dialog = None
+            if dlg.winfo_exists():
+                dlg.destroy()
+
+        dlg.protocol("WM_DELETE_WINDOW", _close_resource_compatibility)
+        ctk.CTkButton(buttons, text="Close", command=_close_resource_compatibility).pack(side="right")
 
     def _show_environment_report(self):
+        existing = getattr(self, "_environment_report_dialog", None)
+        if existing is not None and existing.winfo_exists():
+            existing.destroy()
+            self._environment_report_dialog = None
+            return
+
         """Menu System -> Show Environment Report. Trước đây chỉ in ra
         console lúc khởi động (mất luôn nếu đóng console/không kịp xem)
         — giờ xem lại được trong app bất cứ lúc nào. Tái sử dụng đúng
         report.summary_text() đã có (setup/runtime_manager.py), không
         viết lại logic format báo cáo."""
         dlg = ctk.CTkToplevel(self)
+        self._environment_report_dialog = dlg
         dlg.title("Environment Report")
         dlg.geometry("560x480")
         dlg.configure(fg_color=self.COLORS['bg_dark'])
@@ -459,9 +470,15 @@ class NaChanceApp(
         box.insert("1.0", text)
         box.configure(state="disabled")  # chỉ đọc — đây là báo cáo, không phải chỗ sửa
 
+        def _close_environment_report():
+            self._environment_report_dialog = None
+            if dlg.winfo_exists():
+                dlg.destroy()
+
+        dlg.protocol("WM_DELETE_WINDOW", _close_environment_report)
         ctk.CTkButton(dlg, text="Đóng", fg_color=self.COLORS['accent'],
                       hover_color=self.COLORS['accent_hover'],
-                      command=dlg.destroy).pack(pady=(0, 15), padx=15, fill="x")
+                      command=_close_environment_report).pack(pady=(0, 15), padx=15, fill="x")
 
     def _open_weights_folder(self):
         """Menu System -> Open Weights Folder. "weights" là đường dẫn
@@ -519,8 +536,8 @@ class NaChanceApp(
 
     def _on_close(self):
         try:
-            if self._workshop_watcher is not None:
-                self._workshop_watcher.stop()
+            if getattr(self, "_window_manager", None) is not None:
+                self._window_manager.close_all()
         except Exception:
             pass
         try:
@@ -628,8 +645,18 @@ class NaChanceApp(
 
     def _show_workshop_about(self, workshop):
         """Mở About của Workshop từ file do chính Workshop khai báo."""
+        key = str(getattr(workshop, "workshop_id", workshop.workshop_name))
+        dialogs = getattr(self, "_workshop_about_dialogs", {})
+        existing = dialogs.get(key)
+        if existing is not None and existing.winfo_exists():
+            existing.destroy()
+            dialogs.pop(key, None)
+            return
+
         content = load_workshop_about(workshop)
         dlg = ctk.CTkToplevel(self)
+        dialogs[key] = dlg
+        self._workshop_about_dialogs = dialogs
         dlg.title(f"About — {workshop.workshop_name}")
         dlg.geometry("560x520")
         dlg.configure(fg_color=self.COLORS['bg_dark'])
@@ -641,33 +668,80 @@ class NaChanceApp(
         text.pack(fill="both", expand=True, padx=25, pady=(0, 15))
         text.insert("1.0", content or workshop.description)
         text.configure(state="disabled")
+        def _close_workshop_about():
+            dialogs.pop(key, None)
+            if dlg.winfo_exists():
+                dlg.destroy()
+
+        dlg.protocol("WM_DELETE_WINDOW", _close_workshop_about)
         ctk.CTkButton(dlg, text="Đóng", fg_color=self.COLORS['accent'],
-                      hover_color=self.COLORS['accent_hover'], command=dlg.destroy).pack(pady=(0, 18), padx=25, fill="x")
+                      hover_color=self.COLORS['accent_hover'], command=_close_workshop_about).pack(pady=(0, 18), padx=25, fill="x")
 
     def _active_workshop(self):
-        """Workshop đang active theo tab hiện tại."""
-        active_tab = self.tabview.get() if getattr(self, "tabview", None) is not None else ""
-        return next((w for w in self._discovered_workshops if w.tab_title == active_tab), None)
+        """Workshop active trong session hiện tại (không còn phụ thuộc tab)."""
+        manager = getattr(self, "_window_manager", None)
+        if manager is None or manager.active_index < 0:
+            return None
+        try:
+            return manager.session_workshops[manager.active_index]
+        except (IndexError, AttributeError):
+            return None
 
     def _refresh_title_run_state(self):
-        """Run chỉ khả dụng khi Workshop active khai execution.run_method."""
+        # Core RUN chỉ mở/đưa Workshop active lên trước. Action thực tế do
+        # Workshop tự khai execution.run_method và chạy trên window của nó.
         button = getattr(self, "btn_quick", None)
         if button is None:
             return
         workshop = self._active_workshop()
-        enabled = bool(workshop and workshop.run_method and callable(getattr(self, workshop.run_method, None)))
+        enabled = bool(workshop and workshop.run_method)
         button.configure(state="normal" if enabled else "disabled")
 
     def _run_active_workshop(self):
-        """Cổng Run cấp Core: định tuyến tới execution.run_method của Workshop active."""
         workshop = self._active_workshop()
-        if workshop is None:
+        manager = getattr(self, "_window_manager", None)
+        if workshop is None or manager is None:
             return
-        method = getattr(self, workshop.run_method, None) if workshop.run_method else None
-        if not callable(method):
+        window = manager.open(workshop.workshop_id)
+        if window is None:
+            return
+        method = getattr(window, workshop.run_method, None) if workshop.run_method else None
+        if callable(method):
+            method()
+
+    def _open_active_workshop(self):
+        workshop = self._active_workshop()
+        manager = getattr(self, "_window_manager", None)
+        if workshop is None or manager is None:
+            return None
+        window = manager.open(workshop.workshop_id)
+        if window is not None and workshop.open_method:
+            method = getattr(window, workshop.open_method, None)
+            if callable(method):
+                return method()
+        return window
+
+    def _open_workshop(self, workshop_id):
+        manager = getattr(self, "_window_manager", None)
+        if manager is None:
+            return None
+        window = manager.activate(workshop_id)
+        self._refresh_title_run_state()
+        return window
+
+    def _next_workshop(self, event=None):
+        manager = getattr(self, "_window_manager", None)
+        if manager is not None:
+            manager.next()
             self._refresh_title_run_state()
-            return
-        method()
+        return "break"
+
+    def _previous_workshop(self, event=None):
+        manager = getattr(self, "_window_manager", None)
+        if manager is not None:
+            manager.previous()
+            self._refresh_title_run_state()
+        return "break"
 
     def _build_title_bar(self):
         from pathlib import Path
@@ -800,41 +874,52 @@ class NaChanceApp(
             scrollbar_button_color=self.COLORS['border'],
             scrollbar_button_hover_color=self.COLORS['bg_hover']
         )
+        self.main_frame.pack(fill="both", expand=True, padx=0, pady=0)
 
-        self.tabview = ctk.CTkTabview(
-            self.main_frame, fg_color=self.COLORS['bg_card'],
-            segmented_button_fg_color=self.COLORS['bg_hover'],
-            segmented_button_selected_color=self.COLORS['accent'],
-            segmented_button_selected_hover_color=self.COLORS['accent_hover'],
-            segmented_button_unselected_color=self.COLORS['bg_card'],
-            segmented_button_unselected_hover_color=self.COLORS['bg_hover']
+        header = ctk.CTkLabel(
+            self.main_frame, text="WORKSHOPS — phiên hiện tại",
+            font=self.F_LARGE, text_color=self.COLORS['text_primary']
         )
-        self.tabview.pack(fill="both", expand=True, padx=10, pady=10)
+        header.pack(anchor="w", padx=18, pady=(18, 8))
 
-        # Only Workshop tabs live inside the tab view. Core is deliberately
-        # outside it so the host is not presented as one more Workshop.
-        for w in self._discovered_workshops:
-            tab_frame = self.tabview.add(w.tab_title)
-            setattr(self, f"tab_{w.workshop_id}", tab_frame)
-            getattr(self, w.build_method)()
+        self.core_workshop_status = ctk.CTkLabel(
+            self.main_frame, text="", font=self.F_SMALL, justify="left",
+            text_color=self.COLORS['text_secondary']
+        )
+        self.core_workshop_status.pack(anchor="w", padx=18, pady=(0, 10))
+
+        self.workshop_launcher_frame = ctk.CTkFrame(
+            self.main_frame, fg_color=self.COLORS['bg_card'], corner_radius=10
+        )
+        self.workshop_launcher_frame.pack(fill="x", padx=12, pady=(0, 12))
 
         if not self._discovered_workshops:
-            empty = ctk.CTkLabel(
-                self.main_frame,
-                text="Chưa có Workshop nào được nạp.\n"
-                     "Dùng nút NaChance Core hoặc Window → Load Workshop Folder... để nạp.",
+            ctk.CTkLabel(
+                self.workshop_launcher_frame,
+                text="Chưa có Workshop nào được nạp.\nDùng Window → Load Workshop Folder... rồi khởi động lại NaChance.",
                 font=self.F_NORMAL, justify="center",
                 text_color=self.COLORS['text_secondary']
-            )
-            empty.pack(fill="x", padx=20, pady=(12, 20))
-
-        self._refresh_core_workshop_status()
+            ).pack(fill="x", padx=20, pady=24)
+        else:
+            for index, w in enumerate(self._discovered_workshops, 1):
+                row = ctk.CTkFrame(self.workshop_launcher_frame, fg_color="transparent")
+                row.pack(fill="x", padx=10, pady=6)
+                ctk.CTkLabel(
+                    row, text=f"{index}. {w.workshop_name}",
+                    font=self.F_MEDIUM, text_color=self.COLORS['text_primary'], anchor="w"
+                ).pack(side="left", fill="x", expand=True, padx=8)
+                ctk.CTkButton(
+                    row, text="MỞ XƯỞNG", width=120, height=34,
+                    fg_color=self.COLORS['accent'], hover_color=self.COLORS['accent_hover'],
+                    command=lambda wid=w.workshop_id: self._open_workshop(wid)
+                ).pack(side="right", padx=4)
 
         self.status = ctk.CTkLabel(
             self.main_frame, text="Sẵn sàng",
             font=self.F_NORMAL, text_color=self.COLORS['text_secondary']
         )
         self.status.pack(pady=10)
+        self._refresh_core_workshop_status()
 
     def _refresh_core_workshop_status(self):
         """Cập nhật vùng Core mà không nhúng knowledge về Workshop cụ thể."""
@@ -851,105 +936,28 @@ class NaChanceApp(
             self.core_workshop_status.configure(text=text)
 
     def _start_workshop_watcher(self):
-        """Theo dõi workshops/ và tự reconcile khi manifest xuất hiện/thay đổi."""
-        if self._workshop_watcher is not None:
-            return
-        self._workshop_watcher = WorkshopWatcher(
-            PROJECT_ROOT / "workshops", self._schedule_workshop_refresh, interval=0.8
-        )
-        self._workshop_watcher.start()
+        """Không hot-mount Workshop vào phiên đang chạy.
+
+        Workshop session được quyết định lúc khởi động; thêm/sửa Workshop
+        trong thư mục chỉ có hiệu lực sau lần khởi động tiếp theo.
+        """
+        return None
 
     def _schedule_workshop_refresh(self):
-        if self._workshop_refresh_after_id is not None:
-            return
-        try:
-            self._workshop_refresh_after_id = self.after(0, self._refresh_workshops_from_disk)
-        except Exception:
-            self._workshop_refresh_after_id = None
-
-    def _bind_workshop_methods(self, workshop):
-        """Bind newly discovered Workshop UI methods to this running host.
-
-        Startup still uses normal multiple inheritance; this binding is only
-        for Workshops discovered after startup by the watcher.
-        """
-        for name, value in workshop.mixin_class.__dict__.items():
-            if name.startswith("__") or not callable(value):
-                continue
-            bound = types.MethodType(value, self)
-            if name == "receive_input":
-                setattr(self, f"receive_input_{workshop.workshop_id}", bound)
-            elif not hasattr(self, name):
-                setattr(self, name, bound)
-
-    def _mount_workshop_ui(self, workshop):
-        self._bind_workshop_methods(workshop)
-        if getattr(self, "tabview", None) is None:
-            return
-        if any(getattr(w, "workshop_id", "") == workshop.workshop_id for w in self._discovered_workshops if w is not workshop):
-            return
-        try:
-            tab_frame = self.tabview.add(workshop.tab_title)
-            setattr(self, f"tab_{workshop.workshop_id}", tab_frame)
-            getattr(self, workshop.build_method)()
-        except Exception as exc:
-            print(f"[WorkshopWatcher] ⚠ Không thể mount {workshop.workshop_id}: {exc}")
-            try:
-                self.tabview.delete(workshop.tab_title)
-            except Exception:
-                pass
-
-    def _unmount_workshop_ui(self, workshop):
-        try:
-            self.tabview.delete(workshop.tab_title)
-        except Exception:
-            pass
-        setattr(self, f"tab_{workshop.workshop_id}", None)
+        return None
 
     def _refresh_workshops_from_disk(self):
-        self._workshop_refresh_after_id = None
+        # Chỉ cập nhật thông tin kho; KHÔNG thay đổi session_workshops đang chạy.
         try:
             from app.workshop_discovery import discover_workshops
             fresh = discover_workshops(PROJECT_ROOT / "workshops")
-            old_by_id = {w.workshop_id: w for w in self._discovered_workshops}
-            new_by_id = {w.workshop_id: w for w in fresh}
-            removed = [old_by_id[k] for k in old_by_id.keys() - new_by_id.keys()]
-            added = [new_by_id[k] for k in new_by_id.keys() - old_by_id.keys()]
-            changed = []
-            for workshop_id in new_by_id.keys() & old_by_id.keys():
-                manifest_path = PROJECT_ROOT / "workshops" / workshop_id / "manifest.json"
-                try:
-                    mtime = manifest_path.stat().st_mtime_ns
-                except OSError:
-                    mtime = 0
-                old_mtime = getattr(old_by_id[workshop_id], "_manifest_mtime", None)
-                setattr(new_by_id[workshop_id], "_manifest_mtime", mtime)
-                if old_mtime is not None and old_mtime != mtime:
-                    changed.append(new_by_id[workshop_id])
-            for workshop in removed:
-                self._unmount_workshop_ui(workshop)
-                if getattr(workshop, "workshop_id", "") == "photo" and self.engine is not None:
-                    try:
-                        self.engine.release()
-                    except Exception:
-                        pass
-                    self.engine = None
-                    self.qa_agent = None
-            for workshop in changed:
-                old = old_by_id.get(workshop.workshop_id)
-                if old:
-                    self._unmount_workshop_ui(old)
-                self._mount_workshop_ui(workshop)
-            for workshop in added:
-                self._mount_workshop_ui(workshop)
-            self._discovered_workshops = sorted(fresh, key=lambda w: w.tab_order)
-            self._refresh_core_workshop_status()
-            self._refresh_workshop_exchange_targets()
-            self._refresh_title_run_state()
-            if removed or added or changed:
-                self._show_workshop_change_status(added, removed)
+            self._available_workshops = fresh
+            self.status.configure(
+                text="Workshop đã thay đổi trên đĩa — khởi động lại NaChance để nạp phiên mới.",
+                text_color=self.COLORS['warning'],
+            )
         except Exception as exc:
-            print(f"[WorkshopWatcher] ⚠ Refresh failed: {exc}")
+            print(f"[WorkshopDiscovery] ⚠ Refresh failed: {exc}")
 
     def _show_workshop_change_status(self, added, removed):
         parts = []
@@ -986,9 +994,18 @@ class NaChanceApp(
         return targets
 
     def _send_core_output_to_workshop(self):
-        if not self.last_results:
+        manager = getattr(self, "_window_manager", None)
+        active = None
+        if manager is not None and manager.active_index >= 0:
+            try:
+                active = manager.windows.get(manager.session_workshops[manager.active_index].workshop_id)
+            except Exception:
+                active = None
+        last_results = getattr(active, "last_results", None) if active else None
+        if not last_results:
             messagebox.showinfo("Workshop Exchange", "Chưa có kết quả ảnh để gửi.", parent=self)
             return
+
         targets = self._workshop_exchange_targets()
         if not targets:
             messagebox.showinfo("Workshop Exchange", "Không có Workshop nào khai báo nhận ảnh.", parent=self)
@@ -998,25 +1015,39 @@ class NaChanceApp(
         if not target:
             return
         target_id = target[0]
-        tab_attr = f"tab_{target_id}"
-        target_tab = getattr(self, tab_attr, None)
-        receiver = getattr(self, f"receive_input_{target_id}", None)
-        if target_tab is None or receiver is None:
-            messagebox.showwarning("Workshop Exchange", f"Workshop '{target_name}' chưa cung cấp cổng nhận dữ liệu cho Core.", parent=self)
-            return
+
         try:
+            target_window = manager.open(target_id) if manager is not None else None
+            receiver = getattr(target_window, "receive_input", None) if target_window else None
+            if target_window is None or not callable(receiver):
+                messagebox.showwarning(
+                    "Workshop Exchange",
+                    f"Workshop '{target_name}' chưa cung cấp cổng nhận dữ liệu cho Core.",
+                    parent=self,
+                )
+                return
             import tempfile
             from datetime import datetime
             tmp = os.path.join(tempfile.gettempdir(), f"nachance_exchange_{datetime.now().timestamp()}.png")
-            _imwrite_unicode(tmp, self.last_results[-1])
+            _imwrite_unicode(tmp, last_results[-1])
             receiver(tmp)
-            self.status.configure(text=f"✓ Core đã chuyển dữ liệu tới {target_name}", text_color=self.COLORS['success'])
+            self.status.configure(
+                text=f"✓ Core đã chuyển dữ liệu tới {target_name}",
+                text_color=self.COLORS['success'],
+            )
         except Exception as exc:
             messagebox.showerror("Workshop Exchange", f"Không thể chuyển dữ liệu: {exc}", parent=self)
 
     def _show_workshop_requirements(self):
+        existing = getattr(self, "_workshop_requirements_dialog", None)
+        if existing is not None and existing.winfo_exists():
+            existing.destroy()
+            self._workshop_requirements_dialog = None
+            return
+
         report = analyze_workshop_requirements(PROJECT_ROOT / "workshops")
         dlg = ctk.CTkToplevel(self)
+        self._workshop_requirements_dialog = dlg
         dlg.title("Workshop Requirements Overview")
         dlg.geometry("820x680")
         dlg.configure(fg_color=self.COLORS['bg_dark'])
@@ -1048,7 +1079,13 @@ class NaChanceApp(
             lines.append(f"  • {row['a']} ↔ {row['b']}: {row['score']}%")
         box.insert("1.0", "\n".join(lines))
         box.configure(state="disabled")
-        ctk.CTkButton(dlg, text="Đóng", command=dlg.destroy,
+        def _close_workshop_requirements():
+            self._workshop_requirements_dialog = None
+            if dlg.winfo_exists():
+                dlg.destroy()
+
+        dlg.protocol("WM_DELETE_WINDOW", _close_workshop_requirements)
+        ctk.CTkButton(dlg, text="Đóng", command=_close_workshop_requirements,
                       fg_color=self.COLORS['accent'], hover_color=self.COLORS['accent_hover']).pack(fill="x", padx=20, pady=(0, 18))
 
     def _capture_workshop_pipeline_state(self, workshop):
@@ -1061,9 +1098,26 @@ class NaChanceApp(
         return state if isinstance(state, dict) else {"value": state}
 
     def _show_pipeline_builder(self, edit_pipeline_id=None):
+        if edit_pipeline_id is None:
+            existing = getattr(self, "_pipeline_builder_dialog", None)
+            if existing is not None and existing.winfo_exists():
+                existing.destroy()
+                self._pipeline_builder_dialog = None
+                return
+
         import tkinter as tk
         import json
-        dlg = ctk.CTkToplevel(self); dlg.title("Pipeline Builder"); dlg.geometry("900x680"); dlg.minsize(760,560); dlg.configure(fg_color=self.COLORS['bg_dark']); dlg.transient(self)
+        dlg = ctk.CTkToplevel(self)
+        if edit_pipeline_id is None:
+            self._pipeline_builder_dialog = dlg
+        dlg.title("Pipeline Builder"); dlg.geometry("900x680"); dlg.minsize(760,560); dlg.configure(fg_color=self.COLORS['bg_dark']); dlg.transient(self)
+        def _close_pipeline_builder():
+            if getattr(self, "_pipeline_builder_dialog", None) is dlg:
+                self._pipeline_builder_dialog = None
+            if dlg.winfo_exists():
+                dlg.destroy()
+
+        dlg.protocol("WM_DELETE_WINDOW", _close_pipeline_builder)
         ctk.CTkLabel(dlg,text="Pipeline Builder",font=self.F_LARGE,text_color=self.COLORS['accent']).pack(anchor="w",padx=20,pady=(18,4))
         ctk.CTkLabel(dlg,text="Chọn Workshop theo thứ tự. Khi thêm bước, NaChance chụp trạng thái tùy chọn hiện tại của Workshop.",font=self.F_SMALL,text_color=self.COLORS['text_secondary']).pack(anchor="w",padx=20,pady=(0,12))
         top=ctk.CTkFrame(dlg,fg_color=self.COLORS['bg_card'],corner_radius=10); top.pack(fill="x",padx=20,pady=(0,12))
@@ -1328,9 +1382,16 @@ class NaChanceApp(
     def _set_busy(self, busy):
         self._is_busy = busy
         state = "disabled" if busy else "normal"
-        for btn in [self.btn_run, self.btn_quick, self.btn_batch,
-                     self.btn_layout_preview, self.btn_layout_save, self.btn_layout_print]:
-            btn.configure(state=state)
+        # Pipeline Core có thể được bind vào bất kỳ WorkshopWindow nào;
+        # không phải Workshop nào cũng có cùng bộ nút.
+        for name in ("btn_run", "btn_quick", "btn_batch",
+                     "btn_layout_preview", "btn_layout_save", "btn_layout_print"):
+            btn = getattr(self, name, None)
+            if btn is not None:
+                try:
+                    btn.configure(state=state)
+                except Exception:
+                    pass
 
     def _reset_ui(self):
         self.btn_run.configure(text="🖼 Chọn file", fg_color=self.COLORS['accent'])

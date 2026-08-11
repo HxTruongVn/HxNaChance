@@ -9,8 +9,8 @@
 | Runtime audit | IMPLEMENTED | `setup/runtime_manager.py` |
 | Setup handoff | IMPLEMENTED | `NaChance.py`, `setup/installer.py` |
 | Workshop discovery | IMPLEMENTED | `app/workshop_discovery.py` |
-| Dynamic UI declaration | IMPLEMENTED | Workshop manifests + `app/main_ui.py` |
-| Workshop hot reload | PLANNED | discovery hiện chạy lúc import |
+| Dynamic UI declaration | IMPLEMENTED | Workshop manifests + `app/workshop_discovery.py` + `app/workshop_window.py` |
+| Workshop hot reload | NOT IN CURRENT CONTRACT | Session chỉ nhận thay đổi ở startup/restart |
 | Workshop requirement collection | IMPLEMENTED | `app/workshop_requirements.py` |
 | Unified resource resolver | PLANNED | chưa có service thống nhất |
 | Resource provisioning engine | PARTIAL | setup/download logic đang phân tán |
@@ -18,6 +18,7 @@
 | Runtime state machine | PLANNED | chưa có state model cấp Core |
 | Pipeline persistence | IMPLEMENTED | `app/pipeline_store.py` |
 | Pipeline validation/execution engine | PLANNED | persistence chưa đồng nghĩa execution |
+| Workshop window/navigation | IMPLEMENTED | `app/workshop_window.py`, `app/window_manager.py`, `Ctrl+` / `Ctrl+Shift+` |
 | Core integration test | PLANNED | chưa có full Core flow test |
 | Packaging baseline | PLANNED | chưa có verified Windows release |
 | Photo internal architecture | DEFERRED | ngoài phạm vi đợt docs này |

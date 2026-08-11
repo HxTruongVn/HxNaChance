@@ -1,6 +1,5 @@
-"""workshops.photo.ui — ProcessTabMixin: tab "🖼 Photo Processing" (trước đây "Xử lý ảnh").
-Phụ thuộc WidgetHelpersMixin (_section_header/_chk/_slider) — NaChanceApp
-phải kế thừa cả 2 Mixin này.
+"""workshops.photo.ui — ProcessTabMixin: UI entry point cho Workshop Photo. Tên class giữ lại để compatibility.
+Phụ thuộc WidgetHelpersMixin (_section_header/_chk/_slider) được WorkshopWindow cung cấp; không cần NaChanceApp kế thừa Workshop UI.
 """
 from tkinter import filedialog
 
@@ -11,7 +10,7 @@ from workshops.photo import SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME
 
 class ProcessTabMixin:
     def _build_process_tab(self):
-        tab = self.tab_photo
+        tab = self.tab_photo  # compatibility alias tới WorkshopWindow.main_frame
 
         # Preset
         self._section_header(tab, "🎯 LOẠI ẢNH")

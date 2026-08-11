@@ -1,4 +1,7 @@
-"""app.workshop_discovery — Reception tự phát hiện Workshop qua manifest.json.
+"""app.workshop_discovery — Core tự phát hiện Workshop qua manifest.json.
+
+Workshop được discovery để tạo session mới lúc startup và sau đó được
+WorkshopWindowManager mở trong các cửa sổ độc lập.
 
 Đúng mảnh [ ] cuối cùng còn thiếu trong "Bootstrap Controller đầy đủ"
 (docs/architecture/meta_architecture.md): trước đây Reception
@@ -28,69 +31,119 @@ from typing import List, Optional, Type
 
 @dataclass
 class WorkshopUI:
+    """Runtime metadata for one discovered Workshop.
+
+    ``workshop_id`` and ``workshop_name`` are derived from the Workshop
+    directory name.  The Core never invents or hard-codes a Workshop name.
+    ``session_priority`` is retained only as a compatibility field and is
+    always derived from the freshly generated session order; it is not read
+    from manifest.json.
+    """
     workshop_id: str
     workshop_name: str
     description: str
     about_path: Optional[Path]
     mixin_class: Type
-    build_method: str      # tên method Mixin tự gọi để vẽ tab của mình
-    tab_title: str
-    tab_order: int
-    menu_label: Optional[str] = None       # nhãn cascade trong menu "Window"
-    menu_build_method: Optional[str] = None  # method Mixin tự gọi để đổ nội dung submenu
-    open_method: Optional[str] = None      # method Mixin tự gọi khi File > Open, lúc tab Xưởng này đang active
-    run_method: Optional[str] = None       # method Mixin tự gọi khi Core Run/ Ctrl+R, lúc Workshop này đang active
+    build_method: str
+    tab_title: str = ""
+    tab_order: int = 999
+    window_title: Optional[str] = None
+    session_priority: int = 999
+    menu_label: Optional[str] = None
+    menu_build_method: Optional[str] = None
+    open_method: Optional[str] = None
+    run_method: Optional[str] = None
+
+
+def _discover_one(manifest_path: Path) -> Optional[WorkshopUI]:
+    """Read one manifest, deriving identity/display name from its directory."""
+    try:
+        with open(manifest_path, encoding="utf-8") as f:
+            manifest = json.load(f)
+
+        ui = manifest.get("ui")
+        if not ui:
+            print(f"[WorkshopDiscovery] ⚠ {manifest_path} không có khối \"ui\" — bỏ qua")
+            return None
+
+        workshop_dir = manifest_path.parent
+        # Canonical Workshop identity: the directory name.
+        workshop_id = workshop_dir.name
+        workshop_name = workshop_dir.name
+
+        # A manifest may describe the package, but it must not override the
+        # directory identity.  A mismatch is reported so packaging mistakes
+        # are visible without silently creating a second identity.
+        declared_id = str(manifest.get("workshop_id", "")).strip()
+        if declared_id and declared_id != workshop_id:
+            print(
+                f"[WorkshopDiscovery] ⚠ {manifest_path}: "
+                f"workshop_id={declared_id!r} khác tên thư mục {workshop_id!r}; "
+                f"dùng tên thư mục làm identity."
+            )
+
+        module = importlib.import_module(ui["module"])
+        mixin_class = getattr(module, ui["mixin_class"])
+
+        # Title/name are derived from the folder.  ``display_name`` is
+        # deliberately not accepted here: the current contract is that the
+        # Workshop's visible name is its directory name.
+        return WorkshopUI(
+            workshop_id=workshop_id,
+            workshop_name=workshop_name,
+            description=manifest.get("description", ""),
+            about_path=(
+                manifest_path.parent / manifest["about_file"]
+            ).resolve() if manifest.get("about_file") else None,
+            mixin_class=mixin_class,
+            build_method=ui["build_method"],
+            tab_title=workshop_name,
+            tab_order=999,
+            window_title=f"NaChance — {workshop_name}",
+            menu_label=workshop_name,
+            menu_build_method=ui.get("menu_build_method"),
+            open_method=ui.get("open_method"),
+            run_method=(manifest.get("execution") or {}).get("run_method"),
+        )
+    except Exception as exc:
+        print(f"[WorkshopDiscovery] ⚠ Bỏ qua {manifest_path}: {exc}")
+        return None
 
 
 def discover_workshops(workshops_dir: Optional[Path] = None) -> List[WorkshopUI]:
-    """Quét workshops/*/manifest.json, import động Mixin qua khối "ui".
-    Trả về danh sách đã sắp theo tab_order (ổn định, không phụ thuộc
-    thứ tự hệ điều hành liệt kê thư mục).
+    """Create a fresh Workshop session from the current disk contents.
 
-    Workshop nào manifest lỗi/thiếu khối "ui"/import module thất bại ->
-    BỎ QUA, in cảnh báo, KHÔNG crash cả app vì 1 Workshop hỏng — đúng
-    graceful-degrade đã dùng xuyên suốt repo (_Unavailable pattern
-    trong workshops/photo/engine.py)."""
+    There is NO persisted Workshop navigation order and NO ``session_priority``
+    in the manifest contract.  At every startup this function scans the
+    current ``workshops/*/manifest.json`` set and creates a new session list.
+    The default session order is the canonical directory-name order, making
+    the result deterministic while still being rebuilt from disk every boot.
+
+    ``Ctrl+``` and ``Ctrl+Shift+``` operate only on this in-memory session list.
+    """
     if workshops_dir is None:
         workshops_dir = Path(__file__).resolve().parent.parent / "workshops"
-    workshops_dir = Path(workshops_dir)  # chấp nhận cả str lẫn Path
+    workshops_dir = Path(workshops_dir)
 
     found: List[WorkshopUI] = []
     if not workshops_dir.is_dir():
         return found
 
-    for manifest_path in sorted(workshops_dir.glob("*/manifest.json")):
-        try:
-            with open(manifest_path, encoding="utf-8") as f:
-                manifest = json.load(f)
+    # Directory name is the source of identity and therefore also the source
+    # of the default session order.  Never use manifest ordering/priority.
+    for manifest_path in sorted(
+        workshops_dir.glob("*/manifest.json"),
+        key=lambda p: p.parent.name.casefold(),
+    ):
+        workshop = _discover_one(manifest_path)
+        if workshop is not None:
+            found.append(workshop)
 
-            ui = manifest.get("ui")
-            if not ui:
-                print(f"[WorkshopDiscovery] ⚠ {manifest_path} không có khối \"ui\" — bỏ qua")
-                continue
+    # Fresh session index. This is not persisted and is recreated next boot.
+    for index, workshop in enumerate(found):
+        workshop.session_priority = index
+        workshop.tab_order = index
 
-            module = importlib.import_module(ui["module"])
-            mixin_class = getattr(module, ui["mixin_class"])
-
-            found.append(WorkshopUI(
-                workshop_id=manifest.get("workshop_id", manifest_path.parent.name),
-                workshop_name=manifest.get("workshop_name", manifest_path.parent.name),
-                description=manifest.get("description", ""),
-                about_path=(manifest_path.parent / manifest["about_file"]).resolve() if manifest.get("about_file") else None,
-                mixin_class=mixin_class,
-                build_method=ui["build_method"],
-                tab_title=ui["tab_title"],
-                tab_order=ui.get("tab_order", 999),
-                menu_label=ui.get("menu_label"),
-                menu_build_method=ui.get("menu_build_method"),
-                open_method=ui.get("open_method"),
-            run_method=(manifest.get("execution") or {}).get("run_method"),
-            ))
-        except Exception as e:
-            print(f"[WorkshopDiscovery] ⚠ Bỏ qua {manifest_path}: {e}")
-            continue
-
-    found.sort(key=lambda w: w.tab_order)
     return found
 
 
@@ -100,28 +153,4 @@ def discover_workshop_at(workshop_dir: Path) -> Optional[WorkshopUI]:
     manifest_path = workshop_dir / "manifest.json"
     if not manifest_path.is_file():
         return None
-    try:
-        with open(manifest_path, encoding="utf-8") as f:
-            manifest = json.load(f)
-        ui = manifest.get("ui") or {}
-        if not ui.get("module") or not ui.get("mixin_class"):
-            return None
-        module = importlib.import_module(ui["module"])
-        mixin_class = getattr(module, ui["mixin_class"])
-        return WorkshopUI(
-            workshop_id=manifest.get("workshop_id", workshop_dir.name),
-            workshop_name=manifest.get("workshop_name", workshop_dir.name),
-            description=manifest.get("description", ""),
-            about_path=(manifest_path.parent / manifest["about_file"]).resolve() if manifest.get("about_file") else None,
-            mixin_class=mixin_class,
-            build_method=ui["build_method"],
-            tab_title=ui["tab_title"],
-            tab_order=ui.get("tab_order", 999),
-            menu_label=ui.get("menu_label"),
-            menu_build_method=ui.get("menu_build_method"),
-            open_method=ui.get("open_method"),
-            run_method=(manifest.get("execution") or {}).get("run_method"),
-        )
-    except Exception as exc:
-        print(f"[WorkshopDiscovery] ⚠ Bỏ qua {manifest_path}: {exc}")
-        return None
+    return _discover_one(manifest_path)

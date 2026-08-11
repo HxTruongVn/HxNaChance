@@ -90,6 +90,10 @@ class MenuBarMixin:
         self.bind_all("<Control-z>", self._shortcut_undo)
         self.bind_all("<Control-y>", self._shortcut_redo)
         self.bind_all("<Control-r>", self._shortcut_run)
+        # Workshop navigation is session-based, not tab-based. The session
+        # order is rebuilt on every startup by WorkshopWindowManager.
+        self.bind_all("<Control-KeyPress-grave>", self._shortcut_next_workshop)
+        self.bind_all("<Control-Shift-KeyPress-grave>", self._shortcut_previous_workshop)
 
     def _shortcut_run(self, event=None):
         """Ctrl+R = Run của Workshop đang active. Core chỉ định tuyến;
@@ -97,6 +101,18 @@ class MenuBarMixin:
         fn = getattr(self, "_run_active_workshop", None)
         if callable(fn):
             fn()
+        return "break"
+
+    def _shortcut_next_workshop(self, event=None):
+        fn = getattr(self, "_next_workshop", None)
+        if callable(fn):
+            return fn(event)
+        return "break"
+
+    def _shortcut_previous_workshop(self, event=None):
+        fn = getattr(self, "_previous_workshop", None)
+        if callable(fn):
+            return fn(event)
         return "break"
 
     def _popup_menu(self, button, build_fn):
@@ -121,18 +137,8 @@ class MenuBarMixin:
 
     # ===== FILE =====
     def _menu_file(self, menu: tk.Menu):
-        """"Open..." định tuyến ĐỘNG theo tab Xưởng đang active
-        (self.tabview.get() trả đúng tab_title đang hiển thị) — gọi
-        open_method Xưởng đó tự khai trong manifest.json (giống hệt
-        pattern build_method/menu_build_method đã có), KHÔNG hardcode
-        "nếu đang ở tab Photo thì gọi _run_single" ở đây. Xưởng không
-        khai open_method (hoặc không khớp tab nào đang active — không
-        nên xảy ra trong vận hành bình thường, nhưng không giả định) ->
-        mục "Open..." xám đi, không đoán mò gọi nhầm hành động."""
-        active_tab = self.tabview.get() if getattr(self, "tabview", None) is not None else ""
-        active_workshop = next(
-            (w for w in self._discovered_workshops if w.tab_title == active_tab), None)
-
+        """File định tuyến theo Workshop active trong session hiện tại."""
+        active_workshop = self._active_workshop() if hasattr(self, "_active_workshop") else None
         menu.add_command(
             label="Open...",
             command=self._open_active_workshop,
@@ -157,6 +163,16 @@ class MenuBarMixin:
         menu.add_separator()
         menu.add_command(label="Exit", command=self._on_close)
 
+    def _active_workshop_window(self):
+        manager = getattr(self, "_window_manager", None)
+        if manager is None or manager.active_index < 0:
+            return None
+        try:
+            workshop = manager.session_workshops[manager.active_index]
+            return manager.windows.get(workshop.workshop_id)
+        except (IndexError, AttributeError):
+            return None
+
     # ===== EDIT =====
     def _menu_edit(self, menu: tk.Menu):
         """Edit phản ánh capability/history của Workshop đang active.
@@ -164,20 +180,21 @@ class MenuBarMixin:
         Không tạo mục Undo/Redo giả khi Workshop chưa có history. Với Document
         hiện tại, mỗi lần mở menu lại đọc can_undo/can_redo mới nhất.
         """
-        doc = getattr(self, "current_document", None)
+        active_window = self._active_workshop_window()
+        doc = getattr(active_window, "current_document", None) if active_window else None
 
         # Core history commands. Chỉ hiện khi capability tồn tại và đang có
         # bước để thực hiện; không để một menu đầy mục disabled vô nghĩa.
         if doc is not None and doc.can_undo():
             menu.add_command(
                 label="Undo",
-                command=self._undo,
+                command=lambda w=active_window: w._undo(),
                 accelerator="Ctrl+Z",
             )
         if doc is not None and doc.can_redo():
             menu.add_command(
                 label="Redo",
-                command=self._redo,
+                command=lambda w=active_window: w._redo(),
                 accelerator="Ctrl+Y",
             )
 
@@ -191,19 +208,6 @@ class MenuBarMixin:
                     menu.add_separator()
                 for item in items:
                     menu.add_command(**item)
-
-    def _open_active_workshop(self):
-        active_tab = self.tabview.get() if getattr(self, "tabview", None) is not None else ""
-        workshop = next(
-            (w for w in getattr(self, "_discovered_workshops", [])
-             if w.tab_title == active_tab),
-            None,
-        )
-        if workshop and workshop.open_method:
-            method = getattr(self, workshop.open_method, None)
-            if callable(method):
-                return method()
-        return None
 
     @staticmethod
     def _is_text_editing_focus(widget):
@@ -230,9 +234,10 @@ class MenuBarMixin:
         """Persist the exact current Document cursor + Workshop configuration."""
         from tkinter import filedialog, messagebox
 
-        doc = getattr(self, "current_document", None)
+        active_window = self._active_workshop_window()
+        doc = getattr(active_window, "current_document", None) if active_window else None
         if doc is None:
-            self.status.configure(
+            getattr(active_window or self, "status").configure(
                 text="Chưa có trạng thái để lưu.",
                 text_color=self.COLORS['text_secondary'],
             )
@@ -247,7 +252,7 @@ class MenuBarMixin:
             return None
 
         state = {}
-        getter = getattr(self, "get_pipeline_state", None)
+        getter = getattr(active_window, "get_pipeline_state", None) if active_window else None
         if callable(getter):
             try:
                 state = getter() or {}
@@ -257,11 +262,11 @@ class MenuBarMixin:
         try:
             saved = doc.save_state(
                 path,
-                workshop_id=getattr(self, "workshop_id", "photo"),
-                workshop_version=getattr(self, "workshop_version", None),
+                workshop_id=getattr(active_window, "workshop_id", "photo"),
+                workshop_version=getattr(active_window, "workshop_version", None),
                 workshop_state=state,
             )
-            self.status.configure(
+            getattr(active_window or self, "status").configure(
                 text=f"Đã lưu trạng thái tại bước {doc.cursor + 1}/{len(doc.steps)}.",
                 text_color=self.COLORS['success'],
             )
@@ -311,18 +316,20 @@ class MenuBarMixin:
         focus = self.focus_get()
         if self._is_text_editing_focus(focus):
             return None
-        doc = getattr(self, "current_document", None)
+        active_window = self._active_workshop_window()
+        doc = getattr(active_window, "current_document", None) if active_window else None
         if doc is not None and doc.can_undo():
-            self._undo()
+            active_window._undo()
         return "break"
 
     def _shortcut_redo(self, event=None):
         focus = self.focus_get()
         if self._is_text_editing_focus(focus):
             return None
-        doc = getattr(self, "current_document", None)
+        active_window = self._active_workshop_window()
+        doc = getattr(active_window, "current_document", None) if active_window else None
         if doc is not None and doc.can_redo():
-            self._redo()
+            active_window._redo()
         return "break"
 
     # ===== WINDOW — thao tác host + submenu từng Xưởng =====
@@ -330,17 +337,14 @@ class MenuBarMixin:
         menu.add_command(label="Load Workshop Folder...", command=self._load_workshop_folder)
         if self._discovered_workshops:
             menu.add_separator()
-        for w in self._discovered_workshops:
-            if not w.menu_build_method:
-                continue  # Xưởng không khai menu_label/menu_build_method -> bỏ qua, không lỗi
-            submenu = tk.Menu(
-                menu, tearoff=0,
-                bg=self.COLORS['bg_card'], fg=self.COLORS['text_primary'],
-                activebackground=self.COLORS['accent'], activeforeground="#ffffff",
-                relief="flat", borderwidth=1,
-            )
-            getattr(self, w.menu_build_method)(submenu)
-            menu.add_cascade(label=w.menu_label or w.workshop_name, menu=submenu)
+            for index, w in enumerate(self._discovered_workshops, 1):
+                menu.add_command(
+                    label=f"{index}. {w.workshop_name}",
+                    command=lambda wid=w.workshop_id: self._open_workshop(wid),
+                )
+        menu.add_separator()
+        menu.add_command(label="Next Workshop", command=self._next_workshop, accelerator="Ctrl+`")
+        menu.add_command(label="Previous Workshop", command=self._previous_workshop, accelerator="Ctrl+Shift+`")
 
     # ===== VIEW =====
     def _menu_view(self, menu: tk.Menu):

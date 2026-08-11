@@ -1,4 +1,4 @@
-"""workshops.layout.ui — LayoutTabMixin: tab "🖨 Layout" (trước đây "Xếp in").
+"""workshops.layout.ui — LayoutTabMixin: UI entry point cho Workshop Layout. Tên class giữ lại để compatibility.
 Phụ thuộc WidgetHelpersMixin. LAYOUT_PRESETS cũng được ConfigMixin dùng
 riêng (import lại ở config_mixin.py), vì 2 Mixin đó cùng cần nhưng
 không phụ thuộc lẫn nhau.
@@ -18,7 +18,7 @@ from ui.utils import safe_float, safe_int
 
 class LayoutTabMixin:
     def _build_layout_tab(self):
-        tab = self.tab_layout
+        tab = self.tab_layout  # compatibility alias tới WorkshopWindow.main_frame
 
         self._section_header(tab, "📷 ẢNH NGUỒN")
         fs = ctk.CTkFrame(tab, fg_color=self.COLORS['bg_card'], corner_radius=8,
@@ -219,9 +219,12 @@ class LayoutTabMixin:
         self.layout_src_path = source_path
         if hasattr(self, "lbl_layout_src"):
             self.lbl_layout_src.configure(text=os.path.basename(source_path))
-        if hasattr(self, "tabview"):
+        # Workshop window tự nhận focus; không còn phụ thuộc CTkTabview của Core.
+        try:
+            self.focus_workshop()
+        except Exception:
             try:
-                self.tabview.set("🖨 Layout")
+                self.focus_force()
             except Exception:
                 pass
 
