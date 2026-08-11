@@ -21,6 +21,9 @@
     "menu_build_method": "_menu_photo_content",
     "open_method": "_run_single"
   },
+  "execution": {
+    "run_method": "_run_single"
+  },
   "capabilities_required": [
     "face_parser",
     "face_restorer",

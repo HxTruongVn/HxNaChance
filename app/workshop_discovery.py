@@ -39,6 +39,7 @@ class WorkshopUI:
     menu_label: Optional[str] = None       # nhãn cascade trong menu "Window"
     menu_build_method: Optional[str] = None  # method Mixin tự gọi để đổ nội dung submenu
     open_method: Optional[str] = None      # method Mixin tự gọi khi File > Open, lúc tab Xưởng này đang active
+    run_method: Optional[str] = None       # method Mixin tự gọi khi Core Run/ Ctrl+R, lúc Workshop này đang active
 
 
 def discover_workshops(workshops_dir: Optional[Path] = None) -> List[WorkshopUI]:
@@ -83,6 +84,7 @@ def discover_workshops(workshops_dir: Optional[Path] = None) -> List[WorkshopUI]
                 menu_label=ui.get("menu_label"),
                 menu_build_method=ui.get("menu_build_method"),
                 open_method=ui.get("open_method"),
+            run_method=(manifest.get("execution") or {}).get("run_method"),
             ))
         except Exception as e:
             print(f"[WorkshopDiscovery] ⚠ Bỏ qua {manifest_path}: {e}")
@@ -118,6 +120,7 @@ def discover_workshop_at(workshop_dir: Path) -> Optional[WorkshopUI]:
             menu_label=ui.get("menu_label"),
             menu_build_method=ui.get("menu_build_method"),
             open_method=ui.get("open_method"),
+            run_method=(manifest.get("execution") or {}).get("run_method"),
         )
     except Exception as exc:
         print(f"[WorkshopDiscovery] ⚠ Bỏ qua {manifest_path}: {exc}")

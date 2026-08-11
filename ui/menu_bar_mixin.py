@@ -89,6 +89,15 @@ class MenuBarMixin:
         self.bind_all("<Control-s>", self._shortcut_save_state)
         self.bind_all("<Control-z>", self._shortcut_undo)
         self.bind_all("<Control-y>", self._shortcut_redo)
+        self.bind_all("<Control-r>", self._shortcut_run)
+
+    def _shortcut_run(self, event=None):
+        """Ctrl+R = Run của Workshop đang active. Core chỉ định tuyến;
+        Workshop tự khai execution.run_method trong manifest.json."""
+        fn = getattr(self, "_run_active_workshop", None)
+        if callable(fn):
+            fn()
+        return "break"
 
     def _popup_menu(self, button, build_fn):
         """Dựng lại menu MỚI mỗi lần bấm (không giữ menu cũ) — để các

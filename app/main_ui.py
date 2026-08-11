@@ -109,6 +109,7 @@ class NaChanceApp(
         # =========================================================================
         # Core UI luôn hiển thị khi khởi động; Mini chỉ là chế độ người dùng chọn sau.
         self.is_mini = False
+        self._view_mode = "full"
         self.save_dir = str(Path.home() / "Pictures" / "ANHTHE")
         os.makedirs(self.save_dir, exist_ok=True)
         self.last_result = None
@@ -176,8 +177,7 @@ class NaChanceApp(
         self._build_menu_bar()
         self._build_main_panel()
         self._lock_unavailable_features()
-        if not any(w.workshop_id == "photo" for w in self._discovered_workshops):
-            self.btn_quick.configure(state="disabled")
+        self._refresh_title_run_state()
         self._start_workshop_watcher()
         # resize_grip tạo trong _build_title_bar() (TRƯỚC main_frame) —
         # Tk mặc định xếp widget tạo SAU đè lên widget tạo TRƯỚC cùng 1
@@ -644,6 +644,31 @@ class NaChanceApp(
         ctk.CTkButton(dlg, text="Đóng", fg_color=self.COLORS['accent'],
                       hover_color=self.COLORS['accent_hover'], command=dlg.destroy).pack(pady=(0, 18), padx=25, fill="x")
 
+    def _active_workshop(self):
+        """Workshop đang active theo tab hiện tại."""
+        active_tab = self.tabview.get() if getattr(self, "tabview", None) is not None else ""
+        return next((w for w in self._discovered_workshops if w.tab_title == active_tab), None)
+
+    def _refresh_title_run_state(self):
+        """Run chỉ khả dụng khi Workshop active khai execution.run_method."""
+        button = getattr(self, "btn_quick", None)
+        if button is None:
+            return
+        workshop = self._active_workshop()
+        enabled = bool(workshop and workshop.run_method and callable(getattr(self, workshop.run_method, None)))
+        button.configure(state="normal" if enabled else "disabled")
+
+    def _run_active_workshop(self):
+        """Cổng Run cấp Core: định tuyến tới execution.run_method của Workshop active."""
+        workshop = self._active_workshop()
+        if workshop is None:
+            return
+        method = getattr(self, workshop.run_method, None) if workshop.run_method else None
+        if not callable(method):
+            self._refresh_title_run_state()
+            return
+        method()
+
     def _build_title_bar(self):
         from pathlib import Path
         from PIL import Image
@@ -653,14 +678,11 @@ class NaChanceApp(
         self.title_bar.pack(fill="x", side="top")
         self.title_bar.pack_propagate(False)
 
-        self.btn_toggle = ctk.CTkButton(
-            self.title_bar, text="☰", width=32, height=32,
-            fg_color="transparent", hover_color=self.COLORS['bg_hover'],
-            font=(self.FONT_FAMILY, 14), command=self._toggle_panel
-        )
-        self.btn_toggle.pack(side="left", padx=6, pady=5)
+        # =========================================================================
+        # CỤM BÊN TRÁI (LEFT): [Logo NaChance]  NaChance         [▶ RUN]
+        # =========================================================================
 
-        # Chọn 1 trong 3 file phù hợp nhất, ví dụ "logo (3).ico"
+        # 1. Logo NaChance
         icon_path = Path(__file__).parent.parent / "assets" / "icons" / "logo (3).ico"
         if icon_path.exists():
             pil_img = Image.open(icon_path)
@@ -668,36 +690,63 @@ class NaChanceApp(
             orig_width, orig_height = pil_img.size
             target_width = int(orig_width * (target_height / float(orig_height)))
             
-            # Sử dụng chung một ảnh hoặc phân bổ light/dark nếu muốn
             self.logo_image = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(target_width, target_height))
             self.logo_label = ctk.CTkLabel(self.title_bar, text="", image=self.logo_image)
-            self.logo_label.pack(side="left", padx=(6, 4))
+            self.logo_label.pack(side="left", padx=(10, 4))
             self.logo_label.bind("<Button-1>", self._start_drag)
             self.logo_label.bind("<B1-Motion>", self._do_drag)
 
-        # Phần chữ thương hiệu dạng Text chuẩn để tự thích ứng màu sắc theo mọi theme
+        # 2. Chữ thương hiệu "NaChance"
         self.title_text_label = ctk.CTkLabel(
             self.title_bar, text="NaChance",
             font=self.F_BRAND, text_color=self.COLORS['accent']
         )
-        self.title_text_label.pack(side="left", padx=4)
+        self.title_text_label.pack(side="left", padx=(0, 12))
         self.title_text_label.bind("<Button-1>", self._start_drag)
         self.title_text_label.bind("<B1-Motion>", self._do_drag)
 
+        # 3. Nút thực thi ▶ RUN
         self.btn_quick = ctk.CTkButton(
-            self.title_bar, text="▶ RUN", width=65, height=28,
+            self.title_bar, text="▶ RUN", width=72, height=28,
             fg_color=self.COLORS['accent'], hover_color=self.COLORS['accent_hover'],
-            font=self.F_NORMAL, text_color="white", command=self._run_single
+            font=self.F_NORMAL, text_color="white", command=self._run_active_workshop
         )
-        self.btn_quick.pack(side="left", padx=10)
+        self.btn_quick.pack(side="left", padx=5)
 
-        ctk.CTkButton(self.title_bar, text="✕", width=32, height=28,
-                      fg_color="transparent", hover_color=self.COLORS['danger'],
-                      font=(self.FONT_FAMILY, 12), command=self._on_close).pack(side="right", padx=6)
+        # =========================================================================
+        # CỤM BÊN PHẢI (RIGHT): ℹ  ☰  ✕ (Sắp xếp theo thứ tự pack: ✕ -> ☰ -> ℹ)
+        # =========================================================================
 
-        ctk.CTkButton(self.title_bar, text="ℹ", width=32, height=28,
-                      fg_color="transparent", hover_color=self.COLORS['bg_hover'],
-                      font=(self.FONT_FAMILY, 13), command=self._show_about).pack(side="right", padx=2)
+        # 1. Nút Đóng ✕ (Ngoài cùng bên phải)
+        self.btn_close = ctk.CTkButton(
+            self.title_bar, text="✕", width=32, height=28,
+            fg_color="transparent", hover_color=self.COLORS['danger'],
+            font=(self.FONT_FAMILY, 12), command=self._on_close
+        )
+        self.btn_close.pack(side="right", padx=(2, 6))
+
+        # 2. Nút Menu ☰
+        self.btn_toggle = ctk.CTkButton(
+            self.title_bar, text="☰", width=32, height=28,
+            fg_color="transparent", hover_color=self.COLORS['bg_hover'],
+            font=(self.FONT_FAMILY, 14), command=self._toggle_panel
+        )
+        self.btn_toggle.pack(side="right", padx=2)
+
+        # 3. Nút Thông tin ℹ
+        self.btn_about = ctk.CTkButton(
+            self.title_bar, text="ℹ", width=32, height=28,
+            fg_color="transparent", hover_color=self.COLORS['bg_hover'],
+            font=(self.FONT_FAMILY, 13), command=self._show_about
+        )
+        self.btn_about.pack(side="right", padx=2)
+
+        # =========================================================================
+        # BIND SỰ KIỆN KÉO CỬA SỔ & RENDER RESIZE GRIP
+        # =========================================================================
+        self.title_bar.bind("<Double-Button-1>", self._cycle_view_mode)
+        for _widget in (self.btn_quick, self.btn_toggle, self.btn_about, self.btn_close):
+            _widget.bind("<Double-Button-1>", lambda e: "break")
 
         self.title_bar.bind("<Button-1>", self._start_drag)
         self.title_bar.bind("<B1-Motion>", self._do_drag)
@@ -896,9 +945,7 @@ class NaChanceApp(
             self._discovered_workshops = sorted(fresh, key=lambda w: w.tab_order)
             self._refresh_core_workshop_status()
             self._refresh_workshop_exchange_targets()
-            photo_present = any(w.workshop_id == "photo" for w in self._discovered_workshops)
-            if hasattr(self, "btn_quick"):
-                self.btn_quick.configure(state="normal" if photo_present else "disabled")
+            self._refresh_title_run_state()
             if removed or added or changed:
                 self._show_workshop_change_status(added, removed)
         except Exception as exc:
@@ -1213,15 +1260,24 @@ class NaChanceApp(
         )
         self._refresh_workshops_from_disk()
 
+    def _cycle_view_mode(self, event=None):
+        """Double-click vùng trống title bar: Full → Half → Mini → Full."""
+        current = getattr(self, "_view_mode", "full")
+        next_mode = {"full": "half", "half": "mini", "mini": "full"}.get(current, "full")
+        self._set_display_mode(next_mode)
+        return "break"
+
     def _toggle_panel(self):
         if self.is_mini:
             self.main_frame.pack(fill="both", expand=True, padx=0, pady=0)
             self.geometry("600x1000")
             self.is_mini = False
+            self._view_mode = "full"
         else:
             self.main_frame.pack_forget()
             self.geometry("480x42")
             self.is_mini = True
+            self._view_mode = "mini"
 
     def _set_display_mode(self, mode: str):
         """View -> Mini / Full Screen / Half Screen. 3 kích thước dựng
@@ -1239,6 +1295,7 @@ class NaChanceApp(
             self.main_frame.pack_forget()
             self.geometry("480x42")
             self.is_mini = True
+            self._view_mode = "mini"
             return
 
         # "full"/"half" đều cần main_frame đang hiện — tự mở lại nếu
@@ -1251,11 +1308,13 @@ class NaChanceApp(
         screen_h = self.winfo_screenheight()
         if mode == "full":
             self.geometry(f"{screen_w}x{screen_h}+0+0")
+            self._view_mode = "full"
         elif mode == "half":
             # Nửa CHIỀU RỘNG, đủ chiều cao, ghim mép trái — đúng quy ước
             # "snap nửa màn hình" phổ biến nhất (Windows Win+Left/Right),
             # không phải số tự nghĩ ra.
             self.geometry(f"{screen_w // 2}x{screen_h}+0+0")
+            self._view_mode = "half"
 
     def _start_drag(self, event):
         self._drag_x = event.x
