@@ -1,0 +1,25 @@
+{
+  "workshop_id": "repo_intake",
+  "workshop_name": "Repository Intake & Review",
+  "version": "0.2.0",
+  "description": "Tiếp nhận repo lạ, quarantine, kiểm kê, cấp/hoàn thiện hồ sơ, nhập Resource, scaffold adapter và kiểm định trước khi phê duyệt.",
+  "ui": {
+    "module": "workshops.repo_intake.ui",
+    "mixin_class": "RepoIntakeUIMixin",
+    "build_method": "_build_repo_intake_tab"
+  },
+  "capabilities_required": [],
+  "capabilities_optional": [
+    "repo.static_inspection",
+    "repo.profile",
+    "resource.intake",
+    "adapter.review",
+    "adapter.scaffold",
+    "contract.test"
+  ],
+  "resources": {
+    "requirements_file": "requirements.txt",
+    "weights_directory": "weights"
+  },
+  "about_file": "ABOUT.md"
+}

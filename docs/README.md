@@ -37,11 +37,21 @@ Không được dùng tài liệu mục tiêu để kết luận rằng một t�
 - [Workshop Resource Contract](architecture/workshop_resource_contract.md) — hợp đồng Core ↔ Workshop ở mức hệ thống.
 - [Pipeline Model](pipeline_model.md) — cách Core kết nối các Workshop.
 - [Architecture Vision](architecture/NaChance%20Architecture%20Vision.md) — nguyên tắc dài hạn.
+- [Backend Rewrite Plan](architecture/backend_rewrite_plan.md) — contract và thứ tự viết lại Core/Runtime/Workshop.
+- [Backend Rewrite Status](architecture/backend_rewrite_status.md) — phần đã triển khai, giới hạn kiểm thử và tương thích.
 
 > **Phạm vi hiện tại:** phần **bên trong Workshop**, đặc biệt pipeline/model/processor
 > của Photo Workshop, đang được tạm gác khỏi việc tái thiết kế docs Core.
 > Tài liệu về Workshop được giữ như tài liệu riêng và không được dùng làm
 > bằng chứng rằng Core đã hoàn thành các cơ chế mở rộng bên trong Workshop.
+
+## Backend và API
+
+- [Backend Rewrite Plan](architecture/backend_rewrite_plan.md) — ranh giới Core, Runtime, Resource, Reception, Workshop và API.
+- [Backend Rewrite Status](architecture/backend_rewrite_status.md) — trạng thái triển khai hiện tại.
+- [Core API v1](architecture/api_core.md) — endpoint điều phối dùng chung cho desktop/mobile.
+- [Workshop Packaging Standard](architecture/workshop_packaging_standard.md) — cấu trúc thư mục và quy chuẩn để repo ngoài trở thành Workshop.
+- [Approved Workshop Lifecycle](architecture/approved_workshop_lifecycle.md) — approval marker, transport và managed watcher.
 
 ## Phát triển
 

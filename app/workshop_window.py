@@ -38,7 +38,7 @@ class WorkshopWindow(ctk.CTkToplevel, WidgetHelpersMixin, SidePanelMixin):
         # Context cơ bản dùng chung. Thuộc tính chưa có trên window sẽ được
         # resolve về Core qua __getattr__ bên dưới.
         for name in (
-            "COLORS", "THEMES", "DEFAULT_THEME", "FONT_FAMILY", "FONT_SCALE",
+            "COLORS", "THEMES", "THEME_GROUPS", "DEFAULT_THEME", "FONT_FAMILY", "FONT_SCALE",
             "F_SMALL", "F_NORMAL", "F_MEDIUM", "F_LARGE", "F_HEADER",
             "F_BRAND", "F_BRAND_LARGE", "theme_name", "config_path",
             "runtime_report", "engine", "qa_agent", "pipeline_store",
@@ -87,11 +87,11 @@ class WorkshopWindow(ctk.CTkToplevel, WidgetHelpersMixin, SidePanelMixin):
         self.bind("<FocusIn>", lambda _event: self.core._window_manager.mark_active(self.workshop_id))
 
     def __getattr__(self, name):
-        """Lấy Core service rồi bind lại vào WorkshopWindow.
+        """Legacy bridge — không phải Workshop/Core contract mới.
 
-        Đây là cầu nối tạm/compatibility để tách UI khỏi Core mà không phải
-        viết lại toàn bộ pipeline trong một lần. Các method của Core chạy với
-        ``self`` là WorkshopWindow nên chúng nhìn thấy widget của Workshop.
+        Cầu nối này chỉ giữ compatibility cho UI cũ trong giai đoạn chuyển
+        tiếp. Code mới phải gọi service/contract tường minh thay vì dựa vào
+        dynamic attribute forwarding.
         """
         core = self.__dict__.get("core")
         if core is None:
@@ -155,7 +155,18 @@ class WorkshopWindow(ctk.CTkToplevel, WidgetHelpersMixin, SidePanelMixin):
                 f"Workshop {self.workshop_id} không có build method {self.workshop.build_method}"
             )
         bound = types.MethodType(build, self)
-        bound()
+        built = bound()
+        # Workshop build methods may either mount their root widget themselves
+        # (legacy Photo/Layout) or return a root frame for the host to mount.
+        # The latter is the preferred contract for new Workshops.  Previously
+        # the returned frame was discarded, which made repo_intake appear
+        # completely blank even though its UI had been constructed.
+        if built is not None:
+            try:
+                if built.winfo_exists() and not built.winfo_manager():
+                    built.pack(fill="both", expand=True, padx=0, pady=0)
+            except Exception as exc:
+                print(f"[WorkshopWindow] ⚠ Không thể mount Workshop UI {self.workshop_id}: {exc}")
 
 
     def _build_status_bar(self):

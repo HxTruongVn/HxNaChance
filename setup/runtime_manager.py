@@ -41,6 +41,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from core.model_registry import load_model_registry
+
 
 # ------------------------------------------------------------------
 # 1. Discovery dữ liệu Workshop
@@ -95,9 +97,7 @@ def _workshop_specs(workshops_dir: Optional[Path] = None) -> List[dict]:
             if registry_file:
                 p = workshop_dir / registry_file
                 if p.is_file():
-                    raw = json.loads(p.read_text(encoding="utf-8"))
-                    if isinstance(raw, dict):
-                        registry = raw
+                    registry = load_model_registry(p).as_dict()
 
             weights = {}
             weights_file = resources.get("weight_sources_file")
@@ -237,6 +237,25 @@ def _legacy_workshop_metadata():
     return result
 
 _legacy_meta = _legacy_workshop_metadata()
+_LEGACY_CAPABILITY_ALIASES = {
+    "face_align": "face_parser",
+    "remove_bg": "background_remover",
+    "face_restore": "face_restorer",
+    "upscale": "upscaler",
+    "face_parsing": "face_parser",
+}
+for _alias, _canonical in _LEGACY_CAPABILITY_ALIASES.items():
+    if _canonical in _legacy_meta["features"]:
+        _legacy_meta["features"].setdefault(_alias, _legacy_meta["features"][_canonical])
+# Historical face alignment uses MediaPipe landmarks and no weight file.
+_legacy_meta["features"].update({
+    "face_align": {"packages": ["mediapipe"], "models": []},
+    "remove_bg": {"packages": ["rembg"], "models": ["isnet-general-use.onnx"]},
+    "face_restore": {"packages": ["torch", "codeformer"], "models": ["codeformer.pth"]},
+    "upscale": {"packages": ["torch", "realesrgan"], "models": ["RealESRGAN_x2plus.pth"]},
+    "face_parsing": {"packages": ["torch"], "models": ["79999_iter.pth"]},
+})
+
 MODEL_FILES = {
     name: (info.get("description", "") if isinstance(info, dict) else "")
     for name, info in _legacy_meta["models"].items()
@@ -270,8 +289,9 @@ class RuntimeManager:
     Không tải model, không cài package — chỉ BÁO CÁO hiện trạng máy.
     """
 
-    def __init__(self, weights_dir: str = "weights"):
+    def __init__(self, weights_dir: str = "weights", model_registry=None):
         self.weights_dir = Path(weights_dir)
+        self.model_registry = model_registry
 
     def ensure_weights_dir(self) -> None:
         self.weights_dir.mkdir(parents=True, exist_ok=True)
@@ -341,6 +361,10 @@ class RuntimeManager:
                 "optional_capabilities": optional_caps,
             }
 
+        for alias, canonical in _LEGACY_CAPABILITY_ALIASES.items():
+            if canonical in feature_available:
+                feature_available.setdefault(alias, feature_available[canonical])
+
         device, gpu_name, torch_build_info = self._detect_device(
             any(name.endswith("::torch") and ok for name, ok in package_status.items())
         )
@@ -355,7 +379,7 @@ class RuntimeManager:
             os_name=os_name,
             device=device,
             gpu_name=gpu_name,
-            weights_dir="",
+            weights_dir=str(self.weights_dir),
             torch_build_info=torch_build_info,
             gpu_hardware_detected=gpu_hardware_detected,
             ram_gb=ram_gb,
@@ -379,7 +403,8 @@ class RuntimeManager:
         except Exception:
             return False
 
-    def _detect_os_name(self) -> str:
+    @staticmethod
+    def _detect_os_name() -> str:
         """platform.release() có lỗ hổng nổi tiếng trên Windows: Windows
         11 vẫn báo "10" (cùng version nội bộ "10.0" với Windows 10, chỉ
         khác build number — Windows 11 bắt đầu từ build 22000). Ca thật
@@ -419,7 +444,8 @@ class RuntimeManager:
 
 
 
-    def _detect_ram_gb(self) -> Optional[float]:
+    @staticmethod
+    def _detect_ram_gb() -> Optional[float]:
         """RAM VẬT LÝ thật của máy — dùng API/lệnh GỐC hệ điều hành,
         KHÔNG cài thêm package nào (không psutil) — giữ đúng nguyên tắc
         Bootstrap "không phụ thuộc gì phải cài trước": RAM cần biết

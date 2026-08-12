@@ -745,15 +745,10 @@ class NaChanceApp(
         manager = getattr(self, "_window_manager", None)
         if manager is None:
             return None
-        if manager.is_open(workshop_id):
-            manager.close(workshop_id)
-            # WorkshopWindowManager.close() -> WorkshopWindow.close() ->
-            # on_window_closed() đã tự gọi _refresh_workshop_launcher_buttons()
-            # ở đó rồi (điểm chung mọi đường đóng cửa sổ đều đi qua), chỉ
-            # cần refresh thêm phần RUN trên title bar.
-            self._refresh_title_run_state()
-            return None
-        return self._open_workshop(workshop_id)
+        window = manager.toggle(workshop_id)
+        self._refresh_title_run_state()
+        self._refresh_workshop_launcher_buttons()
+        return window
 
     def _refresh_workshop_launcher_buttons(self):
         manager = getattr(self, "_window_manager", None)
@@ -1020,12 +1015,35 @@ class NaChanceApp(
             self.core_workshop_status.configure(text=text)
 
     def _start_workshop_watcher(self):
-        """Không hot-mount Workshop vào phiên đang chạy.
+        """Watch only approved/managed Workshop packages.
 
-        Workshop session được quyết định lúc khởi động; thêm/sửa Workshop
-        trong thư mục chỉ có hiệu lực sau lần khởi động tiếp theo.
+        Intake/quarantine repositories are deliberately outside this watch.
+        A changed approval snapshot invalidates the package and requires a
+        fresh repo_intake review before the next session can load it.
         """
-        return None
+        from app.workshop_watcher import WorkshopWatcher
+        previous = getattr(self, "_managed_workshop_watcher", None)
+        if previous is not None:
+            previous.stop()
+        self._managed_workshop_watcher = WorkshopWatcher(
+            PROJECT_ROOT / "workshops",
+            callback=self._on_managed_workshop_change,
+            interval=1.0,
+        )
+        self._managed_workshop_watcher.start()
+
+    def _on_managed_workshop_change(self, current=None, previous=None):
+        def update_status():
+            if hasattr(self, "status"):
+                self.status.configure(
+                    text="Managed Workshop thay đổi hoặc bị xóa — cần kiểm tra approval marker.",
+                    text_color=self.COLORS["warning"],
+                )
+        try:
+            self.after(0, update_status)
+        except Exception:
+            update_status()
+
 
     def _schedule_workshop_refresh(self):
         return None

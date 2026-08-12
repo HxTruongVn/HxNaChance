@@ -12,7 +12,8 @@
         "warning": "#eab308",
         "danger": "#ef4444",
         "info": "#0ea5e9",
-        "font_scale": 1.15
+        "font_scale": 1.15,
+        "category": "Tối hiện đại"
     },
     "Dark Green (Xanh lá)": {
         "bg_dark": "#06150b",
@@ -27,7 +28,8 @@
         "warning": "#eab308",
         "danger": "#ef4444",
         "info": "#10b981",
-        "font_scale": 1.15
+        "font_scale": 1.15,
+        "category": "Tối hiện đại"
     },
     "Cyberpunk Dark (Tím Neon)": {
         "bg_dark": "#0f051d",
@@ -42,7 +44,8 @@
         "warning": "#f59e0b",
         "danger": "#f43f5e",
         "info": "#ec4899",
-        "font_scale": 1.15
+        "font_scale": 1.15,
+        "category": "Neon / Cyberpunk"
     },
     "Dracula (Đêm huyền ảo)": {
         "bg_dark": "#21222c",
@@ -57,7 +60,8 @@
         "warning": "#f1fa8c",
         "danger": "#ff5555",
         "info": "#8be9fd",
-        "font_scale": 1.15
+        "font_scale": 1.15,
+        "category": "Lập trình / Developer"
     },
     "Nord (Bắc Âu lạnh)": {
         "bg_dark": "#2e3440",
@@ -72,7 +76,8 @@
         "warning": "#ebcb8b",
         "danger": "#bf616a",
         "info": "#5e81ac",
-        "font_scale": 1.15
+        "font_scale": 1.15,
+        "category": "Lập trình / Developer"
     },
     "Solarized Dark (Cổ điển)": {
         "bg_dark": "#002b36",
@@ -87,7 +92,8 @@
         "warning": "#b58900",
         "danger": "#dc322f",
         "info": "#268bd2",
-        "font_scale": 1.15
+        "font_scale": 1.15,
+        "category": "Lập trình / Developer"
     },
     "Light (Sáng tối giản)": {
         "bg_dark": "#f1f5f9",
@@ -102,7 +108,8 @@
         "warning": "#ca8a04",
         "danger": "#dc2626",
         "info": "#0284c7",
-        "font_scale": 1.15
+        "font_scale": 1.15,
+        "category": "Sáng tối giản"
     },
     "Warm Paper (Giấy vàng ấm)": {
         "bg_dark": "#f7f4ef",
@@ -117,114 +124,122 @@
         "warning": "#b45309",
         "danger": "#b91c1c",
         "info": "#0369a1",
-        "font_scale": 1.15
+        "font_scale": 1.15,
+        "category": "Sáng tối giản"
     },
-	"Modern Dark (Tối hiện đại)": {
-		"bg_dark": "#111827",
-		"bg_card": "#1f2937",
-		"bg_hover": "#374151",
-		"border": "#4b5563",
-		"text_primary": "#f9fafb",
-		"text_secondary": "#9ca3af",
-		"accent": "#3b82f6",
-		"accent_hover": "#60a5fa",
-		"success": "#22c55e",
-		"warning": "#f59e0b",
-		"danger": "#ef4444",
-		"info": "#06b6d4",
-		"font_scale": 1.0
-	},
-	"Matcha Green (Xanh matcha)": {
-		"bg_dark": "#f0f4f1",
-		"bg_card": "#ffffff",
-		"bg_hover": "#e2ebd9",
-		"border": "#c8d7bc",
-		"text_primary": "#273829",
-		"text_secondary": "#5a6b5c",
-		"accent": "#4d7c0f",
-		"accent_hover": "#65a30d",
-		"success": "#15803d",
-		"warning": "#b45309",
-		"danger": "#b91c1c",
-		"info": "#0284c7",
-		"font_scale": 1.0
-	},	
-		"Cyberpunk Neon (Đêm neon)": {
-		"bg_dark": "#0a0a0f",
-		"bg_card": "#13131f",
-		"bg_hover": "#1f1f33",
-		"border": "#2d2d4a",
-		"text_primary": "#f3f4f6",
-		"text_secondary": "#9ca3af",
-		"accent": "#ec4899",
-		"accent_hover": "#f472b6",
-		"success": "#10b981",
-		"warning": "#fbbf24",
-		"danger": "#f43f5e",
-		"info": "#38bdf8",
-		"font_scale": 1.0
-	},
-	"Midnight Blue (Xanh đại dương)": {
-		"bg_dark": "#0f172a",
-		"bg_card": "#1e293b",
-		"bg_hover": "#334155",
-		"border": "#475569",
-		"text_primary": "#f8fafc",
-		"text_secondary": "#94a3b8",
-		"accent": "#0ea5e9",
-		"accent_hover": "#38bdf8",
-		"success": "#22c55e",
-		"warning": "#eab308",
-		"danger": "#ef4444",
-		"info": "#3b82f6",
-		"font_scale": 1.0
-	},
-	"Minimalist Slate (Xám tối giản)": {
-		"bg_dark": "#f8fafc",
-		"bg_card": "#ffffff",
-		"bg_hover": "#f1f5f9",
-		"border": "#cbd5e1",
-		"text_primary": "#0f172a",
-		"text_secondary": "#64748b",
-		"accent": "#475569",
-		"accent_hover": "#334155",
-		"success": "#16a34a",
-		"warning": "#ca8a04",
-		"danger": "#dc2626",
-		"info": "#0284c7",
-		"font_scale": 1.0
-	},
-	"Lavender Dream (Hoa oải hương)": {
-		"bg_dark": "#f5f3ff",
-		"bg_card": "#ffffff",
-		"bg_hover": "#ede9fe",
-		"border": "#ddd6fe",
-		"text_primary": "#2e1065",
-		"text_secondary": "#6d28d9",
-		"accent": "#7c3aed",
-		"accent_hover": "#8b5cf6",
-		"success": "#059669",
-		"warning": "#d97706",
-		"danger": "#dc2626",
-		"info": "#2563eb",
-		"font_scale": 1.0
-	},
-	"Sepia Vintage (Hoài cổ)": {
-		"bg_dark": "#fbfbfa",
-		"bg_card": "#f4f1ea",
-		"bg_hover": "#e6e1d5",
-		"border": "#d3cbb7",
-		"text_primary": "#3d3832",
-		"text_secondary": "#786f65",
-		"accent": "#9a3412",
-		"accent_hover": "#c2410c",
-		"success": "#166534",
-		"warning": "#9a3412",
-		"danger": "#991b1b",
-		"info": "#1e40af",
-		"font_scale": 1.1
-	},
-	"OLED Pure Black (Đen tuyệt đối)": {
+    "Modern Dark (Tối hiện đại)": {
+        "bg_dark": "#111827",
+        "bg_card": "#1f2937",
+        "bg_hover": "#374151",
+        "border": "#4b5563",
+        "text_primary": "#f9fafb",
+        "text_secondary": "#9ca3af",
+        "accent": "#3b82f6",
+        "accent_hover": "#60a5fa",
+        "success": "#22c55e",
+        "warning": "#f59e0b",
+        "danger": "#ef4444",
+        "info": "#06b6d4",
+        "font_scale": 1.0,
+        "category": "Tối hiện đại"
+    },
+    "Matcha Green (Xanh matcha)": {
+        "bg_dark": "#f0f4f1",
+        "bg_card": "#ffffff",
+        "bg_hover": "#e2ebd9",
+        "border": "#c8d7bc",
+        "text_primary": "#273829",
+        "text_secondary": "#5a6b5c",
+        "accent": "#4d7c0f",
+        "accent_hover": "#65a30d",
+        "success": "#15803d",
+        "warning": "#b45309",
+        "danger": "#b91c1c",
+        "info": "#0284c7",
+        "font_scale": 1.0,
+        "category": "Sáng tối giản"
+    },
+    "Cyberpunk Neon (Đêm neon)": {
+        "bg_dark": "#0a0a0f",
+        "bg_card": "#13131f",
+        "bg_hover": "#1f1f33",
+        "border": "#2d2d4a",
+        "text_primary": "#f3f4f6",
+        "text_secondary": "#9ca3af",
+        "accent": "#ec4899",
+        "accent_hover": "#f472b6",
+        "success": "#10b981",
+        "warning": "#fbbf24",
+        "danger": "#f43f5e",
+        "info": "#38bdf8",
+        "font_scale": 1.0,
+        "category": "Neon / Cyberpunk"
+    },
+    "Midnight Blue (Xanh đại dương)": {
+        "bg_dark": "#0f172a",
+        "bg_card": "#1e293b",
+        "bg_hover": "#334155",
+        "border": "#475569",
+        "text_primary": "#f8fafc",
+        "text_secondary": "#94a3b8",
+        "accent": "#0ea5e9",
+        "accent_hover": "#38bdf8",
+        "success": "#22c55e",
+        "warning": "#eab308",
+        "danger": "#ef4444",
+        "info": "#3b82f6",
+        "font_scale": 1.0,
+        "category": "Tối hiện đại"
+    },
+    "Minimalist Slate (Xám tối giản)": {
+        "bg_dark": "#f8fafc",
+        "bg_card": "#ffffff",
+        "bg_hover": "#f1f5f9",
+        "border": "#cbd5e1",
+        "text_primary": "#0f172a",
+        "text_secondary": "#64748b",
+        "accent": "#475569",
+        "accent_hover": "#334155",
+        "success": "#16a34a",
+        "warning": "#ca8a04",
+        "danger": "#dc2626",
+        "info": "#0284c7",
+        "font_scale": 1.0,
+        "category": "Sáng tối giản"
+    },
+    "Lavender Dream (Hoa oải hương)": {
+        "bg_dark": "#f5f3ff",
+        "bg_card": "#ffffff",
+        "bg_hover": "#ede9fe",
+        "border": "#ddd6fe",
+        "text_primary": "#2e1065",
+        "text_secondary": "#6d28d9",
+        "accent": "#7c3aed",
+        "accent_hover": "#8b5cf6",
+        "success": "#059669",
+        "warning": "#d97706",
+        "danger": "#dc2626",
+        "info": "#2563eb",
+        "font_scale": 1.0,
+        "category": "Sáng tối giản"
+    },
+    "Sepia Vintage (Hoài cổ)": {
+        "bg_dark": "#fbfbfa",
+        "bg_card": "#f4f1ea",
+        "bg_hover": "#e6e1d5",
+        "border": "#d3cbb7",
+        "text_primary": "#3d3832",
+        "text_secondary": "#786f65",
+        "accent": "#9a3412",
+        "accent_hover": "#c2410c",
+        "success": "#166534",
+        "warning": "#9a3412",
+        "danger": "#991b1b",
+        "info": "#1e40af",
+        "font_scale": 1.1,
+        "category": "Sáng tối giản"
+    },
+    "OLED Pure Black (Đen tuyệt đối)": {
         "bg_dark": "#000000",
         "bg_card": "#121212",
         "bg_hover": "#222222",
@@ -237,7 +252,8 @@
         "warning": "#f59e0b",
         "danger": "#ef4444",
         "info": "#0ea5e9",
-        "font_scale": 1.15
+        "font_scale": 1.15,
+        "category": "Tối hiện đại"
     },
     "GitHub Dark Dimmed (Màu tối dịu nhẹ)": {
         "bg_dark": "#1c2128",
@@ -252,7 +268,8 @@
         "warning": "#c69026",
         "danger": "#e5534b",
         "info": "#539bf5",
-        "font_scale": 1.15
+        "font_scale": 1.15,
+        "category": "Lập trình / Developer"
     },
     "Monokai Pro (Lập trình chuyên nghiệp)": {
         "bg_dark": "#2d2a2e",
@@ -267,7 +284,8 @@
         "warning": "#fc9867",
         "danger": "#ff6188",
         "info": "#78dce8",
-        "font_scale": 1.15
+        "font_scale": 1.15,
+        "category": "Lập trình / Developer"
     },
     "Tokyo Night (Đêm Tokyo huyền ảo)": {
         "bg_dark": "#1a1b26",
@@ -282,7 +300,8 @@
         "warning": "#e0af68",
         "danger": "#f7768e",
         "info": "#7dcfff",
-        "font_scale": 1.15
+        "font_scale": 1.15,
+        "category": "Lập trình / Developer"
     },
     "Emerald Mint (Xanh ngọc bạc hà sáng)": {
         "bg_dark": "#f0fdf4",
@@ -297,7 +316,8 @@
         "warning": "#d97706",
         "danger": "#dc2626",
         "info": "#0284c7",
-        "font_scale": 1.15
+        "font_scale": 1.15,
+        "category": "Sáng tối giản"
     },
     "Sunset Orange (Hoàng hôn cam ấm)": {
         "bg_dark": "#fffbeb",
@@ -312,7 +332,8 @@
         "warning": "#d97706",
         "danger": "#b91c1c",
         "info": "#0284c7",
-        "font_scale": 1.15
+        "font_scale": 1.15,
+        "category": "Sáng tối giản"
     },
     "High Contrast Dark (Tương phản cao tối)": {
         "bg_dark": "#000000",
@@ -327,6 +348,7 @@
         "warning": "#facc15",
         "danger": "#f87171",
         "info": "#38bdf8",
-        "font_scale": 1.15
+        "font_scale": 1.15,
+        "category": "Tương phản / Accessibility"
     }
 }

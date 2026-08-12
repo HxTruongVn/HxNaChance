@@ -44,6 +44,7 @@ import tkinter as tk
 import customtkinter as ctk
 
 from ui.utils import open_folder as _open_folder
+from ui.theme_mixin import THEME_GROUPS
 
 
 class MenuBarMixin:
@@ -378,12 +379,22 @@ class MenuBarMixin:
             activebackground=self.COLORS['accent'], activeforeground="#ffffff",
             relief="flat", borderwidth=1,
         )
-        for name in self.THEMES:
-            theme_menu.add_radiobutton(
-                label=name, value=name,
-                variable=tk.StringVar(value=current),
-                command=lambda n=name: self._on_theme_change(n),
+        # Theme được nhóm theo category khai báo trong themes.json để không
+        # phải lục một danh sách phẳng dài. Tên theme vẫn là key duy nhất.
+        theme_var = tk.StringVar(value=current)
+        for group in sorted(THEME_GROUPS, key=str.casefold):
+            group_menu = tk.Menu(
+                theme_menu, tearoff=0,
+                bg=self.COLORS['bg_card'], fg=self.COLORS['text_primary'],
+                activebackground=self.COLORS['accent'], activeforeground="#ffffff",
+                relief="flat", borderwidth=1,
             )
+            for name in THEME_GROUPS[group]:
+                group_menu.add_radiobutton(
+                    label=name, value=name, variable=theme_var,
+                    command=lambda n=name: self._on_theme_change(n),
+                )
+            theme_menu.add_cascade(label=group, menu=group_menu)
         menu.add_cascade(label="Theme", menu=theme_menu)
 
     # ===== TOOL — các công cụ quản trị NaChance =====

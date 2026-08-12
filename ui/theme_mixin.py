@@ -40,6 +40,12 @@ def _load_themes() -> dict:
 
 
 THEMES = _load_themes()
+THEME_GROUPS = {}
+for _name, _fields in THEMES.items():
+    _group = str(_fields.get("category", "Khác"))
+    THEME_GROUPS.setdefault(_group, []).append(_name)
+for _group in THEME_GROUPS:
+    THEME_GROUPS[_group].sort(key=str.casefold)
 
 
 class ThemeMixin:

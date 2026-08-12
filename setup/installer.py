@@ -41,7 +41,7 @@ class SetupInstaller:
         return {
             "can_run_lite": report.can_run_lite,
             "can_run_full_ai": report.can_run_full_ai,
-            "missing_packages": report.missing_packages,
+            "missing_packages": report.missing_required_packages,
             "report": report,
         }
 

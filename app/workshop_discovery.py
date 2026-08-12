@@ -28,6 +28,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Type
 
+from core.identity import WorkshopIdentity
+
 
 @dataclass
 class WorkshopUI:
@@ -67,20 +69,9 @@ def _discover_one(manifest_path: Path) -> Optional[WorkshopUI]:
             return None
 
         workshop_dir = manifest_path.parent
-        # Canonical Workshop identity: the directory name.
-        workshop_id = workshop_dir.name
-        workshop_name = workshop_dir.name
-
-        # A manifest may describe the package, but it must not override the
-        # directory identity.  A mismatch is reported so packaging mistakes
-        # are visible without silently creating a second identity.
-        declared_id = str(manifest.get("workshop_id", "")).strip()
-        if declared_id and declared_id != workshop_id:
-            print(
-                f"[WorkshopDiscovery] ⚠ {manifest_path}: "
-                f"workshop_id={declared_id!r} khác tên thư mục {workshop_id!r}; "
-                f"dùng tên thư mục làm identity."
-            )
+        identity = WorkshopIdentity.from_directory(workshop_dir, manifest)
+        workshop_id = identity.workshop_id
+        workshop_name = identity.workshop_id
 
         module = importlib.import_module(ui["module"])
         mixin_class = getattr(module, ui["mixin_class"])

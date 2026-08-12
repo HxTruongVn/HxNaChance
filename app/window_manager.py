@@ -18,6 +18,13 @@ class WorkshopWindowManager:
         self.windows = {}
         self.active_index = 0 if self.session_workshops else -1
 
+    def toggle(self, workshop_id):
+        """Open the Workshop when closed; close its sole live window when open."""
+        if self.is_open(workshop_id):
+            self.close(workshop_id)
+            return None
+        return self.open(workshop_id)
+
     def open(self, workshop_id):
         workshop = next((w for w in self.session_workshops if w.workshop_id == workshop_id), None)
         if workshop is None:

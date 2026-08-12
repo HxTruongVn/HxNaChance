@@ -18,6 +18,7 @@ from fastapi.responses import Response, JSONResponse
 
 from api.engine_wrapper import ThreadSafeEngine
 from api.schemas import HealthResponse
+from api.core_routes import router as core_router
 
 # ------------------------------------------------------------------
 # Lifespan: khởi tạo engine 1 lần khi server start
@@ -39,9 +40,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="NaChance API",
-    description="Photo ID Processing Pipeline — CodeFormer + Real-ESRGAN + BiSeNet + isnet",
+    description="NaChance Core/Reception API with Workshop-specific adapters",
     lifespan=lifespan,
 )
+app.include_router(core_router)
 
 # ------------------------------------------------------------------
 # Endpoints
