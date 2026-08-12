@@ -55,6 +55,16 @@ class WorkshopWindowManager:
                 return self.open(workshop_id)
         return None
 
+    def is_open(self, workshop_id):
+        window = self.windows.get(workshop_id)
+        return bool(window is not None and window.winfo_exists() and not window._closed)
+
+    def close(self, workshop_id):
+        window = self.windows.get(workshop_id)
+        if window is None:
+            return
+        window.close()  # tự gọi on_window_closed() ở dưới để dọn dict + tile lại
+
     def close_all(self):
         for window in list(self.windows.values()):
             try:
@@ -67,6 +77,13 @@ class WorkshopWindowManager:
     def on_window_closed(self, workshop_id):
         self.windows.pop(workshop_id, None)
         self._tile_windows()
+        # Nút MỞ/ĐÓNG XƯỞNG ở panel Core cần phản ánh đúng trạng thái —
+        # kể cả khi cửa sổ bị đóng qua nút X của chính nó (không đi qua
+        # WorkshopWindowManager.close()), nên refresh ở đây, điểm chung
+        # duy nhất mọi đường đóng cửa sổ đều đi qua.
+        refresh = getattr(self.core, "_refresh_workshop_launcher_buttons", None)
+        if callable(refresh):
+            refresh()
 
     def _tile_windows(self):
         live = [w for w in self.windows.values() if w.winfo_exists() and not w._closed]

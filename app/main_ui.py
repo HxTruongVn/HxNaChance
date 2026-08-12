@@ -703,6 +703,7 @@ class NaChanceApp(
         if workshop is None or manager is None:
             return
         window = manager.open(workshop.workshop_id)
+        self._refresh_workshop_launcher_buttons()
         if window is None:
             return
         method = getattr(window, workshop.run_method, None) if workshop.run_method else None
@@ -715,6 +716,7 @@ class NaChanceApp(
         if workshop is None or manager is None:
             return None
         window = manager.open(workshop.workshop_id)
+        self._refresh_workshop_launcher_buttons()
         if window is not None and workshop.open_method:
             method = getattr(window, workshop.open_method, None)
             if callable(method):
@@ -727,13 +729,48 @@ class NaChanceApp(
             return None
         window = manager.activate(workshop_id)
         self._refresh_title_run_state()
+        self._refresh_workshop_launcher_buttons()
         return window
+
+    def _toggle_workshop(self, workshop_id):
+        """Nút MỞ/ĐÓNG XƯỞNG ở panel Core — 1 nút, bật/tắt theo trạng thái
+        hiện tại thay vì chỉ luôn mở như trước (khi đó muốn đóng phải bấm
+        nút X trên chính cửa sổ Workshop)."""
+        manager = getattr(self, "_window_manager", None)
+        if manager is None:
+            return None
+        if manager.is_open(workshop_id):
+            manager.close(workshop_id)
+            # WorkshopWindowManager.close() -> WorkshopWindow.close() ->
+            # on_window_closed() đã tự gọi _refresh_workshop_launcher_buttons()
+            # ở đó rồi (điểm chung mọi đường đóng cửa sổ đều đi qua), chỉ
+            # cần refresh thêm phần RUN trên title bar.
+            self._refresh_title_run_state()
+            return None
+        return self._open_workshop(workshop_id)
+
+    def _refresh_workshop_launcher_buttons(self):
+        manager = getattr(self, "_window_manager", None)
+        buttons = getattr(self, "_workshop_launcher_buttons", None)
+        if manager is None or not buttons:
+            return
+        for workshop_id, btn in buttons.items():
+            try:
+                if manager.is_open(workshop_id):
+                    btn.configure(text="CLOSE", fg_color=self.COLORS['danger'],
+                                  hover_color=self.COLORS['danger'])
+                else:
+                    btn.configure(text="OPEN", fg_color=self.COLORS['accent'],
+                                  hover_color=self.COLORS['accent_hover'])
+            except Exception:
+                pass
 
     def _next_workshop(self, event=None):
         manager = getattr(self, "_window_manager", None)
         if manager is not None:
             manager.next()
             self._refresh_title_run_state()
+            self._refresh_workshop_launcher_buttons()
         return "break"
 
     def _previous_workshop(self, event=None):
@@ -741,6 +778,7 @@ class NaChanceApp(
         if manager is not None:
             manager.previous()
             self._refresh_title_run_state()
+            self._refresh_workshop_launcher_buttons()
         return "break"
 
     def _build_title_bar(self):
@@ -901,6 +939,7 @@ class NaChanceApp(
                 text_color=self.COLORS['text_secondary']
             ).pack(fill="x", padx=20, pady=24)
         else:
+            self._workshop_launcher_buttons = {}
             for index, w in enumerate(self._discovered_workshops, 1):
                 row = ctk.CTkFrame(self.workshop_launcher_frame, fg_color="transparent")
                 row.pack(fill="x", padx=10, pady=6)
@@ -908,11 +947,14 @@ class NaChanceApp(
                     row, text=f"{index}. {w.workshop_name}",
                     font=self.F_MEDIUM, text_color=self.COLORS['text_primary'], anchor="w"
                 ).pack(side="left", fill="x", expand=True, padx=8)
-                ctk.CTkButton(
-                    row, text="MỞ XƯỞNG", width=120, height=34,
+                btn = ctk.CTkButton(
+                    row, text="OPEN", width=120, height=34,
                     fg_color=self.COLORS['accent'], hover_color=self.COLORS['accent_hover'],
-                    command=lambda wid=w.workshop_id: self._open_workshop(wid)
-                ).pack(side="right", padx=4)
+                    command=lambda wid=w.workshop_id: self._toggle_workshop(wid)
+                )
+                btn.pack(side="right", padx=4)
+                self._workshop_launcher_buttons[w.workshop_id] = btn
+            self._refresh_workshop_launcher_buttons()
 
         self.status = ctk.CTkLabel(
             self.main_frame, text="Sẵn sàng",
