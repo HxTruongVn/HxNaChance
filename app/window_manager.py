@@ -2,6 +2,7 @@
 import math
 
 from app.workshop_window import WorkshopWindow
+from app.window_layout import compact_window, place_right_of, place_below
 
 
 class WorkshopWindowManager:
@@ -23,9 +24,20 @@ class WorkshopWindowManager:
             return None
         window = self.windows.get(workshop_id)
         if window is None or not window.winfo_exists():
+            # The active Workshop is the best available parent/sibling anchor.
+            # The new Workshop is compacted first, then placed immediately to
+            # the right when that space exists. Only when the right side is
+            # unavailable do we try below, followed by the legacy grid fallback.
+            anchor = self._active_live_window()
             window = WorkshopWindow(self.core, workshop)
             self.windows[workshop_id] = window
-            self._tile_windows()
+            window.update_idletasks()
+            compact_window(window)
+            placed = bool(anchor and place_right_of(anchor, window))
+            if not placed and anchor:
+                placed = place_below(anchor, window)
+            if not placed:
+                self._tile_windows(prefer_compact=True)
         self.active_index = self.session_workshops.index(workshop)
         window.focus_workshop()
         return window
@@ -76,7 +88,9 @@ class WorkshopWindowManager:
 
     def on_window_closed(self, workshop_id):
         self.windows.pop(workshop_id, None)
-        self._tile_windows()
+        # Closing a window no longer retiles every remaining window. This
+        # preserves the user's manual placement; newly opened windows use
+        # the active-window right-side placement rule instead.
         # Nút MỞ/ĐÓNG XƯỞNG ở panel Core cần phản ánh đúng trạng thái —
         # kể cả khi cửa sổ bị đóng qua nút X của chính nó (không đi qua
         # WorkshopWindowManager.close()), nên refresh ở đây, điểm chung
@@ -85,7 +99,18 @@ class WorkshopWindowManager:
         if callable(refresh):
             refresh()
 
-    def _tile_windows(self):
+    def _active_live_window(self):
+        active_id = None
+        if 0 <= self.active_index < len(self.session_workshops):
+            active_id = self.session_workshops[self.active_index].workshop_id
+        if active_id:
+            candidate = self.windows.get(active_id)
+            if candidate is not None and candidate.winfo_exists() and not candidate._closed:
+                return candidate
+        live = [w for w in self.windows.values() if w.winfo_exists() and not w._closed]
+        return live[-1] if live else None
+
+    def _tile_windows(self, prefer_compact=False):
         live = [w for w in self.windows.values() if w.winfo_exists() and not w._closed]
         if not live:
             return
@@ -115,11 +140,18 @@ class WorkshopWindowManager:
             work_w = screen_w - margin * 2
             work_h = screen_h - work_y - margin
 
+        if prefer_compact:
+            for window in live:
+                try:
+                    compact_window(window)
+                except Exception:
+                    pass
+
         count = len(live)
         cols = max(1, math.ceil(math.sqrt(count)))
         rows = math.ceil(count / cols)
         gap = 12
-        cell_w = max(420, (work_w - gap * (cols + 1)) // cols)
+        cell_w = max(220, (work_w - gap * (cols + 1)) // cols)
         cell_h = max(360, (work_h - gap * (rows + 1)) // rows)
 
         for i, window in enumerate(live):

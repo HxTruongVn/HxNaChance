@@ -1,86 +1,136 @@
-"""ui.side_panel_mixin — SidePanelMixin: cửa sổ phụ dùng cho preview
-(orient/result/layout)."""
+"""Shared preview/side-panel contract for Core and Workshop windows.
+
+UI convention:
+- one persistent side panel per owner;
+- header is fixed;
+- image/content viewport is the only scrollable region;
+- informational/footer/actions stay fixed at the bottom;
+- the control that opens a panel is also its toggle/close control.
+"""
 import customtkinter as ctk
 
 
 class SidePanelMixin:
     def _build_side_panel(self):
-        """Cửa sổ phụ (side panel) CHUYÊN DỤNG cho MỌI loại preview trong
-        app — xác nhận chiều ảnh, xem kết quả xử lý, xem trước bản in.
-        Trước đây mỗi việc hiển thị theo 1 cách khác nhau (nhúng trong
-        tab / mở Toplevel riêng mỗi lần) — giờ gom về DUY NHẤT 1 cửa sổ,
-        tạo 1 LẦN, ẩn/hiện qua withdraw()/deiconify() (không destroy/
-        recreate) để giữ nguyên vị trí và tránh giật hình mỗi lần mở."""
+        """Create the shared preview shell once and reuse it for every mode."""
         self.side_panel = ctk.CTkToplevel(self)
         self.side_panel.title("Xem trước")
         self.side_panel.overrideredirect(True)
         self.side_panel.transient(self)
         self.side_panel.configure(fg_color=self.COLORS['bg_dark'])
-        self.side_panel.withdraw()  # ẩn ngay từ đầu, chỉ hiện khi cần
+        self.side_panel.withdraw()
+        self.side_panel.protocol("WM_DELETE_WINDOW", self._hide_side_panel)
 
         self.side_panel_title = ctk.CTkLabel(
             self.side_panel, text="", font=self.F_HEADER,
             text_color=self.COLORS['text_primary'], wraplength=440, justify="center")
-        self.side_panel_title.pack(pady=(15, 8), padx=15)
+        self.side_panel_title.pack(fill="x", pady=(12, 8), padx=15)
 
-        self.side_panel_img = ctk.CTkLabel(self.side_panel, text="")
-        self.side_panel_img.pack(pady=5, padx=15)
+        # Only this viewport may scroll. Footer/actions are outside it and
+        # therefore remain visible even for very tall images.
+        self.side_panel_viewport = ctk.CTkScrollableFrame(
+            self.side_panel,
+            fg_color=self.COLORS['bg_card'],
+            scrollbar_button_color=self.COLORS['border'],
+            scrollbar_button_hover_color=self.COLORS['bg_hover'],
+            corner_radius=8,
+        )
+        self.side_panel_viewport.pack(fill="both", expand=True, padx=10, pady=(0, 6))
+
+        self.side_panel_img = ctk.CTkLabel(self.side_panel_viewport, text="")
+        self.side_panel_img.pack(anchor="center", padx=10, pady=10)
 
         self.side_panel_extra_label = ctk.CTkLabel(
             self.side_panel, text="", font=self.F_NORMAL,
             text_color=self.COLORS['text_secondary'])
-        # Chưa pack() — chỉ dùng ở chế độ xem trước bản in (kích thước
-        # thực px). _hide_side_panel()/mỗi chế độ tự bật/tắt khi cần.
+        self.side_panel_extra_label.pack_forget()
 
-        self.side_panel_rotate_row = ctk.CTkFrame(self.side_panel, fg_color="transparent")
+        self.side_panel_footer = ctk.CTkFrame(
+            self.side_panel, fg_color=self.COLORS['bg_card'], corner_radius=8)
+        self.side_panel_footer.pack(fill="x", padx=10, pady=(0, 10))
+
+        self.side_panel_rotate_row = ctk.CTkFrame(self.side_panel_footer, fg_color="transparent")
         self._preview_rotate_buttons = []
         for deg in (0, 90, 180, 270):
-            b = ctk.CTkButton(self.side_panel_rotate_row, text=f"{deg}°", width=75,
-                               fg_color=self.COLORS['bg_hover'],
-                               hover_color=self.COLORS['accent_hover'],
-                               command=lambda d=deg: self._preview_set_rotation(d))
+            b = ctk.CTkButton(
+                self.side_panel_rotate_row, text=f"{deg}°", width=75,
+                fg_color=self.COLORS['bg_hover'],
+                hover_color=self.COLORS['accent_hover'],
+                command=lambda d=deg: self._preview_set_rotation(d))
             b.pack(side="left", padx=4)
             self._preview_rotate_buttons.append((b, deg))
-        # Chưa pack() row — chỉ hiện ở chế độ xác nhận chiều ảnh.
+        self.side_panel_rotate_row.pack_forget()
 
-        self.side_panel_btn_row = ctk.CTkFrame(self.side_panel, fg_color="transparent")
-        self.side_panel_btn_row.pack(pady=(10, 15), padx=20, fill="x", side="bottom")
+        self.side_panel_btn_row = ctk.CTkFrame(
+            self.side_panel_footer, fg_color="transparent")
+        self.side_panel_btn_row.pack(fill="x", padx=8, pady=8)
 
     def _restyle_side_panel(self):
-        """Cập nhật màu cửa sổ phụ theo theme mới — gọi từ
-        _on_theme_change() thay vì destroy/recreate, vì side_panel là
-        cửa sổ SỐNG LÂU DÀI (giữ nguyên vị trí/trạng thái xuyên suốt
-        phiên làm việc), khác với main_frame vốn được dựng lại mỗi lần
-        đổi theme."""
+        """Restyle the persistent panel without destroying it."""
         self.side_panel.configure(fg_color=self.COLORS['bg_dark'])
         self.side_panel_title.configure(text_color=self.COLORS['text_primary'])
+        self.side_panel_viewport.configure(
+            fg_color=self.COLORS['bg_card'],
+            scrollbar_button_color=self.COLORS['border'],
+            scrollbar_button_hover_color=self.COLORS['bg_hover'])
+        self.side_panel_footer.configure(fg_color=self.COLORS['bg_card'])
         self.side_panel_extra_label.configure(text_color=self.COLORS['text_secondary'])
         for b, d in self._preview_rotate_buttons:
             is_selected = (getattr(self, "_orient_rotation", 0) == d)
-            b.configure(fg_color=self.COLORS['accent'] if is_selected else self.COLORS['bg_hover'],
-                        hover_color=self.COLORS['accent_hover'])
+            b.configure(
+                fg_color=self.COLORS['accent'] if is_selected else self.COLORS['bg_hover'],
+                hover_color=self.COLORS['accent_hover'])
+
+    def _side_panel_geometry(self, width, height):
+        self.update_idletasks()
+        main_x, main_y = self.winfo_x(), self.winfo_y()
+        main_w = self.winfo_width()
+        screen_w = self.winfo_screenwidth()
+        screen_h = self.winfo_screenheight()
+        width = min(int(width), max(320, screen_w - 16))
+        height = min(max(420, int(height)), max(420, screen_h - 40))
+
+        right_x = main_x + main_w + 8
+        if right_x + width <= screen_w - 8:
+            x = right_x
+        else:
+            left_x = main_x - width - 8
+            x = left_x if left_x >= 8 else max(8, screen_w - width - 8)
+        y = min(max(8, main_y), max(8, screen_h - height - 8))
+        return width, height, x, y
 
     def _sync_side_panel_position(self, event=None):
-        """Bám theo cửa sổ chính — bind <Configure> ở __init__ gọi hàm
-        này mỗi khi cửa sổ chính di chuyển/đổi kích thước (kéo bằng tay
-        hoặc geometry() đổi khi thu/phóng panel). Bỏ qua khi panel đang
-        ẩn để không gọi geometry() vô ích trên 1 cửa sổ không hiển thị."""
         if not self.side_panel.winfo_viewable():
             return
-        main_x, main_y = self.winfo_x(), self.winfo_y()
-        main_w = self.winfo_width()
-        panel_w = self.side_panel.winfo_width()
-        panel_h = self.side_panel.winfo_height()
-        self.side_panel.geometry(f"{panel_w}x{panel_h}+{main_x + main_w + 8}+{main_y}")
+        width = self.side_panel.winfo_width() or 460
+        height = max(self.winfo_height(), 420)
+        width, height, x, y = self._side_panel_geometry(width, height)
+        self.side_panel.geometry(f"{width}x{height}+{x}+{y}")
 
-    def _show_side_panel(self, width=460, height=700):
-        main_x, main_y = self.winfo_x(), self.winfo_y()
-        main_w = self.winfo_width()
-        self.side_panel.geometry(f"{width}x{height}+{main_x + main_w + 8}+{main_y}")
+    def _show_side_panel(self, width=460, height=None):
+        if height is None:
+            height = max(420, self.winfo_height())
+        width, height, x, y = self._side_panel_geometry(width, height)
+        self.side_panel.geometry(f"{width}x{height}+{x}+{y}")
         self.side_panel.deiconify()
         self.side_panel.lift()
 
+    def _is_side_panel_open(self):
+        try:
+            return bool(self.side_panel.winfo_exists() and self.side_panel.winfo_viewable())
+        except Exception:
+            return False
+
+    def _toggle_side_panel(self):
+        """Single source of truth for Preview open/close toggle."""
+        if self._is_side_panel_open():
+            self._hide_side_panel()
+            return False
+        return True
+
     def _hide_side_panel(self):
         self._side_panel_mode = None
-        self.side_panel.withdraw()
-
+        try:
+            self.side_panel.withdraw()
+        except Exception:
+            pass

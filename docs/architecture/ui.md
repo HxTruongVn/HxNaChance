@@ -132,3 +132,63 @@ Không chuyển processor/model logic của Workshop vào `ui/`.
 - hot reload trong cùng session;
 - layout solver đa màn hình nâng cao;
 - loại bỏ toàn bộ compatibility bridge giữa Core service và WorkshopWindow.
+
+## UI Contract — quy ước hiển thị
+
+Mọi Core/Workshop UI phải tuân theo cùng một hợp đồng hiển thị:
+
+```text
+Main/Workshop
+├── Header
+├── Content (scroll nếu cần)
+└── Status Bar (cố định đáy, có thể bật/tắt)
+
+Preview
+├── Header (cố định)
+├── Scrollable content/image
+└── Footer + Actions (cố định)
+```
+
+### Status Bar
+
+- `View → Status Bar` là checkbox dùng chung cho Core và các Workshop window.
+- Mặc định bật. Trạng thái được lưu trong `~/.nachance_ai.json`.
+- Status Bar không nằm bên trong vùng content có scroll.
+
+### Toggle UI
+
+Một control có nhiệm vụ mở một UI cũng phải kiêm nhiệm đóng UI đó:
+
+```text
+CLOSED --click--> OPEN --click cùng control--> CLOSED
+```
+
+Điều này áp dụng cho Workshop launcher, Preview, Side Panel và các UI toggle
+khác. Control phải phản ánh trạng thái hiện tại (ví dụ `OPEN`/`CLOSE`).
+
+Các action như `Save`, `Export`, `Run`, `Apply` không phải toggle và chỉ thực hiện
+một hành động.
+
+### Preview
+
+- Mỗi owner có tối đa một Side Panel persistent.
+- Không tạo/destroy Preview theo mỗi lần hiển thị.
+- Chiều cao Preview bám theo cửa sổ owner.
+- Chỉ vùng ảnh/nội dung được scroll.
+- Footer và các nút hành động luôn cố định ở đáy.
+- Không để Workshop tự tạo một Preview shell khác nếu đã có `SidePanelMixin`.
+
+### Layout geometry
+
+- `pack()` dùng cho cấu trúc ngoài: Header/Content/Status/Footer.
+- `grid()` dùng cho form/control matrix.
+- Không trộn hai geometry manager trên cùng một parent.
+- Workshop được phép resize; không khóa chiều ngang chỉ để dành chỗ cho Preview.
+
+### Ownership
+
+- Core: lifecycle + global View state.
+- `WorkshopWindowManager`: lifecycle/placement Workshop.
+- `WorkshopWindow`: chrome + content + status của Workshop.
+- `SidePanelMixin`: shell/geometry/lifecycle của Preview.
+- Workshop: nội dung và action nghiệp vụ bên trong các vùng đã được chuẩn hóa.

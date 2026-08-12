@@ -338,9 +338,11 @@ class MenuBarMixin:
         if self._discovered_workshops:
             menu.add_separator()
             for index, w in enumerate(self._discovered_workshops, 1):
+                is_open = bool(getattr(self, "_window_manager", None) and
+                               self._window_manager.is_open(w.workshop_id))
                 menu.add_command(
-                    label=f"{index}. {w.workshop_name}",
-                    command=lambda wid=w.workshop_id: self._open_workshop(wid),
+                    label=f"{index}. {w.workshop_name} — {'Đóng' if is_open else 'Mở'}",
+                    command=lambda wid=w.workshop_id: self._toggle_workshop(wid),
                 )
         menu.add_separator()
         menu.add_command(label="Next Workshop", command=self._next_workshop, accelerator="Ctrl+`")
@@ -360,6 +362,13 @@ class MenuBarMixin:
         menu.add_command(label="Mini", command=lambda: self._set_display_mode("mini"))
         menu.add_command(label="Full Screen", command=lambda: self._set_display_mode("full"))
         menu.add_command(label="Half Screen", command=lambda: self._set_display_mode("half"))
+        menu.add_separator()
+
+        menu.add_checkbutton(
+            label="Status Bar",
+            variable=self._status_bar_var,
+            command=self._toggle_status_bar,
+        )
         menu.add_separator()
 
         current = self.theme_name

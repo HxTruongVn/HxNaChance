@@ -32,6 +32,8 @@ class ConfigMixin:
                 with open(self.config_path, "r", encoding="utf-8") as f:
                     cfg = json.load(f)
                 self.save_dir = cfg.get("save_dir", self.save_dir)
+                if hasattr(self, "_set_status_bar_visible"):
+                    self._set_status_bar_visible(cfg.get("status_bar", True), persist=False)
                 if hasattr(self, "lbl_save_dir"):
                     self.lbl_save_dir.configure(text=self.save_dir)
 
@@ -178,6 +180,7 @@ class ConfigMixin:
             }
             with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump({"save_dir": self.save_dir, "theme": self.theme_name,
+                           "status_bar": bool(getattr(self, "_status_bar_visible", True)),
                            "process": pc, "layout": lc},
                           f, ensure_ascii=False)
         except Exception:

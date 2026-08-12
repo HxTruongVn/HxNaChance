@@ -167,8 +167,16 @@ class PipelineMixin:
         # checkbox preview.
         if self.last_results:
             self.last_result = self.last_results[-1]
-            if self.chk_preview.get():
-                self.btn_preview.pack(pady=5, padx=10, fill="x")
+            # The Preview launcher is persistent; processing only updates its
+            # source image.  Do not hide/recreate the control based on a
+            # processing result.
+            try:
+                self._photo_preview_source_path = results[-1][0] if results else None
+                self._photo_preview_image = self.last_result
+                if self._is_side_panel_open():
+                    self._render_photo_preview(self._photo_preview_image)
+            except Exception:
+                pass
 
         # FIX: Hủy timer cũ trước khi đặt timer mới
         if self._process_timer_id is not None:

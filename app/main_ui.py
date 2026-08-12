@@ -13,6 +13,7 @@ import threading
 import shutil
 import importlib
 from tkinter import filedialog
+import tkinter as tk
 from pathlib import Path
 from PIL import Image as PILImage, ImageTk
 import customtkinter as ctk
@@ -101,6 +102,8 @@ class NaChanceApp(
         # Core UI luôn hiển thị khi khởi động; Mini chỉ là chế độ người dùng chọn sau.
         self.is_mini = False
         self._view_mode = "full"
+        self._status_bar_visible = True
+        self._status_bar_var = tk.BooleanVar(self, value=True)
         self.save_dir = str(Path.home() / "Pictures" / "ANHTHE")
         os.makedirs(self.save_dir, exist_ok=True)
         self.last_result = None
@@ -195,6 +198,9 @@ class NaChanceApp(
         self.bind("<Configure>", self._sync_side_panel_position)
 
         self._load_config()
+        # System-wide default: the main window also starts in its compact
+        # content-fit presentation.
+        self.after_idle(self._auto_fit_window)
         
     def _lock_unavailable_features(self):
         """Khoá (bỏ chọn + disable) đúng những checkbox mà tính năng tương
@@ -807,6 +813,7 @@ class NaChanceApp(
             self.logo_label.pack(side="left", padx=(10, 4))
             self.logo_label.bind("<Button-1>", self._start_drag)
             self.logo_label.bind("<B1-Motion>", self._do_drag)
+            self.logo_label.bind("<Double-Button-1>", self._auto_fit_window)
 
         # 2. Chữ thương hiệu "NaChance"
         self.title_text_label = ctk.CTkLabel(
@@ -816,6 +823,7 @@ class NaChanceApp(
         self.title_text_label.pack(side="left", padx=(0, 12))
         self.title_text_label.bind("<Button-1>", self._start_drag)
         self.title_text_label.bind("<B1-Motion>", self._do_drag)
+        self.title_text_label.bind("<Double-Button-1>", self._auto_fit_window)
 
         # 3. Nút thực thi ▶ RUN
         self.btn_quick = ctk.CTkButton(
@@ -856,7 +864,7 @@ class NaChanceApp(
         # =========================================================================
         # BIND SỰ KIỆN KÉO CỬA SỔ & RENDER RESIZE GRIP
         # =========================================================================
-        self.title_bar.bind("<Double-Button-1>", self._cycle_view_mode)
+        self.title_bar.bind("<Double-Button-1>", self._auto_fit_window)
         for _widget in (self.btn_quick, self.btn_toggle, self.btn_about, self.btn_close):
             _widget.bind("<Double-Button-1>", lambda e: "break")
 
@@ -906,7 +914,46 @@ class NaChanceApp(
         new_h = max(200, self._resize_start_h + dy)
         self.geometry(f"{new_w}x{new_h}")
 
+    def _build_status_bar(self):
+        """Build the fixed bottom status bar shared by the Core window."""
+        self.status_bar = ctk.CTkFrame(
+            self, fg_color=self.COLORS['bg_card'], corner_radius=0, height=28,
+            border_width=1, border_color=self.COLORS['border'])
+        self.status_bar.pack(side="bottom", fill="x")
+        self.status_bar.pack_propagate(False)
+        self.status = ctk.CTkLabel(
+            self.status_bar, text="Sẵn sàng", font=self.F_SMALL,
+            text_color=self.COLORS['text_secondary'], anchor="w")
+        self.status.pack(fill="both", expand=True, padx=10)
+        self._set_status_bar_visible(self._status_bar_visible, persist=False)
+
+    def _set_status_bar_visible(self, visible, persist=False):
+        self._status_bar_visible = bool(visible)
+        var = getattr(self, "_status_bar_var", None)
+        if var is not None:
+            var.set(self._status_bar_visible)
+        bar = getattr(self, "status_bar", None)
+        if bar is not None:
+            if self._status_bar_visible:
+                if not bar.winfo_manager():
+                    bar.pack(side="bottom", fill="x")
+            else:
+                bar.pack_forget()
+        manager = getattr(self, "_window_manager", None)
+        if manager is not None:
+            for window in list(manager.windows.values()):
+                try:
+                    window._set_status_bar_visible(self._status_bar_visible, persist=False)
+                except Exception:
+                    pass
+        if persist and hasattr(self, "_save_config"):
+            self._save_config()
+
+    def _toggle_status_bar(self):
+        self._set_status_bar_visible(not self._status_bar_visible, persist=True)
+
     def _build_main_panel(self):
+        self._build_status_bar()
         self.main_frame = ctk.CTkScrollableFrame(
             self, fg_color=self.COLORS['bg_dark'],
             scrollbar_button_color=self.COLORS['border'],
@@ -956,11 +1003,6 @@ class NaChanceApp(
                 self._workshop_launcher_buttons[w.workshop_id] = btn
             self._refresh_workshop_launcher_buttons()
 
-        self.status = ctk.CTkLabel(
-            self.main_frame, text="Sẵn sàng",
-            font=self.F_NORMAL, text_color=self.COLORS['text_secondary']
-        )
-        self.status.pack(pady=10)
         self._refresh_core_workshop_status()
 
     def _refresh_core_workshop_status(self):
@@ -1356,12 +1398,26 @@ class NaChanceApp(
         )
         self._refresh_workshops_from_disk()
 
-    def _cycle_view_mode(self, event=None):
-        """Double-click vùng trống title bar: Full → Half → Mini → Full."""
-        current = getattr(self, "_view_mode", "full")
-        next_mode = {"full": "half", "half": "mini", "mini": "full"}.get(current, "full")
-        self._set_display_mode(next_mode)
+    def _auto_fit_window(self, event=None):
+        """Return the main window to the compact/default content-fit size."""
+        if self.is_mini:
+            self.main_frame.pack(fill="both", expand=True, padx=0, pady=0)
+            self.is_mini = False
+        try:
+            from app.window_layout import compact_window
+            compact_window(self, min_width=0, min_height=0, max_width=760)
+            # The Main UI is the first/root window in the hierarchy. Its
+            # default presentation therefore starts at the desktop's
+            # top-left corner; child Workshops are placed relative to it.
+            self.geometry(f"+0+0")
+            self._view_mode = "compact"
+        except Exception as exc:
+            print(f"[NaChanceApp] ⚠ Auto-Fit thất bại: {exc}")
         return "break"
+
+    def _cycle_view_mode(self, event=None):
+        """Compatibility alias for older callers; title-bar double-click now Auto-Fit."""
+        return self._auto_fit_window(event)
 
     def _toggle_panel(self):
         if self.is_mini:

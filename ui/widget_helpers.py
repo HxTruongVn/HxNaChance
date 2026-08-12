@@ -31,6 +31,9 @@ class WidgetHelpersMixin:
                              button_hover_color=self.COLORS['accent_hover'])
         sld.set(default)
         sld.grid(row=row, column=1, sticky="ew", padx=(5, 0), pady=4)
+        # Dragging is transient; releasing the mouse is the commit boundary.
+        sld.bind("<ButtonPress-1>", lambda _e: getattr(self, "_begin_preview_interaction", lambda: None)(), add="+")
+        sld.bind("<ButtonRelease-1>", lambda _e: getattr(self, "_commit_preview_interaction", lambda: None)(), add="+")
         setattr(self, f"sld_{label.split(':')[0].lower().replace(' ', '_')}", sld)
         setattr(self, f"lbl_{label.split(':')[0].lower().replace(' ', '_')}", lbl)
 

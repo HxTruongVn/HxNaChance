@@ -11,6 +11,7 @@ import customtkinter as ctk
 
 from ui.widget_helpers import WidgetHelpersMixin
 from ui.side_panel_mixin import SidePanelMixin
+from app.window_layout import compact_window
 
 
 class WorkshopWindow(ctk.CTkToplevel, WidgetHelpersMixin, SidePanelMixin):
@@ -30,7 +31,9 @@ class WorkshopWindow(ctk.CTkToplevel, WidgetHelpersMixin, SidePanelMixin):
         self.title(workshop.window_title or f"NaChance — {workshop.workshop_name}")
         self.configure(fg_color=core.COLORS["bg_dark"])
         self.protocol("WM_DELETE_WINDOW", self.close)
-        self.minsize(520, 420)
+        # No fixed 420px Workshop floor: Auto-Fit derives the minimum from
+        # the actual labels/controls. A small chrome-only safety floor is
+        # applied by compact_window after the content has been built.
 
         # Context cơ bản dùng chung. Thuộc tính chưa có trên window sẽ được
         # resolve về Core qua __getattr__ bên dưới.
@@ -49,6 +52,7 @@ class WorkshopWindow(ctk.CTkToplevel, WidgetHelpersMixin, SidePanelMixin):
         self._process_timer_id = None
         self._side_panel_mode = None
         self._closed = False
+        self._status_bar_visible = bool(getattr(core, "_status_bar_visible", True))
 
         # Mount toàn bộ behavior của Workshop vào chính window instance.
         # Không đưa Workshop vào inheritance tree của NaChanceApp nữa.
@@ -60,6 +64,7 @@ class WorkshopWindow(ctk.CTkToplevel, WidgetHelpersMixin, SidePanelMixin):
             setattr(self, name, types.MethodType(value, self))
 
         self._build_window_chrome()
+        self._build_status_bar()
         self._build_workshop_content()
         # Một số Core pipeline method dùng btn_quick như nút Run chung;
         # Workshop Photo có btn_run riêng nên alias tại host.
@@ -70,6 +75,12 @@ class WorkshopWindow(ctk.CTkToplevel, WidgetHelpersMixin, SidePanelMixin):
         except Exception as exc:
             print(f"[WorkshopWindow] ⚠ Không khoá được capability {self.workshop_id}: {exc}")
         self._build_side_panel()
+
+        # Compact/Auto-Fit is the default presentation for every Workshop.
+        # It runs after the Workshop has built all of its controls so the
+        # actual labels/buttons, rather than a hard-coded width, determine
+        # the minimum useful width.
+        self.after_idle(self.auto_fit_default)
 
         # Mỗi Workshop có side panel riêng, không dùng side panel của Core.
         self.bind("<Configure>", self._sync_side_panel_position)
@@ -99,16 +110,34 @@ class WorkshopWindow(ctk.CTkToplevel, WidgetHelpersMixin, SidePanelMixin):
         bar.pack(fill="x", side="top")
         bar.pack_propagate(False)
 
-        ctk.CTkLabel(
+        self.workshop_title_label = ctk.CTkLabel(
             bar, text=self.workshop.workshop_name, font=self.F_BRAND,
             text_color=self.COLORS["accent"], anchor="w",
-        ).pack(side="left", padx=14, fill="x", expand=True)
+        )
+        self.workshop_title_label.pack(side="left", padx=14, fill="x", expand=True)
 
         ctk.CTkButton(
             bar, text="×", width=36, height=30,
             fg_color="transparent", hover_color=self.COLORS["danger"],
             command=self.close,
         ).pack(side="right", padx=6, pady=6)
+
+        # Double-click title bar = return to the system-wide compact/default
+        # presentation. Child controls keep their own double-click behavior.
+        bar.bind("<Double-Button-1>", self._on_titlebar_double_click)
+        self.workshop_title_label.bind("<Double-Button-1>", self._on_titlebar_double_click)
+
+    def _on_titlebar_double_click(self, event=None):
+        self.auto_fit_default()
+        return "break"
+
+    def auto_fit_default(self):
+        if self._closed or not self.winfo_exists():
+            return
+        try:
+            compact_window(self)
+        except Exception as exc:
+            print(f"[WorkshopWindow] ⚠ Auto-Fit thất bại: {exc}")
 
     def _build_workshop_content(self):
         self.main_frame = ctk.CTkScrollableFrame(
@@ -128,11 +157,30 @@ class WorkshopWindow(ctk.CTkToplevel, WidgetHelpersMixin, SidePanelMixin):
         bound = types.MethodType(build, self)
         bound()
 
+
+    def _build_status_bar(self):
+        self.status_bar = ctk.CTkFrame(
+            self, fg_color=self.COLORS["bg_card"], corner_radius=0, height=28,
+            border_width=1, border_color=self.COLORS["border"])
+        self.status_bar.pack(side="bottom", fill="x")
+        self.status_bar.pack_propagate(False)
         self.status = ctk.CTkLabel(
-            self.main_frame, text="Sẵn sàng", font=self.F_NORMAL,
-            text_color=self.COLORS["text_secondary"],
-        )
-        self.status.pack(pady=10)
+            self.status_bar, text="Sẵn sàng", font=self.F_SMALL,
+            text_color=self.COLORS["text_secondary"], anchor="w")
+        self.status.pack(fill="both", expand=True, padx=10)
+        self._set_status_bar_visible(self._status_bar_visible, persist=False)
+
+    def _set_status_bar_visible(self, visible, persist=False):
+        self._status_bar_visible = bool(visible)
+        bar = getattr(self, "status_bar", None)
+        if bar is not None:
+            if self._status_bar_visible:
+                if not bar.winfo_manager():
+                    bar.pack(side="bottom", fill="x")
+            else:
+                bar.pack_forget()
+        if persist and hasattr(self, "core") and hasattr(self.core, "_save_config"):
+            self.core._save_config()
 
     def _save_config(self):
         # Giữ save_dir dùng chung với Core; việc persist chi tiết UI sẽ được

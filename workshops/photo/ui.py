@@ -2,10 +2,15 @@
 Phụ thuộc WidgetHelpersMixin (_section_header/_chk/_slider) được WorkshopWindow cung cấp; không cần NaChanceApp kế thừa Workshop UI.
 """
 from tkinter import filedialog
+import os
+import cv2
+import numpy as np
+from PIL import Image as PILImage
 
 import customtkinter as ctk
 
 from workshops.photo import SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME
+from workshops.photo.preview_controller import PhotoPreviewController
 
 
 class ProcessTabMixin:
@@ -20,7 +25,7 @@ class ProcessTabMixin:
 
         self.combo_preset = ctk.CTkComboBox(
             fp, values=list(SPEC_PRESETS.keys()), command=self._on_preset_change,
-            width=360, font=self.F_MEDIUM, fg_color=self.COLORS['bg_hover'],
+            width=220, font=self.F_MEDIUM, fg_color=self.COLORS['bg_hover'],
             border_color=self.COLORS['border'], dropdown_fg_color=self.COLORS['bg_card'],
             dropdown_hover_color=self.COLORS['bg_hover']
         )
@@ -113,11 +118,20 @@ class ProcessTabMixin:
                                         text_color=self.COLORS['accent'], corner_radius=8)
         self.btn_batch.pack(side="left", fill="x", expand=True, padx=(4, 0))
 
-        self.btn_preview = ctk.CTkButton(tab, text="👁 Xem trước", command=self._show_preview,
-                                          height=35, fg_color=self.COLORS['bg_card'],
-                                          hover_color=self.COLORS['bg_hover'], border_width=1,
-                                          border_color=self.COLORS['info'], font=self.F_MEDIUM,
-                                          text_color=self.COLORS['info'])
+        self.btn_preview = ctk.CTkButton(tab, text="👁 MỞ XEM TRƯỚC", command=self._toggle_photo_preview,
+                                          height=35, fg_color=self.COLORS['accent'],
+                                          hover_color=self.COLORS['accent_hover'],
+                                          border_color=self.COLORS['accent'], font=self.F_MEDIUM,
+                                          text_color="white")
+        self.btn_preview.pack(pady=(0, 8), padx=10, fill="x")
+
+        # Preview is always available.  With no source image it renders the
+        # current default canvas; after an image exists, committed changes
+        # can request an async review.
+        self._photo_preview = PhotoPreviewController(self)
+        self._photo_preview_image = None
+        self._photo_preview_source_path = None
+        self._photo_preview_interaction = False
 
 
         # --- Nhóm 1: Khuôn mặt ---
@@ -157,6 +171,9 @@ class ProcessTabMixin:
         self.sld_skin.pack(side="left", fill="x", expand=True, padx=5)
         self.lbl_skin = ctk.CTkLabel(fs2, text="50%", width=35, font=self.F_SMALL)
         self.lbl_skin.pack(side="left")
+        for slider in (self.sld_fidelity, self.sld_skin):
+            slider.bind("<ButtonPress-1>", lambda _e: self._begin_preview_interaction(), add="+")
+            slider.bind("<ButtonRelease-1>", lambda _e: self._commit_preview_interaction(), add="+")
 
         # --- Nhóm 2: Tư thế & Bố cục ---
         self._section_header(tab, "🧍 TƯ THẾ & BỐ CỤC")
@@ -217,6 +234,24 @@ class ProcessTabMixin:
         ctk.CTkButton(fs, text="📁", width=30, height=28, fg_color=self.COLORS['bg_hover'],
                       hover_color=self.COLORS['border'], command=self._choose_save_dir).pack(side="right")
 
+        # Drag/click controls commit at their confirmation event.  For a
+        # checkbox the mouse release is the confirmation boundary; text
+        # entries use Return/FocusOut below.
+        for name in (
+            "chk_face_restore", "chk_skin", "chk_eye", "chk_teeth",
+            "chk_auto_rotate", "chk_confirm_orientation", "chk_shoulder_warp",
+            "chk_upscale", "chk_remove_bg", "chk_validate", "chk_preview",
+        ):
+            widget = getattr(self, name, None)
+            if widget is not None:
+                widget.bind("<ButtonRelease-1>", lambda _e: self._commit_preview_interaction(), add="+")
+        if hasattr(self, "entry_hex"):
+            self.entry_hex.bind("<Return>", lambda _e: self._commit_preview_interaction(), add="+")
+            self.entry_hex.bind("<FocusOut>", lambda _e: self._commit_preview_interaction(), add="+")
+        if hasattr(self, "entry_dpi"):
+            self.entry_dpi.bind("<Return>", lambda _e: self._commit_preview_interaction(), add="+")
+            self.entry_dpi.bind("<FocusOut>", lambda _e: self._commit_preview_interaction(), add="+")
+
     def _toggle_advanced(self):
         if self.adv_frame.winfo_ismapped():
             self.adv_frame.pack_forget()
@@ -239,6 +274,7 @@ class ProcessTabMixin:
                 getattr(self, 'lbl_độ_cao_mặt', None).configure(text=f"Độ cao mặt: {int(spec.eye_y_ratio * 100)}%")
             self.entry_dpi.delete(0, "end")
             self.entry_dpi.insert(0, str(spec.dpi))
+        self._commit_preview_interaction()
 
     def _update_preset_info(self):
         choice = self.combo_preset.get()
@@ -252,6 +288,7 @@ class ProcessTabMixin:
             self.frame_custom.pack(fill="x", pady=(8, 0))
         else:
             self.frame_custom.pack_forget()
+        self._commit_preview_interaction()
 
     def _set_bg_controls_enabled(self, enabled):
         """Bật/tắt toàn bộ lựa chọn nền theo trạng thái Tách nền."""
@@ -275,6 +312,7 @@ class ProcessTabMixin:
     def _on_remove_bg_toggle(self):
         enabled = bool(self.chk_remove_bg.get())
         self._set_bg_controls_enabled(enabled)
+        self._commit_preview_interaction()
 
     def _update_color_preview(self):
         hex_color = self.entry_hex.get().strip()
@@ -283,6 +321,96 @@ class ProcessTabMixin:
                 self.color_preview.configure(fg_color=f"#{hex_color}")
             except:
                 pass
+
+    # ===== LIVE PREVIEW / COMMIT CONTRACT =====
+    def _begin_preview_interaction(self):
+        self._photo_preview_interaction = True
+
+    def _commit_preview_interaction(self):
+        self._photo_preview_interaction = False
+        self._request_photo_preview()
+
+    def _preview_source_path(self):
+        if self._photo_preview_source_path and os.path.isfile(self._photo_preview_source_path):
+            return self._photo_preview_source_path
+        doc = getattr(self, "current_document", None)
+        source = getattr(doc, "source_path", None) if doc is not None else None
+        return source if source and os.path.isfile(source) else None
+
+    def _photo_preview_default_canvas(self):
+        spec = self._get_spec()
+        return PILImage.new("RGB", (max(1, spec.w), max(1, spec.h)), self._get_bg_color())
+
+    def _toggle_photo_preview(self):
+        if self._is_side_panel_open():
+            self._hide_side_panel()
+            self._refresh_photo_preview_button()
+            return
+        self._show_side_panel(width=420, height=self.winfo_height())
+        self._render_photo_preview(self._photo_preview_image or self._photo_preview_default_canvas())
+        self._refresh_photo_preview_button()
+
+    def _refresh_photo_preview_button(self):
+        if not hasattr(self, "btn_preview"):
+            return
+        opened = self._is_side_panel_open()
+        self.btn_preview.configure(
+            text="👁 ĐÓNG XEM TRƯỚC" if opened else "👁 MỞ XEM TRƯỚC",
+            fg_color=self.COLORS['danger'] if opened else self.COLORS['accent'],
+            hover_color=self.COLORS['danger'] if opened else self.COLORS['accent_hover'])
+
+    def _render_photo_preview(self, image):
+        self._side_panel_mode = "photo"
+        self.side_panel_title.configure(text="Xem trước Photo")
+        self.side_panel_rotate_row.pack_forget()
+        self.side_panel_extra_label.pack_forget()
+        self.side_panel.update_idletasks()
+        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if isinstance(image, np.ndarray) else image
+        pil_img = rgb.copy() if isinstance(rgb, PILImage.Image) else PILImage.fromarray(rgb)
+        viewport_w = max(260, self.side_panel.winfo_width() - 42)
+        max_h = max(260, self.side_panel.winfo_height() - 130)
+        pil_img.thumbnail((viewport_w, max_h), PILImage.LANCZOS)
+        ctk_img = ctk.CTkImage(light_image=pil_img, size=pil_img.size)
+        self.side_panel_img.configure(image=ctk_img, text="")
+        self.side_panel_img.image = ctk_img
+        for child in self.side_panel_btn_row.winfo_children():
+            child.destroy()
+        source = self._preview_source_path()
+        text = f"{image.shape[1]} × {image.shape[0]} px" if isinstance(image, np.ndarray) else f"{image.width} × {image.height} px"
+        ctk.CTkLabel(self.side_panel_btn_row, text=text, font=self.F_SMALL,
+                     text_color=self.COLORS['text_secondary']).pack(fill="x", pady=(0, 5))
+        if source:
+            ctk.CTkLabel(self.side_panel_btn_row, text="Preview cập nhật theo lần xác nhận gần nhất.",
+                         font=self.F_SMALL, text_color=self.COLORS['text_secondary']).pack(fill="x")
+        self._show_side_panel(width=420, height=self.winfo_height())
+        self._refresh_photo_preview_button()
+
+    def _request_photo_preview(self):
+        source = self._preview_source_path()
+        if not source:
+            self._photo_preview_image = None
+            if self._is_side_panel_open():
+                self._render_photo_preview(self._photo_preview_default_canvas())
+            return
+        try:
+            spec = self._get_spec()
+            bg_color = self._get_bg_color()
+            options = self._get_options()
+        except Exception as exc:
+            self.status.configure(text=f"⚠ Preview: {exc}", text_color=self.COLORS['warning'])
+            return
+        self.status.configure(text="⏳ Đang cập nhật Preview...", text_color=self.COLORS['warning'])
+        self._photo_preview.request(source, spec, bg_color, options, self._on_photo_preview_done)
+
+    def _on_photo_preview_done(self, revision, image, error):
+        if image is None:
+            if error:
+                self.status.configure(text=f"⚠ Preview: {error}", text_color=self.COLORS['warning'])
+            return
+        self._photo_preview_image = image
+        if self._is_side_panel_open():
+            self._render_photo_preview(image)
+        self.status.configure(text=f"✓ Preview cập nhật — revision {revision}", text_color=self.COLORS['success'])
 
     def _choose_save_dir(self):
         folder = filedialog.askdirectory()
