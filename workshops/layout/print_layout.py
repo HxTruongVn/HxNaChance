@@ -72,7 +72,7 @@ def parse_formula(formula: str, val_f: float = 30.5) -> Dict:
       - "L<n>"  : số cột lặp lại (mặc định 1).
       - "S<n>"  : số hàng lặp theo chiều dọc (mặc định 1).
       - "N"     : đảo chiều rộng/cao khổ giấy cuối (canvas ngang<->dọc).
-      - "F" (đứng riêng lẻ): ép chiều cao cuối = tham số F (mặc định 30.5cm hoặc nhận từ UI).
+      - "F"     : ép chiều cao cuối = tham số F (mặc định 30.5cm hoặc nhận từ UI).
       - "CP<n>" : (crop preset) — hiện chỉ được parse, dùng ở nơi khác.
       - "ML/MR/MT/MB<số>": margin trái/phải/trên/dưới (cm) cho khổ giấy cuối.
       - "<W>-<H>" (VD "12.4-30.5"): kích thước vùng in cuối (cm), ghi đè
@@ -446,6 +446,13 @@ def save_sidecar(output_path: str, data: Dict):
 def build_layout_canvas(src_path: str, ui_config: Dict, 
                         append_mode: bool = False, 
                         existing_path: str = None) -> Tuple[Image.Image, Dict]:
+    # Compatibility: src_path vẫn nhận 1 đường dẫn như trước, nhưng UI có thể
+    # truyền danh sách ảnh để xếp nối tiếp trên cùng một canvas.
+    src_paths = list(src_path) if isinstance(src_path, (list, tuple)) else [src_path]
+    src_paths = [os.path.abspath(str(p)) for p in src_paths if p and os.path.exists(str(p))]
+    if not src_paths:
+        raise FileNotFoundError("Không có ảnh nguồn hợp lệ.")
+
     cfg = dict(DEFAULT_LAYOUT_CONFIG)
     cfg.update({k: ui_config[k] for k in cfg.keys() if k in ui_config})
     res = ui_config.get("res", 300)
@@ -488,8 +495,6 @@ def build_layout_canvas(src_path: str, ui_config: Dict,
     else:
         canvas = Image.new("RGB", (canvas_w_px, canvas_h_px), (255, 255, 255))
 
-    src_img = Image.open(src_path)
-    renderer = LayoutRenderer(src_img, res)
     simulator = LayoutSimulator()
 
     has_selected_preset = False
@@ -501,29 +506,35 @@ def build_layout_canvas(src_path: str, ui_config: Dict,
     if not has_selected_preset:
         raise ValueError("Chưa chọn bố cục nào! Hãy tích chọn ít nhất một preset và nhập số lượng.")
 
-    for pkey, item in ui_config["presets"].items():
-        if item["count"] > 0 and item["formula"]:
-            ct = parse_formula(item["formula"], val_f=val_f)
-            if ct["struct"]:
-                resolve_auto_sizes(ct["struct"], src_img.width, src_img.height, res)
-                missing = [i["cRef"] for i in ct["struct"] if not i.get("w") or not i.get("h")]
-                if missing:
-                    raise ValueError(
-                        f"Công thức preset '{pkey}' thiếu kích thước cho: {', '.join(missing)}. "
-                        "Mỗi cRef phải có khai báo kích thước (VD: 4*6) hoặc dùng C0 để giữ nguyên ảnh gốc."
-                    )
-                for _ in range(item["count"]):
-                    plan = simulator.simulate(ct["struct"], cfg["gapY"], cfg["vungInW"])
-                    for o in plan["items"]:
-                        renderer.put(
-                            canvas, o["w"], o["h"], o["ang"], ui_config["cafMode"],
-                            cfg["marginLeft"] + o["dx"],
-                            cfg["marginTop"] + last_y + o["dy"],
-                            ui_config.get("chkStroke", False),
-                            ui_config.get("strokeW", 0.85),
-                            ui_config.get("strokeColor", "686868")
+    # Mỗi ảnh được đưa qua đúng cùng engine/preset như trước, chỉ khác là
+    # ảnh thứ 2 trở đi tiếp tục tại last_y thay vì thay ảnh trước đó.
+    for src_path_item in src_paths:
+        src_img = Image.open(src_path_item)
+        renderer = LayoutRenderer(src_img, res)
+
+        for pkey, item in ui_config["presets"].items():
+            if item["count"] > 0 and item["formula"]:
+                ct = parse_formula(item["formula"], val_f=val_f)
+                if ct["struct"]:
+                    resolve_auto_sizes(ct["struct"], src_img.width, src_img.height, res)
+                    missing = [i["cRef"] for i in ct["struct"] if not i.get("w") or not i.get("h")]
+                    if missing:
+                        raise ValueError(
+                            f"Công thức preset '{pkey}' thiếu kích thước cho: {', '.join(missing)}. "
+                            "Mỗi cRef phải có khai báo kích thước (VD: 4*6) hoặc dùng C0 để giữ nguyên ảnh gốc."
                         )
-                    last_y += plan["totalHeight"] + cfg["gapY"]
+                    for _ in range(item["count"]):
+                        plan = simulator.simulate(ct["struct"], cfg["gapY"], cfg["vungInW"])
+                        for o in plan["items"]:
+                            renderer.put(
+                                canvas, o["w"], o["h"], o["ang"], ui_config["cafMode"],
+                                cfg["marginLeft"] + o["dx"],
+                                cfg["marginTop"] + last_y + o["dy"],
+                                ui_config.get("chkStroke", False),
+                                ui_config.get("strokeW", 0.85),
+                                ui_config.get("strokeColor", "686868")
+                            )
+                        last_y += plan["totalHeight"] + cfg["gapY"]
 
     payload = {
         "lastY": last_y, "config": cfg, "res": res,
