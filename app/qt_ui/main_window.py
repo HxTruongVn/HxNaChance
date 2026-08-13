@@ -19,6 +19,7 @@ from PySide6.QtPrintSupport import QPrintDialog, QPrinter
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
+    QAbstractSpinBox,
     QCheckBox,
     QFormLayout,
     QFrame,
@@ -308,17 +309,14 @@ class QtNaChanceWindow(QMainWindow):
         edit_menu.addSeparator()
         self._refresh_context_action_state()
         refresh_action = QAction("Refresh runtime", self)
-        refresh_action.setShortcut("F5")
         refresh_action.triggered.connect(self._load_runtime_report)
         edit_menu.addAction(refresh_action)
 
         pipeline_menu = self.menuBar().addMenu("&Pipeline")
         pipeline_open = QAction("Open Pipeline Builder", self)
-        pipeline_open.setShortcut("Ctrl+P")
         pipeline_open.triggered.connect(self._show_pipeline_builder_qt)
         pipeline_menu.addAction(pipeline_open)
         pipeline_run = QAction("Run active pipeline", self)
-        pipeline_run.setShortcut("F9")
         pipeline_run.triggered.connect(self._run_active_workshop_qt)
         pipeline_menu.addAction(pipeline_run)
 
@@ -434,6 +432,7 @@ class QtNaChanceWindow(QMainWindow):
     def _install_core_shortcuts_qt(self) -> None:
         self._qt_shortcuts = []
         shortcuts = (
+            (QKeySequence("Ctrl+R"), self._shortcut_run_qt),
             (QKeySequence(Qt.KeyboardModifier.ControlModifier | Qt.Key.Key_QuoteLeft), self._next_workshop_qt),
             (QKeySequence(Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier | Qt.Key.Key_QuoteLeft), self._previous_workshop_qt),
             (QKeySequence(Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.AltModifier | Qt.Key.Key_QuoteLeft), self._return_to_core_qt),
@@ -442,6 +441,15 @@ class QtNaChanceWindow(QMainWindow):
             shortcut = QShortcut(sequence, self)
             shortcut.activated.connect(callback)
             self._qt_shortcuts.append(shortcut)
+
+    def _shortcut_run_qt(self) -> None:
+        context = self._current_command_context()
+        command_id = {
+            WorkspaceKind.PIPELINE: "pipeline.run",
+            WorkspaceKind.WORKSHOP: "workshop.run",
+        }.get(context.kind)
+        if command_id:
+            self._dispatch_context_command(command_id, self._run_active_workshop_qt)
 
     def _return_to_core_qt(self) -> None:
         for workshop_id in list(self._workshop_windows):
@@ -1245,8 +1253,13 @@ class QtNaChanceWindow(QMainWindow):
             check.setProperty("presetKey", key)
             count = QSpinBox()
             count.setRange(0, 999)
+            count.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
             count.setValue(1 if idx == 0 else 0)
-            count.setFixedWidth(70)
+            count.setMinimumWidth(112)
+            count.setMaximumWidth(132)
+            count.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            count.setToolTip("Chọn preset rồi dùng phím mũi tên hoặc nút native của ô số để tăng/giảm số lượng")
+            check.clicked.connect(lambda _checked=False, s=count, preset_key=key: self._select_layout_preset_qt(preset_key, s))
             check.toggled.connect(lambda checked, s=count: s.setValue(max(1, s.value()) if checked else 0))
             check.toggled.connect(self._layout_controls_changed)
             count.valueChanged.connect(lambda _=0: self._layout_controls_changed())
@@ -1660,6 +1673,12 @@ class QtNaChanceWindow(QMainWindow):
             self.status_label.setText("Core startup failed; Workshop discovery remains available")
             self.runtime_label.setText("Runtime report unavailable")
             self.log.appendPlainText(traceback.format_exc())
+
+    def _select_layout_preset_qt(self, preset_key: str, spin: QSpinBox) -> None:
+        self._selected_layout_preset = preset_key
+        spin.setFocus(Qt.FocusReason.OtherFocusReason)
+        spin.selectAll()
+        self.status_bar.showMessage(f"Preset đang chọn: {preset_key}. Dùng phím mũi tên để tăng/giảm số lượng.", 2500)
 
     def _adjust_layout_count(self, spin: QSpinBox, check: QCheckBox, delta: int) -> None:
         value = max(0, spin.value() + delta)

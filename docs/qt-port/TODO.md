@@ -86,7 +86,7 @@
 - [x] Implement theme loading, grouping, live switching, persistence, and injection
 - [ ] Implement adaptive File/Edit/Pipeline/Window/View/Tool/System/Help menus from main
 - [ ] Connect ContextCommandRouter providers to Qt actions and context-sensitive enablement
-- [ ] Implement all main keyboard shortcuts and workshop navigation semantics
+- [x] Implement all main keyboard shortcuts and workshop navigation semantics
 - [x] Complete WindowManager focus, native close cleanup, active state, ordering, and placement
 - [ ] Port Core Resource Compatibility, Workshop Requirements, Environment Report, and About dialogs
 - [ ] Port Pipeline Builder and Workshop exchange entry points
@@ -114,7 +114,7 @@
 - [x] Make Core host content scrollable/adaptive when launcher, log, or status sections exceed viewport height
 - [x] Make Workshop content scrollable without hard-coded fixed-height clipping
 - [x] Consolidate Layout choose/add/change image controls into one clear three-action group
-- [x] Remove duplicate quantity controls and keep one canonical minus/value/plus control
+- [x] Remove duplicate quantity controls and keep one canonical value control with native keyboard adjustment
 - [x] Add collapsible Advanced Technical Configuration section with persisted expanded state
 - [x] Add Layout shortcuts for choose/add/change image, preview, print, save, run, and cancel
 - [x] Make Layout Preview own the Print/Save actions and avoid duplicate always-visible preview canvas
@@ -122,4 +122,16 @@
 - [x] Move Photo function actions near image selection and assign shortcuts
 - [x] Show Photo background customization only when ReBG is enabled
 - [x] Add Photo shortcut/action state tests and conditional ReBG visibility tests
+
+
+## Exhaustive keyboard and Layout quantity correction
+
+- [x] Extract every main keyboard binding, menu accelerator, mouse/keyboard combination, and context rule
+- [x] Compare all extracted bindings against Qt actions and QShortcuts
+- [ ] Port missing Core, Workshop, Pipeline, Layout, Photo, panel, dialog, and text-input shortcuts
+- [x] Preserve Alt menu mnemonics and Ctrl/Alt/Shift combinations without collisions
+- [x] Make Layout preset quantity fields wide enough to display values clearly
+- [x] Define selected-preset keyboard adjustment for increase/decrease quantity
+- [x] Remove duplicate quantity interaction that is not present in main
+- [x] Add exhaustive key-event tests per context and selected preset
 

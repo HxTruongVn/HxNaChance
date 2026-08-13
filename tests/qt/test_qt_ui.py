@@ -8,7 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 PySide6 = pytest.importorskip("PySide6")
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QMenu, QPushButton, QScrollArea
+from PySide6.QtWidgets import QApplication, QAbstractSpinBox, QMenu, QPushButton, QScrollArea
 
 from app.qt_ui import QtNaChanceWindow
 
@@ -127,6 +127,15 @@ def test_qt_core_layout_photo_controls_are_nonredundant_and_scrollable():
     assert not window.layout_advanced_body.isVisible()
     window._toggle_layout_advanced_qt(True)
     assert window.layout_advanced_body.isVisible()
+    for controls in window.layout_preset_vars.values():
+        spin = controls["count"]
+        assert spin.minimumWidth() >= 112
+        assert spin.buttonSymbols() == QAbstractSpinBox.ButtonSymbols.NoButtons
+    selected_key = next(iter(window.layout_preset_vars))
+    selected = window.layout_preset_vars[selected_key]
+    window._select_layout_preset_qt(selected_key, selected["count"])
+    assert window._selected_layout_preset == selected_key
+    assert selected["count"].focusPolicy() != Qt.FocusPolicy.NoFocus
     photo_window = window._open_workshop_window("photo")
     assert photo_window.findChildren(QScrollArea)
     assert not window.photo_bg_container.isVisible()
@@ -144,14 +153,14 @@ def test_qt_grave_shortcuts_change_workspace_state():
     app = QApplication.instance() or QApplication([])
     window = QtNaChanceWindow()
     window.show()
-    assert [shortcut.key().toString() for shortcut in window._qt_shortcuts] == ["Ctrl+`", "Ctrl+Shift+`", "Ctrl+Alt+`"]
-    window._qt_shortcuts[0].activated.emit()
-    app.processEvents()
-    assert window._active_workshop_id == "layout"
+    assert [shortcut.key().toString() for shortcut in window._qt_shortcuts] == ["Ctrl+R", "Ctrl+`", "Ctrl+Shift+`", "Ctrl+Alt+`"]
     window._qt_shortcuts[1].activated.emit()
     app.processEvents()
-    assert window._active_workshop_id == "repo_intake"
+    assert window._active_workshop_id == "layout"
     window._qt_shortcuts[2].activated.emit()
+    app.processEvents()
+    assert window._active_workshop_id == "repo_intake"
+    window._qt_shortcuts[3].activated.emit()
     app.processEvents()
     assert window._active_workshop_id is None
     window.close()
