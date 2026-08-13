@@ -80,3 +80,19 @@
 - [x] Test native close, focus, active-window state, and WindowManager cleanup after closing
 - [x] Document intentional differences between main's custom Tk title bar and Qt native chrome
 
+
+## Full parity execution backlog
+
+- [ ] Implement theme loading, grouping, live switching, persistence, and injection
+- [ ] Implement adaptive File/Edit/Pipeline/Window/View/Tool/System/Help menus from main
+- [ ] Connect ContextCommandRouter providers to Qt actions and context-sensitive enablement
+- [ ] Implement all main keyboard shortcuts and workshop navigation semantics
+- [ ] Complete WindowManager focus, native close cleanup, active state, ordering, and placement
+- [ ] Port Core Resource Compatibility, Workshop Requirements, Environment Report, and About dialogs
+- [ ] Port Pipeline Builder and Workshop exchange entry points
+- [ ] Complete Layout menu, orientation/state dialogs, preview and save-state interactions
+- [ ] Complete Photo controls, preview/orientation panels, and processing options
+- [ ] Complete Repo Intake folder/ZIP intake, dossier, resources, scaffold, contract tests, and approval flow
+- [ ] Implement config/state persistence, watcher updates, missing-workshop notices, and cancellation
+- [ ] Add action-level, shortcut-level, theme, hierarchy, and full-workshop parity tests
+

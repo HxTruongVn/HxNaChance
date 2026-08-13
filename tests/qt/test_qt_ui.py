@@ -1,3 +1,4 @@
+import json
 import os
 
 import pytest
@@ -16,7 +17,7 @@ def test_qt_window_exposes_main_workshop_tabs():
     assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ["Core"]
     assert list(window._workshop_launcher_buttons) == ["layout", "photo", "repo_intake"]
     assert [action.text() for action in window.menuBar().actions()] == [
-        "File", "Edit", "Pipeline", "Window", "View", "Tool", "System", "Help"
+        "File", "Edit", "Pipeline", "Window", "View", "Tool", "Help"
     ]
     assert [button.text() for button in window._workshop_launcher_buttons.values()] == ["OPEN", "OPEN", "OPEN"]
     assert not window.windowIcon().isNull()
@@ -31,6 +32,24 @@ def test_qt_window_exposes_main_workshop_tabs():
     layout_window.close()
     window._refresh_launcher_buttons()
     assert window._workshop_launcher_buttons["layout"].text() == "OPEN"
+    window.close()
+    app.processEvents()
+
+
+def test_qt_theme_menu_loads_groups_and_persists(tmp_path, monkeypatch):
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    window._config_path = tmp_path / "nachance.json"
+    theme_names = list(window._themes)
+    assert theme_names
+    assert window._theme_actions
+    assert any(action.isCheckable() for action in window._theme_actions.values())
+    selected = theme_names[-1]
+    window._on_theme_change(selected)
+    assert window._theme_name == selected
+    assert window._config_path.exists()
+    assert json.loads(window._config_path.read_text(encoding="utf-8"))["theme"] == selected
+    assert window._theme_actions[selected].isChecked()
     window.close()
     app.processEvents()
 

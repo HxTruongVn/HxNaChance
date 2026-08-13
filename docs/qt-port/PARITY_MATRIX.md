@@ -30,15 +30,15 @@
 
 | Hạng mục | Nguồn main | Qt hiện tại | Trạng thái | Điều kiện đạt |
 |---|---|---|---|---|
-| Load `themes.json` | `ui/theme_mixin.py:_load_themes` | Qt palette hardcode | Thiếu | Đọc cùng file theme của main |
-| Theme name | `ThemeMixin._load_theme_name` | Chưa nối config | Thiếu | Dùng cùng `config_path` và `DEFAULT_THEME` |
-| Theme groups/category | `THEME_GROUPS` | Chưa có menu Theme | Thiếu | Hiển thị nhóm theme động |
-| View → Theme submenu | `ui/menu_bar_mixin.py:_menu_view` | Chưa port đầy đủ | Thiếu | Mỗi theme có radio/check state |
-| Apply theme live | `ThemeMixin._on_theme_change` | Chưa tương đương | Thiếu | Restyle host, Workshop windows và side panels |
+| Load `themes.json` | `ui/theme_mixin.py:_load_themes` | Qt đọc cùng `config/presets/themes.json` với fallback | Đủ | Đọc cùng file theme của main |
+| Theme name | `ThemeMixin._load_theme_name` | Qt đọc `~/.nachance_ai.json` và fallback cùng nguyên tắc | Đủ | Dùng cùng config path và default |
+| Theme groups/category | `THEME_GROUPS` | Qt nhóm category động thành submenu | Đủ | Hiển thị nhóm theme động |
+| View → Theme submenu | `ui/menu_bar_mixin.py:_menu_view` | Có View → Theme, QActionGroup và check state | Đủ | Mỗi theme có radio/check state |
+| Apply theme live | `ThemeMixin._on_theme_change` | Đổi palette live cho host, Workshop và side panels | Một phần | Còn cần loại bỏ stylesheet hardcode riêng của Workshop |
 | Block theme switch while busy/orient | ThemeMixin lines 74–89 | Chưa có | Thiếu | Hiện thông báo và không phá worker |
-| Persist selected theme | `_save_config` | Chưa có | Thiếu | Theme giữ lại sau restart |
+| Persist selected theme | `_save_config` | Ghi trường `theme` vào `~/.nachance_ai.json` | Đủ | Theme giữ lại sau restart |
 | Workshop theme injection | `WorkshopWindow`/`SidePanelMixin` | Qt có stylesheet riêng | Một phần | Dùng palette/theme chung, không hardcode riêng |
-| Theme after rebuild order | ThemeMixin lines 105–123 | Chưa có | Thiếu | Host/menu/title order không nhảy |
+| Theme after rebuild order | ThemeMixin lines 105–123 | Qt áp stylesheet trực tiếp, không rebuild thứ tự widget | Một phần | Kiểm tra screenshot và child style parity |
 
 ## Tầng 3 — Menu bar và command context
 
@@ -48,11 +48,11 @@
 | Edit | `_menu_edit` | Undo/Redo/Save placeholder | Thiếu | Dùng `ContextCommandRouter` và active context |
 | Pipeline | `_menu_pipeline` | Có placeholder | Thiếu | Chỉ hiện command hợp lệ khi Pipeline active |
 | Window | `_menu_window` | Có nhóm cơ bản | Một phần | Dynamic Workshop submenu và active/open state |
-| View | `_menu_view` | Inspector/status | Thiếu | Theme, status bar, preview, orientation, panels |
-| Tool | `_menu_tool` | Placeholder items | Thiếu | Resource compatibility, Workshop requirements và exchange thật |
-| System | `_menu_system` | Report/reload | Một phần | Giữ settings, watcher, runtime actions |
+| View | `_menu_view` | Mini/Full Screen/Half Screen, Inspector, Status bar và Theme | Một phần | Bổ sung preview/orientation/panel toggles còn lại |
+| Tool | `_menu_tool` | Runtime/System submenus; Requirements, Environment và Resource đã nối handler Qt | Một phần | Hoàn thiện các action còn lại và Workshop exchange |
+| System | `_menu_system` dưới Tool | Qt có Tool → System với report/reload/resource actions | Một phần | Giữ settings, watcher, runtime actions |
 | Help | `_menu_help` | About cơ bản | Một phần | About, docs, Workshop About, environment report |
-| Dynamic Workshop menu | manifest `menu_build_method` | Chưa có | Thiếu | Không hardcode tên Shop |
+| Dynamic Workshop menu | manifest `menu_build_method` | Window menu lấy `menu_label` từ metadata discovery | Một phần | Gọi menu_build_method riêng của từng Workshop |
 | Menu rebuild state | `_popup_menu` builds each open | Native Qt static actions | Thiếu | Enabled/checked state cập nhật theo active context |
 
 ## Tầng 4 — Keyboard shortcuts và context

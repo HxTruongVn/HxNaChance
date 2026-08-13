@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QObject, QThread, Signal, Qt
-from PySide6.QtGui import QAction, QIcon, QImage, QPixmap
+from PySide6.QtGui import QAction, QActionGroup, QIcon, QImage, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -37,6 +37,9 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
 )
 
 from app.workshop_discovery import discover_workshops
@@ -247,18 +250,13 @@ class QtNaChanceWindow(QMainWindow):
         self._side_panel_windows: dict[str, QtSidePanelWindow] = {}
         self._workshop_order: list[str] = []
         self._active_workshop_id: str | None = None
-        self._theme = {
-            "bg": "#111827",
-            "surface": "#1f2937",
-            "surface2": "#374151",
-            "border": "#4b5563",
-            "text": "#f9fafb",
-            "muted": "#9ca3af",
-            "accent": "#3b82f6",
-            "accent_hover": "#60a5fa",
-            "success": "#22c55e",
-            "danger": "#ef4444",
-        }
+        self._config_path = Path.home() / ".nachance_ai.json"
+        self._themes = self._load_theme_catalog()
+        self._theme_groups = self._group_themes()
+        self._theme_name = self._load_theme_name()
+        self._theme = self._theme_palette(self._theme_name)
+        self._theme_actions: dict[str, QAction] = {}
+        self._discovered_workshops = discover_workshops(PROJECT_ROOT / "workshops", load_ui=False)
         self._build_actions()
         self._build_ui()
         self._load_runtime_report()
@@ -302,9 +300,12 @@ class QtNaChanceWindow(QMainWindow):
         pipeline_menu.addAction(pipeline_run)
 
         window_menu = self.menuBar().addMenu("Window")
-        for index, label in enumerate(("Core", "Layout", "Photo", "Repo Intake")):
-            action = QAction(label, self)
-            action.triggered.connect(lambda checked=False, i=index: self._select_tab(i))
+        core_action = QAction("Core", self)
+        core_action.triggered.connect(lambda: self._select_tab(0))
+        window_menu.addAction(core_action)
+        for item in self._discovered_workshops:
+            action = QAction(item.menu_label or item.workshop_name, self)
+            action.triggered.connect(lambda checked=False, wid=item.workshop_id: self._open_workshop_window(wid))
             window_menu.addAction(action)
         window_menu.addSeparator()
         next_action = QAction("Next Workshop", self)
@@ -321,6 +322,10 @@ class QtNaChanceWindow(QMainWindow):
         window_menu.addAction(close_active)
 
         view_menu = self.menuBar().addMenu("View")
+        view_menu.addAction("Mini", lambda: self._set_display_mode_qt("mini"))
+        view_menu.addAction("Full Screen", lambda: self._set_display_mode_qt("full"))
+        view_menu.addAction("Half Screen", lambda: self._set_display_mode_qt("half"))
+        view_menu.addSeparator()
         self.inspector_action = QAction("Inspector", self)
         self.inspector_action.setCheckable(True)
         self.inspector_action.setChecked(True)
@@ -331,17 +336,28 @@ class QtNaChanceWindow(QMainWindow):
         status_action.setChecked(True)
         status_action.triggered.connect(lambda checked: self.status_label.setVisible(checked))
         view_menu.addAction(status_action)
+        theme_menu = view_menu.addMenu("Theme")
+        theme_group = QActionGroup(self)
+        theme_group.setExclusive(True)
+        for category in sorted(self._theme_groups, key=str.casefold):
+            category_menu = theme_menu.addMenu(category)
+            for theme_name in self._theme_groups[category]:
+                theme_action = QAction(theme_name, self)
+                theme_action.setCheckable(True)
+                theme_action.setChecked(theme_name == self._theme_name)
+                theme_action.triggered.connect(lambda checked=False, name=theme_name: self._on_theme_change(name))
+                theme_group.addAction(theme_action)
+                category_menu.addAction(theme_action)
+                self._theme_actions[theme_name] = theme_action
 
         tool_menu = self.menuBar().addMenu("Tool")
-        tool_menu.addAction("Resource Compatibility", self._noop_context_action)
-        tool_menu.addAction("Workshop Requirements", self._noop_context_action)
-        tool_menu.addAction("Orientation / Preview", self._noop_context_action)
-
-        system_menu = self.menuBar().addMenu("System")
-        report_action = QAction("Show environment report", self)
-        report_action.triggered.connect(self._load_runtime_report)
-        system_menu.addAction(report_action)
-        system_menu.addAction("Reload Workshop manifests", self._load_runtime_report)
+        runtime_menu = tool_menu.addMenu("Runtime")
+        runtime_menu.addAction("Open Runtime", self._load_runtime_report)
+        runtime_menu.addAction("Workshop Requirements & Overlap…", self._show_workshop_requirements_qt)
+        system_tools = tool_menu.addMenu("System")
+        system_tools.addAction("Resource Compatibility…", self._show_resource_compatibility_qt)
+        system_tools.addAction("Show Environment Report", self._show_environment_report_qt)
+        system_tools.addAction("Reload Workshop manifests", self._load_runtime_report)
 
         help_menu = self.menuBar().addMenu("Help")
         about_action = QAction("About NaChance", self)
@@ -350,6 +366,82 @@ class QtNaChanceWindow(QMainWindow):
 
     def _noop_context_action(self) -> None:
         self.log.appendPlainText("Command is reserved for the active Core/Workshop context.")
+
+    def _load_theme_catalog(self) -> dict[str, dict[str, str]]:
+        path = PROJECT_ROOT / "config" / "presets" / "themes.json"
+        fallback = {
+            "Dark Blue (mặc định)": {
+                "bg_dark": "#0d1117", "bg_card": "#161b22", "bg_hover": "#21262d",
+                "border": "#30363d", "text_primary": "#c9d1d9", "text_secondary": "#8b949e",
+                "accent": "#58a6ff", "accent_hover": "#79c0ff", "success": "#238636",
+                "warning": "#d29922", "danger": "#da3633", "info": "#1f6feb",
+            }
+        }
+        required = {"bg_dark", "bg_card", "bg_hover", "border", "text_primary", "text_secondary", "accent", "accent_hover", "success", "warning", "danger", "info"}
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            valid = {name: fields for name, fields in raw.items() if required.issubset(fields)}
+            return valid or fallback
+        except (OSError, ValueError, TypeError):
+            return fallback
+
+    def _group_themes(self) -> dict[str, list[str]]:
+        groups: dict[str, list[str]] = {}
+        for name, fields in self._themes.items():
+            groups.setdefault(str(fields.get("category", "Khác")), []).append(name)
+        for names in groups.values():
+            names.sort(key=str.casefold)
+        return groups
+
+    def _load_theme_name(self) -> str:
+        try:
+            config = json.loads(self._config_path.read_text(encoding="utf-8"))
+            saved = config.get("theme")
+            if saved in self._themes:
+                return saved
+        except (OSError, ValueError, TypeError):
+            pass
+        return next(iter(self._themes), "Dark Blue (mặc định)")
+
+    def _theme_palette(self, theme_name: str) -> dict[str, str]:
+        fields = self._themes.get(theme_name, next(iter(self._themes.values())))
+        return {
+            "bg": fields["bg_dark"], "surface": fields["bg_card"], "surface2": fields["bg_hover"],
+            "border": fields["border"], "text": fields["text_primary"], "muted": fields["text_secondary"],
+            "accent": fields["accent"], "accent_hover": fields["accent_hover"],
+            "success": fields["success"], "danger": fields["danger"],
+        }
+
+    def _save_theme_name(self) -> None:
+        try:
+            config: dict[str, Any] = {}
+            if self._config_path.exists():
+                loaded = json.loads(self._config_path.read_text(encoding="utf-8"))
+                if isinstance(loaded, dict):
+                    config = loaded
+            config["theme"] = self._theme_name
+            self._config_path.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
+        except (OSError, TypeError, ValueError) as exc:
+            self.log.appendPlainText(f"Không thể lưu theme: {exc}")
+
+    def _on_theme_change(self, theme_name: str) -> None:
+        if theme_name not in self._themes or theme_name == self._theme_name:
+            return
+        if self._layout_thread is not None and self._layout_thread.isRunning():
+            QMessageBox.information(self, "Đang xử lý", "Đợi xử lý hiện tại xong rồi đổi giao diện nhé.")
+            return
+        if self._photo_thread is not None and self._photo_thread.isRunning():
+            QMessageBox.information(self, "Đang xử lý", "Đợi xử lý hiện tại xong rồi đổi giao diện nhé.")
+            return
+        self._theme_name = theme_name
+        self._theme = self._theme_palette(theme_name)
+        self._save_theme_name()
+        self.setStyleSheet(self._stylesheet())
+        for action_name, action in self._theme_actions.items():
+            action.setChecked(action_name == theme_name)
+        for child in list(self._workshop_windows.values()) + list(self._side_panel_windows.values()):
+            child.setStyleSheet(self._stylesheet())
+        self.status_bar.showMessage(f"Theme: {theme_name}", 3000)
 
     def _build_ui(self) -> None:
         self.setStyleSheet(self._stylesheet())
@@ -616,12 +708,99 @@ class QtNaChanceWindow(QMainWindow):
     def _toggle_inspector(self, checked: bool) -> None:
         self.inspector_panel.setVisible(checked)
 
+    def _set_display_mode_qt(self, mode: str) -> None:
+        if mode == "full":
+            self.showFullScreen()
+            return
+        if mode == "mini":
+            self.showNormal()
+            self.resize(480, 120)
+            return
+        self.showNormal()
+        screen = self.screen() or QApplication.primaryScreen()
+        if screen is None:
+            return
+        available = screen.availableGeometry()
+        self.resize(max(640, available.width() // 2), max(480, available.height() - 80))
+        self.move(available.left(), available.top())
+
     def _show_about(self) -> None:
         QMessageBox.about(
             self,
             "About NaChance",
             "NaChance — Qt desktop frontend\\n\\nLogic and Workshop engines are reused from the main application.",
         )
+
+    def _show_text_dialog_qt(self, title: str, text: str, width: int = 720, height: int = 560) -> None:
+        dialog = QDialog(self)
+        dialog.setWindowTitle(title)
+        dialog.resize(width, height)
+        layout = QVBoxLayout(dialog)
+        box = QPlainTextEdit(dialog)
+        box.setReadOnly(True)
+        box.setPlainText(text)
+        layout.addWidget(box)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        dialog.exec()
+
+    def _show_environment_report_qt(self) -> None:
+        report = getattr(self, "runtime_report", None) or getattr(self, "_runtime_report", None)
+        text = report.summary_text() if report is not None and hasattr(report, "summary_text") else "Không có báo cáo môi trường."
+        self._show_text_dialog_qt("Environment Report", text)
+
+    def _show_workshop_requirements_qt(self) -> None:
+        try:
+            from app.workshop_requirements import analyze
+            report = analyze(PROJECT_ROOT / "workshops")
+            lines = [f"Workshops: {len(report.get('workshops', []))}", ""]
+            for req in report.get("workshops", []):
+                lines.extend([
+                    f"[{req.workshop_name}] ({req.workshop_id})",
+                    f"  Resources: {', '.join(req.resources) if req.resources else '(không khai báo)'}",
+                    f"  Packages: {', '.join(req.packages) if req.packages else '(không khai báo)'}",
+                    f"  Models: {', '.join(req.models) if req.models else '(không khai báo)'}",
+                    "",
+                ])
+            self._show_text_dialog_qt("Workshop Requirements Overview", "\\n".join(lines), 820, 680)
+        except Exception as exc:
+            QMessageBox.critical(self, "Workshop Requirements", str(exc))
+
+    def _show_resource_compatibility_qt(self) -> None:
+        try:
+            from app.resource_policy import load_policy, save_policy
+            policy = load_policy()
+        except Exception as exc:
+            QMessageBox.critical(self, "Resource Compatibility", str(exc))
+            return
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Resource Compatibility")
+        dialog.resize(620, 360)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(QLabel("Điều chỉnh tolerance tài nguyên theo policy của main."))
+        form = QFormLayout()
+        fields: dict[str, QDoubleSpinBox] = {}
+        for key, label in (("ram", "RAM tolerance (%)"), ("vram", "VRAM tolerance (%)"), ("storage", "Storage tolerance (%)"), ("cpu_cores", "CPU cores tolerance (%)")):
+            spin = QDoubleSpinBox(dialog)
+            spin.setRange(0.0, 100.0)
+            spin.setDecimals(2)
+            spin.setValue(float(policy.get("resource_tolerance", {}).get(key, 0.98)) * 100.0)
+            fields[key] = spin
+            form.addRow(label, spin)
+        layout.addLayout(form)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        def save_policy_qt() -> None:
+            tolerance = policy.setdefault("resource_tolerance", {})
+            for key, spin in fields.items():
+                tolerance[key] = spin.value() / 100.0
+            save_policy(policy)
+            self._load_runtime_report()
+            dialog.accept()
+        buttons.accepted.connect(save_policy_qt)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        dialog.exec()
 
     def _build_home_tab(self) -> QWidget:
         page = QWidget()
