@@ -277,9 +277,7 @@ class LayoutTabMixin:
             border_color=self.COLORS['border'])
         self.chk_append.pack(anchor="w", padx=12, pady=(4, 8))
 
-        # 5. PREVIEW --------------------------------------------------------
-        # Preview is a toggle: the same control opens and closes it. The
-        # actual panel is the shared SidePanelMixin shell used by all modes.
+        # 4. PREVIEW --------------------------------------------------------
         preview_row = ctk.CTkFrame(tab, fg_color="transparent")
         preview_row.pack(fill="x", pady=(6, 4))
         self.btn_layout_preview = ctk.CTkButton(
@@ -300,11 +298,6 @@ class LayoutTabMixin:
         self._layout_live_refresh(force_build=True)
 
     def receive_input(self, source_path):
-        """Core Exchange API: nhận một ảnh từ NaChance Core.
-
-        Workshop Layout không biết Workshop nguồn là ai; Core chịu trách
-        nhiệm kết nối các Workshop.
-        """
         source_path = os.path.abspath(str(source_path))
         if not os.path.isfile(source_path):
             raise FileNotFoundError(source_path)
@@ -316,7 +309,6 @@ class LayoutTabMixin:
             self._layout_live_refresh()
         except Exception:
             pass
-        # Workshop window tự nhận focus; không còn phụ thuộc CTkTabview của Core.
         try:
             self.focus_workshop()
         except Exception:
@@ -325,7 +317,6 @@ class LayoutTabMixin:
             except Exception:
                 pass
 
-    # ===== HELPERS =====
     def _choose_layout_src(self):
         path = filedialog.askopenfilename(title="Chọn ảnh nguồn",
                                            filetypes=[("Ảnh", "*.jpg *.jpeg *.png *.bmp"), ("Tất cả", "*.*")])
@@ -371,7 +362,7 @@ class LayoutTabMixin:
         return {
             "vungInW": safe_float(self.layout_cfg_vars["vungInW"].get()),
             "vungInH": safe_float(self.layout_cfg_vars["vungInH"].get()),
-            "valF": safe_float(self.layout_cfg_vars["valF"].get()),  # Thu thập giá trị F từ UI
+            "valF": safe_float(self.layout_cfg_vars["valF"].get()),
             "marginLeft": safe_float(self.layout_cfg_vars["marginLeft"].get()),
             "marginRight": safe_float(self.layout_cfg_vars["marginRight"].get()),
             "marginTop": safe_float(self.layout_cfg_vars["marginTop"].get()),
@@ -409,12 +400,6 @@ class LayoutTabMixin:
             return None, None
 
     def _layout_make_blank_canvas(self):
-        """Create the initial preview canvas from the current UI print size.
-
-        This intentionally does not run the layout engine: before a source
-        image/preset is selected, the preview is simply the printable canvas
-        described by the UI's width/height/DPI settings.
-        """
         cfg = self._get_layout_config()
         res = max(1, int(cfg.get("res") or 300))
         w_cm = max(0.1, float(cfg.get("vungInW") or 12.4))
@@ -424,14 +409,12 @@ class LayoutTabMixin:
         return PILImage.new("RGB", (w_px, h_px), "white")
 
     def _layout_compact_host_window(self):
-        """Compatibility alias for the system-wide Workshop Auto-Fit rule."""
         try:
             self.auto_fit_default()
         except Exception:
             pass
 
     def _layout_toggle_preview(self):
-        """The Preview launcher is also the Preview closer."""
         if self._is_side_panel_open():
             self._hide_side_panel()
             self._refresh_layout_preview_button()
@@ -461,7 +444,6 @@ class LayoutTabMixin:
         return self._layout_make_blank_canvas()
 
     def _render_layout_preview(self, canvas):
-        """Render Layout Preview inside the shared scrollable viewport."""
         self.last_layout = canvas
         self._side_panel_mode = 'layout'
         self.side_panel_title.configure(text="Xem trước bản in")
@@ -500,11 +482,9 @@ class LayoutTabMixin:
         self._refresh_layout_preview_button()
 
     def _layout_open_preview(self):
-        """Compatibility alias; opening is now always a toggle action."""
         self._layout_toggle_preview()
 
     def _layout_preview(self):
-        """Menu/command entry point; it obeys the same toggle contract."""
         self._layout_toggle_preview()
 
     def _layout_live_refresh(self, force_build=False):
@@ -586,10 +566,6 @@ class LayoutTabMixin:
             messagebox.showerror("Lỗi in", f"Không thể in: {e}\nFile tạm: {tmp}")
 
     def _menu_layout_content(self, menu):
-        """Nội dung submenu "Layout" trong menu Window (Reception gọi
-        qua manifest.json::ui.menu_build_method, xem
-        ui/menu_bar_mixin.py::_menu_window) — Xưởng TỰ khai menu của
-        mình, đúng tinh thần "Xưởng tự quản UI" (không chỉ tab, cả menu)."""
         menu.add_command(label="Choose Source Image...", command=self._choose_layout_src)
         menu.add_command(label="Preview (mở/đóng)", command=self._layout_preview)
         menu.add_command(label="Save Layout...", command=self._layout_save)
