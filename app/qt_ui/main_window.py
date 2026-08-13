@@ -258,6 +258,7 @@ class QtNaChanceWindow(QMainWindow):
         self._theme_name = self._load_theme_name()
         self._theme = self._theme_palette(self._theme_name)
         self._theme_actions: dict[str, QAction] = {}
+        self._photo_menu_actions: dict[str, QAction] = {}
         self._managed_workshop_watcher = None
         self._workshop_change_pending = False
         self._command_router = ContextCommandRouter([
@@ -339,6 +340,8 @@ class QtNaChanceWindow(QMainWindow):
                         option_action.setCheckable(True)
                         option_action.triggered.connect(lambda checked=False, name=attr: self._set_photo_option_from_menu(name, checked))
                         group_menu.addAction(option_action)
+                        self._photo_menu_actions[attr] = option_action
+                workshop_menu.aboutToShow.connect(self._sync_photo_menu_checks)
             elif item.workshop_id == "repo_intake":
                 workshop_menu.addAction("Inspect / Intake", self._repo_submit)
         window_menu.addSeparator()
@@ -1504,6 +1507,12 @@ class QtNaChanceWindow(QMainWindow):
         if path:
             self._source_path = path
             self.photo_input_label.setText(path)
+
+    def _sync_photo_menu_checks(self) -> None:
+        for name, action in self._photo_menu_actions.items():
+            control = getattr(self, name, None)
+            if control is not None:
+                action.setChecked(control.isChecked())
 
     def _set_photo_option_from_menu(self, name: str, checked: bool) -> None:
         control = getattr(self, name, None)
