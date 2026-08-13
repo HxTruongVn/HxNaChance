@@ -91,6 +91,17 @@ def test_qt_state_payload_contains_shared_workshop_state():
     app.processEvents()
 
 
+def test_qt_watcher_status_is_flushed_on_ui_thread():
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    window._workshop_change_pending = True
+    window._flush_workshop_watcher_status()
+    assert window._workshop_change_pending is False
+    assert "Managed Workshop" in window.status_label.text()
+    window.close()
+    app.processEvents()
+
+
 def test_qt_layout_preserves_multiple_presets_and_counts(tmp_path):
     from PIL import Image
     from workshops.layout.print_layout import build_layout_canvas

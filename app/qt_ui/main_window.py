@@ -13,7 +13,7 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, QThread, Signal, Qt
+from PySide6.QtCore import QObject, QThread, QTimer, Signal, Qt
 from PySide6.QtGui import QAction, QActionGroup, QIcon, QImage, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -256,12 +256,15 @@ class QtNaChanceWindow(QMainWindow):
         self._theme_name = self._load_theme_name()
         self._theme = self._theme_palette(self._theme_name)
         self._theme_actions: dict[str, QAction] = {}
+        self._managed_workshop_watcher = None
+        self._workshop_change_pending = False
         self._discovered_workshops = discover_workshops(PROJECT_ROOT / "workshops", load_ui=False)
         from app.pipeline_store import PipelineStore
         self.pipeline_store = PipelineStore(PROJECT_ROOT / "data" / "pipelines.db")
         self._build_actions()
         self._build_ui()
         self._load_runtime_report()
+        self._start_workshop_watcher_qt()
 
     def _build_actions(self) -> None:
         file_menu = self.menuBar().addMenu("File")
@@ -1268,6 +1271,46 @@ class QtNaChanceWindow(QMainWindow):
         scroll.setWidget(body)
         outer.addWidget(scroll)
         return page
+
+    def _start_workshop_watcher_qt(self) -> None:
+        try:
+            from app.workshop_watcher import WorkshopWatcher
+            previous = self._managed_workshop_watcher
+            if previous is not None:
+                previous.stop()
+            self._managed_workshop_watcher = WorkshopWatcher(
+                PROJECT_ROOT / "workshops",
+                callback=lambda *_args: setattr(self, "_workshop_change_pending", True),
+                interval=1.0,
+            )
+            self._managed_workshop_watcher.start()
+            self._watcher_ui_timer = QTimer(self)
+            self._watcher_ui_timer.setInterval(500)
+            self._watcher_ui_timer.timeout.connect(self._flush_workshop_watcher_status)
+            self._watcher_ui_timer.start()
+        except Exception as exc:
+            self.log.appendPlainText(f"Workshop watcher unavailable: {exc}")
+
+    def _flush_workshop_watcher_status(self) -> None:
+        if not self._workshop_change_pending:
+            return
+        self._workshop_change_pending = False
+        self.status_label.setText("Managed Workshop thay đổi hoặc bị xóa — cần kiểm tra approval marker.")
+        self.status_bar.showMessage("Workshop trên đĩa đã thay đổi; phiên hiện tại chưa tự reload.", 6000)
+        self.log.appendPlainText("Managed Workshop changed; restart/reload is required to rebuild the session.")
+
+    def closeEvent(self, event) -> None:
+        watcher = getattr(self, "_managed_workshop_watcher", None)
+        if watcher is not None:
+            watcher.stop()
+        timer = getattr(self, "_watcher_ui_timer", None)
+        if timer is not None:
+            timer.stop()
+        for panel in list(self._side_panel_windows.values()):
+            panel.close()
+        for window in list(self._workshop_windows.values()):
+            window.close()
+        super().closeEvent(event)
 
     def _load_runtime_report(self) -> None:
         try:
