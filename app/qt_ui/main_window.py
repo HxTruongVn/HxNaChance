@@ -13,7 +13,7 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, QThread, Signal
+from PySide6.QtCore import QObject, QThread, Signal, Qt
 from PySide6.QtGui import QAction, QImage, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -21,8 +21,10 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QFormLayout,
     QFrame,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
+    QLineEdit,
     QLabel,
     QMainWindow,
     QMessageBox,
@@ -30,9 +32,10 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSplitter,
     QSpinBox,
+    QScrollArea,
     QTabWidget,
-    QVBoxLayout,
     QWidget,
+    QVBoxLayout,
     QComboBox,
 )
 
@@ -46,6 +49,13 @@ from workshops.layout.print_layout import (
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def number_from_text(value: str, default: float = 0.0) -> float:
+    try:
+        return float(str(value).strip())
+    except (TypeError, ValueError):
+        return default
 
 
 class _PhotoWorker(QObject):
@@ -102,26 +112,24 @@ class _LayoutWorker(QObject):
     finished = Signal(str, str)
     failed = Signal(str)
 
-    def __init__(self, source: str, output: str, preset: str, count: int) -> None:
+    def __init__(self, sources: list[str], output: str, config: dict[str, Any], append: bool = False, existing: str | None = None) -> None:
         super().__init__()
-        self.source = source
+        self.sources = sources
         self.output = output
-        self.preset = preset
-        self.count = count
+        self.config = config
+        self.append = append
+        self.existing = existing
 
     def run(self) -> None:
         try:
-            presets = {
-                key: {"count": self.count if key == self.preset else 0, **value}
-                for key, value in LAYOUT_PRESETS.items()
-            }
-            config = dict(DEFAULT_LAYOUT_CONFIG)
-            config["presets"] = presets
-            config["cafMode"] = "edge_extend"
-            config["chkStroke"] = False
-            payload_canvas, payload = build_layout_canvas(self.source, config)
-            save_layout(payload_canvas, payload, self.output)
-            self.finished.emit(self.output, str(payload_canvas.size))
+            canvas, payload = build_layout_canvas(
+                self.sources if len(self.sources) > 1 else self.sources[0],
+                self.config,
+                self.append,
+                self.existing,
+            )
+            save_layout(canvas, payload, self.output)
+            self.finished.emit(self.output, str(canvas.size))
         except Exception:
             self.failed.emit(traceback.format_exc())
 
@@ -364,40 +372,140 @@ class QtNaChanceWindow(QMainWindow):
         return page
 
     def _build_layout_tab(self) -> QWidget:
-        page = QWidget()
-        layout = QVBoxLayout(page)
-        form_box = QGroupBox("Layout Workshop — main engine")
-        form = QFormLayout(form_box)
+        outer = QWidget()
+        outer_layout = QVBoxLayout(outer)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        body = QWidget()
+        layout = QVBoxLayout(body)
+        layout.setContentsMargins(18, 14, 18, 18)
 
-        self.layout_source_label = QLabel("No input selected")
-        choose = QPushButton("Choose image…")
+        source_box = QGroupBox("📷 ẢNH NGUỒN")
+        source_form = QFormLayout(source_box)
+        self.layout_sources: list[str] = []
+        self.layout_append_existing: str | None = None
+        self.layout_source_label = QLabel("(Chưa chọn - dùng ảnh đã xử lý)")
+        self.layout_source_label.setWordWrap(True)
+        choose = QPushButton("Đổi ảnh")
         choose.clicked.connect(self._choose_layout_source)
-        source_row = QWidget()
-        source_layout = QHBoxLayout(source_row)
-        source_layout.setContentsMargins(0, 0, 0, 0)
-        source_layout.addWidget(self.layout_source_label, 1)
-        source_layout.addWidget(choose)
-        form.addRow("Input", source_row)
+        add = QPushButton("Thêm ảnh")
+        add.clicked.connect(self._add_layout_source)
+        source_actions = QWidget()
+        source_row = QHBoxLayout(source_actions)
+        source_row.setContentsMargins(0, 0, 0, 0)
+        source_row.addWidget(self.layout_source_label, 1)
+        source_row.addWidget(choose)
+        source_row.addWidget(add)
+        source_form.addRow("Nguồn", source_actions)
+        layout.addWidget(source_box)
 
-        self.layout_preset = QComboBox()
-        for key, value in LAYOUT_PRESETS.items():
-            self.layout_preset.addItem(f"{key} — {value.get('label', key)}", key)
-        form.addRow("Preset", self.layout_preset)
+        preset_box = QGroupBox("📐 BỐ CỤC — chọn một hoặc nhiều bố cục")
+        preset_grid = QGridLayout(preset_box)
+        self.layout_preset_vars: dict[str, dict[str, QWidget]] = {}
+        for idx, (key, preset) in enumerate(LAYOUT_PRESETS.items()):
+            tile = QFrame()
+            tile.setObjectName("presetTile")
+            tile_layout = QHBoxLayout(tile)
+            tile_layout.setContentsMargins(8, 6, 8, 6)
+            check = QCheckBox(str(preset.get("label", key)))
+            check.setProperty("presetKey", key)
+            count = QSpinBox()
+            count.setRange(0, 999)
+            count.setValue(1 if idx == 0 else 0)
+            count.setFixedWidth(70)
+            minus = QPushButton("−")
+            plus = QPushButton("+")
+            minus.setFixedWidth(26)
+            plus.setFixedWidth(26)
+            minus.clicked.connect(lambda _=False, s=count, c=check: self._adjust_layout_count(s, c, -1))
+            plus.clicked.connect(lambda _=False, s=count, c=check: self._adjust_layout_count(s, c, 1))
+            check.toggled.connect(lambda checked, s=count: s.setValue(max(1, s.value()) if checked else 0))
+            check.toggled.connect(self._layout_controls_changed)
+            count.valueChanged.connect(lambda _=0: self._layout_controls_changed())
+            tile_layout.addWidget(check, 1)
+            tile_layout.addWidget(minus)
+            tile_layout.addWidget(count)
+            tile_layout.addWidget(plus)
+            row, col = divmod(idx, 2)
+            preset_grid.addWidget(tile, row, col)
+            self.layout_preset_vars[key] = {"chk": check, "count": count}
+        custom_formula = QLineEdit()
+        custom_formula.setPlaceholderText("Công thức bố cục nâng cao, nếu dùng custom")
+        self.entry_custom_formula = custom_formula
+        preset_grid.addWidget(QLabel("Công thức custom"), len(LAYOUT_PRESETS) // 2 + 1, 0)
+        preset_grid.addWidget(custom_formula, len(LAYOUT_PRESETS) // 2 + 1, 1)
+        custom_formula.editingFinished.connect(self._layout_controls_changed)
+        layout.addWidget(preset_box)
 
-        self.layout_count = QSpinBox()
-        self.layout_count.setRange(1, 99)
-        self.layout_count.setValue(1)
-        form.addRow("Count", self.layout_count)
-        layout.addWidget(form_box)
+        advanced = QGroupBox("🔧 CẤU HÌNH KỸ THUẬT NÂNG CAO")
+        advanced_layout = QVBoxLayout(advanced)
+        adjust = QGroupBox("Điều chỉnh")
+        adjust_form = QFormLayout(adjust)
+        self.caf_mode = QComboBox()
+        self.caf_mode.addItems(["Fit", "Square", "Hybrid", "Extract"])
+        self.caf_mode.currentTextChanged.connect(self._layout_controls_changed)
+        adjust_form.addRow("Cách đặt ảnh", self.caf_mode)
+        stroke_row = QWidget()
+        stroke_layout = QHBoxLayout(stroke_row)
+        stroke_layout.setContentsMargins(0, 0, 0, 0)
+        self.chk_layout_stroke = QCheckBox("Viền ảnh")
+        self.chk_layout_stroke.setChecked(True)
+        self.entry_stroke_w = QLineEdit("0.85")
+        self.entry_stroke_w.setFixedWidth(72)
+        self.entry_stroke_color = QLineEdit("686868")
+        self.entry_stroke_color.setFixedWidth(90)
+        stroke_layout.addWidget(self.chk_layout_stroke)
+        stroke_layout.addWidget(QLabel("%"))
+        stroke_layout.addWidget(self.entry_stroke_w)
+        stroke_layout.addWidget(QLabel("HEX"))
+        stroke_layout.addWidget(self.entry_stroke_color)
+        stroke_layout.addStretch(1)
+        adjust_form.addRow("Stroke", stroke_row)
+        advanced_layout.addWidget(adjust)
 
-        self.layout_run_button = QPushButton("Run Layout")
+        region = QGroupBox("📏 VÙNG IN")
+        region_grid = QGridLayout(region)
+        self.layout_cfg_vars: dict[str, QLineEdit] = {}
+        fields = [
+            ("vungInW", "Rộng vùng in", "12.4"), ("vungInH", "Cao vùng in", "30.5"), ("valF", "Chiều cao Fix", "30.5"),
+            ("marginLeft", "Lề trái", "0"), ("marginRight", "Lề phải", "0"), ("marginTop", "Lề trên", "0"),
+            ("marginBottom", "Lề dưới", "0"), ("gapY", "Khoảng cách", "0.1974"), ("res", "DPI", "300"),
+        ]
+        for idx, (key, label, default) in enumerate(fields):
+            row, col = divmod(idx, 3)
+            cell = QWidget()
+            cell_layout = QHBoxLayout(cell)
+            cell_layout.setContentsMargins(0, 0, 0, 0)
+            cell_layout.addWidget(QLabel(label))
+            entry = QLineEdit(default)
+            entry.setFixedWidth(78)
+            cell_layout.addWidget(entry)
+            region_grid.addWidget(cell, row, col)
+            self.layout_cfg_vars[key] = entry
+            entry.editingFinished.connect(self._layout_controls_changed)
+        advanced_layout.addWidget(region)
+        self.chk_append = QCheckBox("Xếp tiếp vào file có sẵn")
+        self.chk_append.toggled.connect(self._layout_controls_changed)
+        advanced_layout.addWidget(self.chk_append)
+        layout.addWidget(advanced)
+
+        preview_actions = QHBoxLayout()
+        self.layout_preview_button = QPushButton("MỞ XEM TRƯỚC")
+        self.layout_preview_button.clicked.connect(self._layout_preview_toggle_qt)
+        self.layout_run_button = QPushButton("LƯU / CHẠY LAYOUT")
         self.layout_run_button.clicked.connect(self._run_layout)
-        layout.addWidget(self.layout_run_button)
-        self.layout_preview = QLabel("Output preview will appear here")
-        self.layout_preview.setMinimumHeight(240)
-        self.layout_preview.setScaledContents(False)
-        layout.addWidget(self.layout_preview, 1)
-        return page
+        preview_actions.addWidget(self.layout_preview_button)
+        preview_actions.addWidget(self.layout_run_button)
+        layout.addLayout(preview_actions)
+        self.layout_preview = QLabel("Preview sẽ hiển thị ở đây")
+        self.layout_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.layout_preview.setMinimumHeight(260)
+        self.layout_preview.setObjectName("layoutPreview")
+        layout.addWidget(self.layout_preview)
+        layout.addStretch(1)
+        scroll.setWidget(body)
+        outer_layout.addWidget(scroll)
+        return outer
 
     def _build_photo_tab(self) -> QWidget:
         page = QWidget()
@@ -472,27 +580,94 @@ class QtNaChanceWindow(QMainWindow):
             self.runtime_label.setText("Runtime report unavailable")
             self.log.appendPlainText(traceback.format_exc())
 
+    def _adjust_layout_count(self, spin: QSpinBox, check: QCheckBox, delta: int) -> None:
+        value = max(0, spin.value() + delta)
+        spin.setValue(value)
+        check.setChecked(value > 0)
+        self._layout_controls_changed()
+
+    def _layout_controls_changed(self) -> None:
+        if hasattr(self, "layout_preview"):
+            self._layout_live_preview_qt()
+
     def _choose_layout_source(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Choose layout image", "", "Images (*.png *.jpg *.jpeg *.bmp)")
+        path, _ = QFileDialog.getOpenFileName(self, "Chọn ảnh nguồn", "", "Ảnh (*.png *.jpg *.jpeg *.bmp)")
         if path:
+            self.layout_sources = [path]
             self._source_path = path
-            self.layout_source_label.setText(path)
+            self.layout_source_label.setText(Path(path).name)
+            self._layout_live_preview_qt()
+
+    def _add_layout_source(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(self, "Thêm ảnh để xếp tiếp", "", "Ảnh (*.png *.jpg *.jpeg *.bmp)")
+        if path and path not in self.layout_sources:
+            self.layout_sources.append(path)
+            self._source_path = self.layout_sources[0]
+            self.layout_source_label.setText("  +  ".join(Path(p).name for p in self.layout_sources))
+            self._layout_live_preview_qt()
+
+    def _layout_config_qt(self) -> dict[str, Any]:
+        def number(key: str, default: float = 0.0) -> float:
+            try:
+                return float(self.layout_cfg_vars[key].text().strip())
+            except (KeyError, ValueError):
+                return default
+
+        presets: dict[str, dict[str, Any]] = {}
+        for key, controls in self.layout_preset_vars.items():
+            count = controls["count"].value()
+            formula = self.entry_custom_formula.text().strip() if key == "custom" else LAYOUT_PRESETS[key].get("formula", "")
+            presets[key] = {"count": count if controls["chk"].isChecked() else 0, "formula": formula}
+        caf_map = {"Fit": 0, "Square": 1, "Hybrid": 2, "Extract": 3}
+        return {
+            "vungInW": number("vungInW", 12.4), "vungInH": number("vungInH", 30.5),
+            "valF": number("valF", 30.5), "marginLeft": number("marginLeft"),
+            "marginRight": number("marginRight"), "marginTop": number("marginTop"),
+            "marginBottom": number("marginBottom"), "gapY": number("gapY", 0.1974),
+            "res": int(number("res", 300)), "cafMode": caf_map.get(self.caf_mode.currentText(), 0),
+            "chkStroke": self.chk_layout_stroke.isChecked(), "strokeW": number_from_text(self.entry_stroke_w.text(), 0.85),
+            "strokeColor": self.entry_stroke_color.text().strip() or "686868", "presets": presets,
+        }
+
+    def _layout_live_preview_qt(self) -> None:
+        sources = [p for p in self.layout_sources if Path(p).is_file()]
+        active = any(v["chk"].isChecked() and v["count"].value() > 0 for v in self.layout_preset_vars.values())
+        if not sources or not active:
+            self.layout_preview.setText("Chọn ảnh và ít nhất một preset để xem preview")
+            return
+        try:
+            canvas, payload = build_layout_canvas(sources if len(sources) > 1 else sources[0], self._layout_config_qt(), False, None)
+            self._layout_canvas = canvas
+            self._layout_payload = payload
+            self._set_layout_preview(canvas)
+        except Exception as exc:
+            self.layout_preview.setText(f"Preview chưa sẵn sàng: {exc}")
+
+    def _set_layout_preview(self, canvas: Any) -> None:
+        from PIL.ImageQt import ImageQt
+        pixmap = QPixmap.fromImage(QImage(ImageQt(canvas)))
+        self.layout_preview.setPixmap(pixmap.scaled(760, 420, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+
+    def _layout_preview_toggle_qt(self) -> None:
+        self._layout_live_preview_qt()
+        self.layout_preview_button.setText("CẬP NHẬT XEM TRƯỚC")
 
     def _run_layout(self) -> None:
-        if not self._source_path:
-            QMessageBox.warning(self, "Layout", "Choose an input image first.")
+        sources = [p for p in self.layout_sources if Path(p).is_file()]
+        if not sources:
+            QMessageBox.warning(self, "Layout", "Chưa chọn ảnh nguồn.")
             return
-        output, _ = QFileDialog.getSaveFileName(self, "Save layout", "layout_result.jpg", "JPEG (*.jpg *.jpeg)")
+        output, _ = QFileDialog.getSaveFileName(self, "Lưu bản in", "layout_result.jpg", "JPEG (*.jpg *.jpeg);;PNG (*.png)")
         if not output:
             return
+        existing = None
+        if self.chk_append.isChecked():
+            existing, _ = QFileDialog.getOpenFileName(self, "Chọn file đã xếp để xếp tiếp", "", "Ảnh (*.jpg *.jpeg *.png)")
+            if not existing:
+                return
         self.layout_run_button.setEnabled(False)
         self._layout_thread = QThread(self)
-        self._layout_worker = _LayoutWorker(
-            self._source_path,
-            output,
-            self.layout_preset.currentData(),
-            self.layout_count.value(),
-        )
+        self._layout_worker = _LayoutWorker(sources, output, self._layout_config_qt(), self.chk_append.isChecked(), existing)
         self._layout_worker.moveToThread(self._layout_thread)
         self._layout_thread.started.connect(self._layout_worker.run)
         self._layout_worker.finished.connect(self._layout_finished)
@@ -506,7 +681,9 @@ class QtNaChanceWindow(QMainWindow):
         self.log.appendPlainText(f"Layout output: {output} ({size})")
         image = QImage(output)
         self.layout_preview.setPixmap(QPixmap.fromImage(image).scaled(
-            self.layout_preview.size(), aspectMode=1
+            self.layout_preview.size(),
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
         ))
 
     def _layout_failed(self, trace: str) -> None:

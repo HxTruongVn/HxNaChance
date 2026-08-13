@@ -1,5 +1,16 @@
 # Qt-only port TODO
 
+## Layout parity correction
+
+- [x] Port every Layout preset from `layout_presets.json`
+- [x] Support selecting multiple presets at the same time
+- [x] Preserve per-preset count and formula editing
+- [x] Preserve canvas size, resolution, gap, margins and `valF`
+- [x] Preserve CAF mode, stroke, color and width controls
+- [x] Preserve source append mode and existing output continuation
+- [x] Preserve preview/render behavior and output sidecar metadata
+- [x] Add parity tests for multi-preset configuration and output
+
 ## UI parity correction
 
 - [x] Match the main window geometry, title bar and overall visual hierarchy
