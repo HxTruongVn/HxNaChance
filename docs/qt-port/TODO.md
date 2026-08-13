@@ -1,5 +1,15 @@
 # Qt-only port TODO
 
+## Main screenshot parity requirements
+
+- [x] Reproduce host title/menu strip: brand, RUN, info, menu and close actions
+- [x] Reproduce the ordered WORKSHOPS session launcher with numbered rows
+- [x] Reproduce per-Workshop OPEN/CLOSE state and active-window indication
+- [x] Reproduce side-by-side Workshop windows and WindowManager placement/order
+- [x] Reproduce the main menu groups: File, Edit, Pipeline, Window, View, Tool, System, Help
+- [ ] Reproduce keyboard shortcuts and Workshop switching actions
+- [x] Reproduce the main status/runtime report placement and visibility
+
 ## Multi-level UI parity correction
 
 - [x] Preserve Core host versus Workshop window hierarchy

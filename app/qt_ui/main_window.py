@@ -263,10 +263,49 @@ class QtNaChanceWindow(QMainWindow):
         file_menu.addAction(exit_action)
 
         edit_menu = self.menuBar().addMenu("Edit")
+        for label, shortcut, handler in (
+            ("Undo", "Ctrl+Z", self._noop_context_action),
+            ("Redo", "Ctrl+Y", self._noop_context_action),
+            ("Save", "Ctrl+S", self._noop_context_action),
+        ):
+            action = QAction(label, self)
+            action.setShortcut(shortcut)
+            action.triggered.connect(handler)
+            edit_menu.addAction(action)
+        edit_menu.addSeparator()
         refresh_action = QAction("Refresh runtime", self)
         refresh_action.setShortcut("F5")
         refresh_action.triggered.connect(self._load_runtime_report)
         edit_menu.addAction(refresh_action)
+
+        pipeline_menu = self.menuBar().addMenu("Pipeline")
+        pipeline_open = QAction("Open Pipeline Builder", self)
+        pipeline_open.setShortcut("Ctrl+P")
+        pipeline_open.triggered.connect(lambda: self._noop_context_action())
+        pipeline_menu.addAction(pipeline_open)
+        pipeline_run = QAction("Run active pipeline", self)
+        pipeline_run.setShortcut("F9")
+        pipeline_run.triggered.connect(self._run_active_workshop_qt)
+        pipeline_menu.addAction(pipeline_run)
+
+        window_menu = self.menuBar().addMenu("Window")
+        for index, label in enumerate(("Core", "Layout", "Photo", "Repo Intake")):
+            action = QAction(label, self)
+            action.triggered.connect(lambda checked=False, i=index: self._select_tab(i))
+            window_menu.addAction(action)
+        window_menu.addSeparator()
+        next_action = QAction("Next Workshop", self)
+        next_action.setShortcut("Ctrl+Tab")
+        next_action.triggered.connect(self._next_workshop_qt)
+        window_menu.addAction(next_action)
+        previous_action = QAction("Previous Workshop", self)
+        previous_action.setShortcut("Ctrl+Shift+Tab")
+        previous_action.triggered.connect(self._previous_workshop_qt)
+        window_menu.addAction(previous_action)
+        close_active = QAction("Close active Workshop", self)
+        close_active.setShortcut("Ctrl+W")
+        close_active.triggered.connect(self._close_active_workshop_qt)
+        window_menu.addAction(close_active)
 
         view_menu = self.menuBar().addMenu("View")
         self.inspector_action = QAction("Inspector", self)
@@ -274,22 +313,30 @@ class QtNaChanceWindow(QMainWindow):
         self.inspector_action.setChecked(True)
         self.inspector_action.triggered.connect(self._toggle_inspector)
         view_menu.addAction(self.inspector_action)
+        status_action = QAction("Status bar", self)
+        status_action.setCheckable(True)
+        status_action.setChecked(True)
+        status_action.triggered.connect(lambda checked: self.status_label.setVisible(checked))
+        view_menu.addAction(status_action)
 
-        window_menu = self.menuBar().addMenu("Window")
-        for index, label in enumerate(("Core", "Layout", "Photo", "Repo Intake")):
-            action = QAction(label, self)
-            action.triggered.connect(lambda checked=False, i=index: self._select_tab(i))
-            window_menu.addAction(action)
+        tool_menu = self.menuBar().addMenu("Tool")
+        tool_menu.addAction("Resource Compatibility", self._noop_context_action)
+        tool_menu.addAction("Workshop Requirements", self._noop_context_action)
+        tool_menu.addAction("Orientation / Preview", self._noop_context_action)
 
         system_menu = self.menuBar().addMenu("System")
         report_action = QAction("Show environment report", self)
         report_action.triggered.connect(self._load_runtime_report)
         system_menu.addAction(report_action)
+        system_menu.addAction("Reload Workshop manifests", self._load_runtime_report)
 
         help_menu = self.menuBar().addMenu("Help")
         about_action = QAction("About NaChance", self)
         about_action.triggered.connect(self._show_about)
         help_menu.addAction(about_action)
+
+    def _noop_context_action(self) -> None:
+        self.log.appendPlainText("Command is reserved for the active Core/Workshop context.")
 
     def _build_ui(self) -> None:
         self.setStyleSheet(self._stylesheet())
@@ -324,18 +371,38 @@ class QtNaChanceWindow(QMainWindow):
         bar = QFrame()
         bar.setObjectName("titleBar")
         row = QHBoxLayout(bar)
-        row.setContentsMargins(16, 8, 12, 8)
+        row.setContentsMargins(10, 5, 8, 5)
+        row.setSpacing(8)
+        logo = QLabel("NC")
+        logo.setObjectName("logoBadge")
+        row.addWidget(logo)
         brand = QLabel("NaChance")
         brand.setObjectName("brandLabel")
         row.addWidget(brand)
+        row.addStretch(1)
         self.workspace_label = QLabel("CORE / HOME")
         self.workspace_label.setObjectName("workspaceLabel")
         row.addWidget(self.workspace_label)
-        row.addStretch(1)
-        self.quick_run = QPushButton("Run")
+        self.quick_run = QPushButton("▶ RUN")
         self.quick_run.setObjectName("primaryButton")
         self.quick_run.setEnabled(False)
+        self.quick_run.clicked.connect(self._run_active_workshop_qt)
         row.addWidget(self.quick_run)
+        info = QPushButton("i")
+        info.setObjectName("titleIconButton")
+        info.setFixedSize(30, 28)
+        info.clicked.connect(self._show_about)
+        row.addWidget(info)
+        menu_button = QPushButton("☰")
+        menu_button.setObjectName("titleIconButton")
+        menu_button.setFixedSize(30, 28)
+        menu_button.clicked.connect(lambda: self.menuBar().setVisible(not self.menuBar().isVisible()))
+        row.addWidget(menu_button)
+        close_button = QPushButton("×")
+        close_button.setObjectName("titleCloseButton")
+        close_button.setFixedSize(30, 28)
+        close_button.clicked.connect(self.close)
+        row.addWidget(close_button)
         return bar
 
     def _build_navigation(self) -> QWidget:
@@ -343,30 +410,39 @@ class QtNaChanceWindow(QMainWindow):
         panel.setObjectName("navigationPanel")
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 16, 12, 12)
-        heading = QLabel("WORKSPACES")
+        heading = QLabel("WORKSHOPS — phiên hiện tại")
         heading.setObjectName("sectionLabel")
         layout.addWidget(heading)
-        self.nav_buttons: list[QPushButton] = []
-        for index, label in enumerate(("Core Home", "Layout Workshop", "Photo Workshop", "Repo Intake")):
-            button = QPushButton(label)
-            button.setCheckable(True)
-            button.setObjectName("navButton")
-            button.clicked.connect(lambda checked=False, i=index: self._select_tab(i))
-            layout.addWidget(button)
-            self.nav_buttons.append(button)
-        self.nav_buttons[0].setChecked(True)
-        layout.addSpacing(18)
-        heading = QLabel("WORKSHOPS")
-        heading.setObjectName("sectionLabel")
-        layout.addWidget(heading)
-        self.nav_workshops = QLabel("Discovering…")
+        self.nav_workshops = QLabel("Đang nạp Workshop…")
         self.nav_workshops.setWordWrap(True)
         self.nav_workshops.setObjectName("mutedLabel")
         layout.addWidget(self.nav_workshops)
-        layout.addStretch(1)
+        self.workshop_launcher = QWidget()
+        self.workshop_launcher_layout = QVBoxLayout(self.workshop_launcher)
+        self.workshop_launcher_layout.setContentsMargins(0, 6, 0, 0)
+        self.workshop_launcher_layout.setSpacing(6)
+        self._workshop_launcher_buttons: dict[str, QPushButton] = {}
+        for index, (workshop_id, title) in enumerate((
+            ("layout", "layout"), ("photo", "photo"), ("repo_intake", "repo_intake")
+        ), start=1):
+            row = QWidget()
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            label = QLabel(f"{index}. {title}")
+            label.setObjectName("launcherLabel")
+            row_layout.addWidget(label, 1)
+            button = QPushButton("OPEN")
+            button.setObjectName("launcherButton")
+            button.clicked.connect(lambda checked=False, wid=workshop_id: self._toggle_workshop_window(wid))
+            row_layout.addWidget(button)
+            self.workshop_launcher_layout.addWidget(row)
+            self._workshop_launcher_buttons[workshop_id] = button
+        layout.addWidget(self.workshop_launcher)
+        layout.addSpacing(18)
         self.core_mode_label = QLabel("Lite mode ready")
         self.core_mode_label.setObjectName("modeBadge")
         layout.addWidget(self.core_mode_label)
+        layout.addStretch(1)
         return panel
 
     def _build_inspector(self) -> QWidget:
@@ -429,22 +505,64 @@ class QtNaChanceWindow(QMainWindow):
     def _select_tab(self, index: int) -> None:
         if index == 0:
             self.tabs.setCurrentIndex(0)
-            for i, button in enumerate(self.nav_buttons):
-                button.setChecked(i == 0)
+            self._active_workshop_id = None
             self.workspace_label.setText("CORE / HOME")
             return
         workshop_id = ("layout", "photo", "repo_intake")[index - 1]
         self._open_workshop_window(workshop_id)
-        for i, button in enumerate(self.nav_buttons):
-            button.setChecked(i == index)
         self.workspace_label.setText(f"WORKSHOP / {workshop_id.upper()}")
+
+    def _toggle_workshop_window(self, workshop_id: str) -> None:
+        existing = self._workshop_windows.get(workshop_id)
+        if existing is not None and existing.isVisible():
+            existing.close()
+            self._workshop_windows.pop(workshop_id, None)
+            self._refresh_launcher_buttons()
+            return
+        self._open_workshop_window(workshop_id)
+
+    def _refresh_launcher_buttons(self) -> None:
+        for workshop_id, button in self._workshop_launcher_buttons.items():
+            window = self._workshop_windows.get(workshop_id)
+            is_open = bool(window is not None and window.isVisible())
+            button.setText("CLOSE" if is_open else "OPEN")
+            button.setProperty("openState", is_open)
+            button.style().unpolish(button)
+            button.style().polish(button)
+
+    def _run_active_workshop_qt(self) -> None:
+        if self._active_workshop_id:
+            window = self._open_workshop_window(self._active_workshop_id)
+            self._refresh_launcher_buttons()
+            self.log.appendPlainText(f"RUN requested for {self._active_workshop_id}")
+            return
+        self.log.appendPlainText("Chưa có Workshop active để RUN.")
+
+    def _next_workshop_qt(self) -> None:
+        order = ["layout", "photo", "repo_intake"]
+        current = order.index(self._active_workshop_id) if self._active_workshop_id in order else -1
+        self._open_workshop_window(order[(current + 1) % len(order)])
+
+    def _previous_workshop_qt(self) -> None:
+        order = ["layout", "photo", "repo_intake"]
+        current = order.index(self._active_workshop_id) if self._active_workshop_id in order else 0
+        self._open_workshop_window(order[(current - 1) % len(order)])
+
+    def _close_active_workshop_qt(self) -> None:
+        if self._active_workshop_id and self._active_workshop_id in self._workshop_windows:
+            self._workshop_windows[self._active_workshop_id].close()
+            self._workshop_windows.pop(self._active_workshop_id, None)
+            self._refresh_launcher_buttons()
+            self._active_workshop_id = None
 
     def _open_workshop_window(self, workshop_id: str) -> QtWorkshopWindow:
         existing = self._workshop_windows.get(workshop_id)
         if existing is not None:
+            self._active_workshop_id = workshop_id
             existing.showNormal()
             existing.raise_()
             existing.activateWindow()
+            self._refresh_launcher_buttons()
             return existing
         builders = {
             "layout": ("Layout Workshop", self._build_layout_tab),
@@ -456,10 +574,28 @@ class QtNaChanceWindow(QMainWindow):
         self._workshop_windows[workshop_id] = window
         if workshop_id not in self._workshop_order:
             self._workshop_order.append(workshop_id)
+        self._place_workshop_window(window)
         self._active_workshop_id = workshop_id
         window.destroyed.connect(lambda _=None, wid=workshop_id: self._workshop_windows.pop(wid, None))
         window.show()
+        window.raise_()
+        window.activateWindow()
+        self._refresh_launcher_buttons()
         return window
+
+    def _place_workshop_window(self, window: QtWorkshopWindow) -> None:
+        index = self._workshop_order.index(window.workshop_id) if window.workshop_id in self._workshop_order else 0
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            return
+        available = screen.availableGeometry()
+        x = self.x() + self.width() + 8
+        y = self.y() + index * 34
+        if x + window.width() > available.right():
+            x = max(available.left(), self.x() - window.width() - 8)
+        if y + window.height() > available.bottom():
+            y = max(available.top(), available.bottom() - window.height())
+        window.move(x, y)
 
     def _toggle_inspector(self, checked: bool) -> None:
         self.inspector_panel.setVisible(checked)

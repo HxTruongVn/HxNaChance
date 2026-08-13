@@ -14,14 +14,19 @@ def test_qt_window_exposes_main_workshop_tabs():
     app = QApplication.instance() or QApplication([])
     window = QtNaChanceWindow()
     assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ["Core"]
-    assert [button.text() for button in window.nav_buttons] == [
-        "Core Home", "Layout Workshop", "Photo Workshop", "Repo Intake"
+    assert list(window._workshop_launcher_buttons) == ["layout", "photo", "repo_intake"]
+    assert [action.text() for action in window.menuBar().actions()] == [
+        "File", "Edit", "Pipeline", "Window", "View", "Tool", "System", "Help"
     ]
+    assert [button.text() for button in window._workshop_launcher_buttons.values()] == ["OPEN", "OPEN", "OPEN"]
     layout_window = window._open_workshop_window("layout")
     assert layout_window.workshop_id == "layout"
     assert "Layout Workshop" in layout_window.windowTitle()
+    assert window._workshop_launcher_buttons["layout"].text() == "CLOSE"
     assert "Discovered Workshops:" in window.workshop_label.text()
     layout_window.close()
+    window._refresh_launcher_buttons()
+    assert window._workshop_launcher_buttons["layout"].text() == "OPEN"
     window.close()
     app.processEvents()
 
