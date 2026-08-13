@@ -1045,12 +1045,25 @@ class QtNaChanceWindow(QMainWindow):
             for req in report.get("workshops", []):
                 lines.extend([
                     f"[{req.workshop_name}] ({req.workshop_id})",
-                    f"  Resources: {', '.join(req.resources) if req.resources else '(không khai báo)'}",
+                    f"  Resources: {', '.join(f'{key}={value}' for key, value in req.resources.items()) if req.resources else '(không khai báo)'}",
                     f"  Packages: {', '.join(req.packages) if req.packages else '(không khai báo)'}",
                     f"  Models: {', '.join(req.models) if req.models else '(không khai báo)'}",
+                    f"  Capabilities: {', '.join(req.capabilities) if req.capabilities else '(không khai báo)'}",
                     "",
                 ])
-            self._show_text_dialog_qt("Workshop Requirements Overview", "\\n".join(lines), 820, 680)
+            lines.append("OVERLAP / DÙNG CHUNG")
+            for label, key in (("Packages", "shared_packages"), ("Models", "shared_models"), ("Capabilities", "shared_capabilities")):
+                lines.append(f"{label}:")
+                for name, count, workshops in report.get(key, []):
+                    lines.append(f"  {name} ({count}): {', '.join(workshops)}")
+            lines.append("Workshop pairs:")
+            for overlap in report.get("overlaps", []):
+                shared = []
+                if overlap.get("shared_packages"): shared.append("packages=" + ", ".join(overlap["shared_packages"]))
+                if overlap.get("shared_models"): shared.append("models=" + ", ".join(overlap["shared_models"]))
+                if overlap.get("shared_capabilities"): shared.append("capabilities=" + ", ".join(overlap["shared_capabilities"]))
+                lines.append(f"  {overlap['a']} ↔ {overlap['b']} ({overlap['score']}%): " + "; ".join(shared))
+            self._show_text_dialog_qt("Workshop Requirements & Overlap", "\\n".join(lines), 900, 760)
         except Exception as exc:
             QMessageBox.critical(self, "Workshop Requirements", str(exc))
 
