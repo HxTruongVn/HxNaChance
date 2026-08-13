@@ -73,7 +73,7 @@
 | Hạng mục | Nguồn main | Qt hiện tại | Trạng thái | Điều kiện đạt |
 |---|---|---|---|---|
 | `WORKSHOPS — phiên hiện tại` | `app/main_ui.py` launcher | Có | Một phần | Dùng danh sách discovery/session thật |
-| Session order | `WorkshopWindowManager.session_workshops` | List cố định layout/photo/repo | Thiếu | Dùng order rebuild mỗi startup |
+| Session order | `WorkshopWindowManager.session_workshops` | Qt dùng discovery order kết hợp opened session order | Một phần | Rebuild launcher đầy đủ cho Workshop động mỗi startup |
 | Numbered rows | launcher buttons | Có | Đủ về trình bày | Nhãn/version/state chính xác |
 | OPEN/CLOSE | `_refresh_workshop_launcher_buttons` | Đồng bộ qua native close signal và registry | Đủ | Đồng bộ khi window close bằng X/focus |
 | Active workshop | `active_index` | `_active_workshop_id` | Một phần | Một nguồn state duy nhất |
@@ -88,7 +88,7 @@
 | Toggle | `WindowManager.toggle` | Có | Một phần | Nút và X dùng cùng state |
 | Close | `WorkshopWindow.close` | Native `closeEvent` phát signal về host/manager | Đủ | Manager được báo khi child đóng |
 | Focus/active | `mark_active`, FocusIn | Qt `focusInEvent` cập nhật active Workshop và workspace label | Một phần | Thêm active context cho pipeline/text input |
-| Next/previous | manager navigation | Có helper | Một phần | Dùng session order thật |
+| Next/previous | manager navigation | Qt dùng `_session_workshop_ids()` từ discovery/session | Một phần | QTest đầy đủ và Workshop động ngoài 3 mẫu |
 | Placement right/below/tile | `window_layout.py` | Có heuristic Qt | Một phần | Giữ cạnh host và fallback tile |
 | Workshop window chrome | `app/workshop_window.py` | Header/status Qt, đóng bằng native frame | Một phần | Không giả lập Close; chỉ giữ custom actions thật sự cần thiết |
 | Independent side panel ownership | `SidePanelMixin` | Layout preview only; native side-panel close | Thiếu | Mỗi Workshop có panel riêng và dùng native X |

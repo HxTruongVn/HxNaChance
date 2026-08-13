@@ -767,13 +767,22 @@ class QtNaChanceWindow(QMainWindow):
             return
         self.log.appendPlainText("Chưa có Workshop active để RUN.")
 
+    def _session_workshop_ids(self) -> list[str]:
+        discovered_ids = [item.workshop_id for item in self._discovered_workshops if item.workshop_id in {"layout", "photo", "repo_intake"}]
+        opened_ids = [workshop_id for workshop_id in self._workshop_order if workshop_id in discovered_ids]
+        return opened_ids + [workshop_id for workshop_id in discovered_ids if workshop_id not in opened_ids]
+
     def _next_workshop_qt(self) -> None:
-        order = ["layout", "photo", "repo_intake"]
+        order = self._session_workshop_ids()
+        if not order:
+            return
         current = order.index(self._active_workshop_id) if self._active_workshop_id in order else -1
         self._open_workshop_window(order[(current + 1) % len(order)])
 
     def _previous_workshop_qt(self) -> None:
-        order = ["layout", "photo", "repo_intake"]
+        order = self._session_workshop_ids()
+        if not order:
+            return
         current = order.index(self._active_workshop_id) if self._active_workshop_id in order else 0
         self._open_workshop_window(order[(current - 1) % len(order)])
 
