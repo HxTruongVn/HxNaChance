@@ -1107,6 +1107,16 @@ class QtNaChanceWindow(QMainWindow):
         exchange_layout.addWidget(self.exchange_target_combo, 1)
         exchange_layout.addWidget(exchange_button)
         layout.addWidget(exchange_group)
+        quick_group = QGroupBox("Quick Pipelines")
+        quick_layout = QVBoxLayout(quick_group)
+        self.quick_pipeline_list = QListWidget()
+        self.quick_pipeline_list.itemDoubleClicked.connect(self._open_saved_pipeline_qt)
+        quick_layout.addWidget(self.quick_pipeline_list)
+        refresh_pipelines = QPushButton("Refresh Pipelines")
+        refresh_pipelines.clicked.connect(self._refresh_quick_pipelines_qt)
+        quick_layout.addWidget(refresh_pipelines)
+        layout.addWidget(quick_group)
+        self._refresh_quick_pipelines_qt()
         layout.addStretch(1)
         return page
 
@@ -1450,6 +1460,32 @@ class QtNaChanceWindow(QMainWindow):
         for window in list(self._workshop_windows.values()):
             window.close()
         super().closeEvent(event)
+
+    def _refresh_quick_pipelines_qt(self) -> None:
+        if not hasattr(self, "quick_pipeline_list"):
+            return
+        self.quick_pipeline_list.clear()
+        for row in self.pipeline_store.list()[:12]:
+            item = QListWidgetItem(f"{row['name']}  ·  {row['updated_at']}")
+            item.setData(Qt.ItemDataRole.UserRole, row["id"])
+            self.quick_pipeline_list.addItem(item)
+        if self.quick_pipeline_list.count() == 0:
+            self.quick_pipeline_list.addItem("Chưa có Pipeline nhanh.")
+
+    def _open_saved_pipeline_qt(self, item: QListWidgetItem) -> None:
+        pipeline_id = item.data(Qt.ItemDataRole.UserRole)
+        if pipeline_id is None:
+            return
+        pipeline = self.pipeline_store.get(int(pipeline_id))
+        if not pipeline:
+            return
+        missing = [step["workshop_id"] for step in pipeline["steps"] if step["workshop_id"] not in self._session_workshop_ids()]
+        if missing:
+            QMessageBox.warning(self, "Pipeline chưa khả dụng", "Workshop thiếu: " + ", ".join(missing))
+            return
+        for step in pipeline["steps"]:
+            self._open_workshop_window(step["workshop_id"])
+        self.status_bar.showMessage(f"Đã nạp Pipeline: {pipeline['name']} (snapshot cấu hình được giữ nguyên).", 5000)
 
     def _refresh_exchange_targets_qt(self) -> None:
         if not hasattr(self, "exchange_target_combo"):
