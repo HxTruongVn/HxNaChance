@@ -337,8 +337,16 @@ class QtNaChanceWindow(QMainWindow):
             close_action.triggered.connect(lambda checked=False, wid=item.workshop_id: self._close_workshop_by_id(wid))
             workshop_menu.addAction(close_action)
             if item.workshop_id == "layout":
-                workshop_menu.addAction("Open Preview", self._layout_preview_toggle_qt)
-                workshop_menu.addAction("Run Layout", self._run_layout)
+                choose_action = workshop_menu.addAction("Choose Source Image…", self._choose_layout_source)
+                choose_action.setShortcut("Ctrl+O")
+                add_action = workshop_menu.addAction("Add Source Image…", self._add_layout_source)
+                add_action.setShortcut("Ctrl+Shift+O")
+                preview_action = workshop_menu.addAction("Preview (mở/đóng)", self._layout_preview_toggle_qt)
+                preview_action.setShortcut("F2")
+                run_action = workshop_menu.addAction("Run Layout", self._run_layout)
+                run_action.setShortcut("Ctrl+R")
+                workshop_menu.addAction("Save Layout…", self._run_layout)
+                workshop_menu.addAction("Print Layout…", self._run_layout)
             elif item.workshop_id == "photo":
                 workshop_menu.addAction("Open Preview", self._photo_preview_toggle_qt)
                 workshop_menu.addAction("Run Photo", self._run_photo)

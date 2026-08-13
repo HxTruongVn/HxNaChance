@@ -116,7 +116,7 @@
 | Technical advanced config | Layout UI | Có | Đủ |
 | Preview side panel | `_show_side_panel` | Có Qt side panel | Một phần |
 | Save/print/output | `save_layout` | Có | Một phần |
-| Layout menu actions | `workshops/layout/ui.py:_menu_layout_content` | Chưa port | Thiếu |
+| Layout menu actions | `workshops/layout/ui.py:_menu_layout_content` | Qt cascade có Choose/Add Source, Preview F2, Run Ctrl+R, Save và Print | Một phần | Save/Print cần route riêng nếu main phân biệt output/print |
 | Layout orientation/state dialogs | Layout UI | Chưa port riêng; Layout preview/save đã có | Một phần | Port orientation/state dialog nếu Layout main dùng trực tiếp |
 
 ## Tầng 9 — Photo Workshop
@@ -182,7 +182,7 @@
 | Qt startup | `QT_QPA_PLATFORM=offscreen` | Đạt smoke |
 | Host screenshot parity | screenshot comparison | Chưa kiểm |
 | Menu action parity | action-by-action test | Chưa kiểm |
-| Shortcut parity | QTest key events | Chưa kiểm |
+| Shortcut parity | QTest key events | Menu shortcuts đã khai báo/test một phần; Layout F2/Ctrl+O/Ctrl+Shift+O/Ctrl+R đã nối | Một phần | QTest key events toàn bộ main shortcuts |
 | Theme parity | load/switch/persist test | Qt theme test đã có | Một phần | Hoàn thiện child style injection và busy/orientation block |
 | Multi-window lifecycle | open/close/focus/tile test | Native close/focus hierarchy test đã có; tile còn cần kiểm | Một phần | Hoàn tất placement và side-panel ownership |
 | Layout parity | multi-preset/output test | Multi-preset/config/output + preview/cancel path đã có | Một phần | Full menu/orientation/saved-state test |
