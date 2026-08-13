@@ -210,6 +210,20 @@ def test_qt_preview_is_owned_and_positioned_by_workshop():
     app.processEvents()
 
 
+def test_qt_quantity_controls_have_safe_height_at_all_font_scales():
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    window._open_workshop_window("layout")
+    spin = next(iter(window.layout_preset_vars.values()))["count"]
+    for scale in (0.9, 1.0, 1.1, 1.25, 1.5):
+        window._on_font_scale_change(scale)
+        app.processEvents()
+        assert spin.minimumHeight() >= 30
+        assert f"min-height: {max(30, round(30 * scale))}px" in window.styleSheet()
+    window.close()
+    app.processEvents()
+
+
 def test_qt_font_scale_is_persisted_with_theme(tmp_path):
     app = QApplication.instance() or QApplication([])
     window = QtNaChanceWindow()

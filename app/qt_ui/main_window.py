@@ -895,6 +895,8 @@ class QtNaChanceWindow(QMainWindow):
         small_font = max(10, round(11 * self._font_scale))
         brand_font = round(20 * self._font_scale)
         panel_font = round(16 * self._font_scale)
+        quantity_font = round(13 * self._font_scale)
+        quantity_height = max(30, round(30 * self._font_scale))
         return f"""
         QMainWindow, QWidget {{ background: {c['bg']}; color: {c['text']}; font-size: {base_font}px; }}
         QMenuBar {{ background: {c['surface']}; color: {c['text']}; padding: 4px 8px; border-bottom: 1px solid {c['border']}; }}
@@ -912,6 +914,8 @@ class QtNaChanceWindow(QMainWindow):
         QPushButton:hover {{ background: {c['accent_hover']}; }}
         QPushButton:disabled {{ background: {c['surface2']}; color: {c['muted']}; }}
         QLineEdit, QComboBox, QSpinBox, QPlainTextEdit {{ background: {c['bg']}; color: {c['text']}; border: 1px solid {c['border']}; border-radius: 5px; padding: 6px; }}
+        QSpinBox#quantitySpin {{ min-height: {quantity_height}px; padding: 2px 4px; font-size: {quantity_font}px; }}
+        QPushButton#quantityMinus, QPushButton#quantityPlus {{ min-width: 30px; max-width: 30px; min-height: {quantity_height}px; max-height: {quantity_height}px; padding: 0px; }}
         QGroupBox {{ border: 1px solid {c['border']}; border-radius: 8px; margin-top: 12px; padding: 12px; }}
         QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 4px; color: {c['accent_hover']}; }}
         #panelTitle {{ font-size: {panel_font}px; font-weight: 600; }}
@@ -1358,8 +1362,10 @@ class QtNaChanceWindow(QMainWindow):
             count = QSpinBox()
             count.setRange(0, 999)
             count.setValue(1 if idx == 0 else 0)
+            count.setObjectName("quantitySpin")
             count.setMinimumWidth(74)
             count.setMaximumWidth(92)
+            count.setMinimumHeight(30)
             count.setAlignment(Qt.AlignmentFlag.AlignCenter)
             count.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
             count.setToolTip("Số lượng preset đang chọn")
@@ -1373,8 +1379,10 @@ class QtNaChanceWindow(QMainWindow):
             quantity_layout.setSpacing(3)
             minus = QPushButton("−")
             plus = QPushButton("+")
+            minus.setObjectName("quantityMinus")
+            plus.setObjectName("quantityPlus")
             for button in (minus, plus):
-                button.setFixedSize(28, 28)
+                button.setFixedSize(30, 30)
                 button.setToolTip("Giảm/tăng số lượng preset")
             minus.clicked.connect(lambda _=False, s=count, c=check: self._adjust_layout_count(s, c, -1))
             plus.clicked.connect(lambda _=False, s=count, c=check: self._adjust_layout_count(s, c, 1))

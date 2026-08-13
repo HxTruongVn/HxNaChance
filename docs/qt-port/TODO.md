@@ -163,3 +163,9 @@
 - [x] Restore Workshop close behavior and fallback active state exactly as main
 - [x] Add transition tests for Core → Workshop → Workshop → Core and closed-window edge cases
 
+
+## Quantity glyph clipping correction
+
+- [x] Prevent quantity digits from being clipped at 100% font scale
+- [x] Verify quantity cluster rendering at 90%, 100%, 110%, 125%, and 150%
+
