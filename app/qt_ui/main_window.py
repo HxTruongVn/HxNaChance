@@ -331,6 +331,14 @@ class QtNaChanceWindow(QMainWindow):
             elif item.workshop_id == "photo":
                 workshop_menu.addAction("Open Preview", self._photo_preview_toggle_qt)
                 workshop_menu.addAction("Run Photo", self._run_photo)
+                workshop_menu.addSeparator()
+                for group_name, options in (("Face", (("Face Restore", "photo_face_restore"), ("Skin Smoothing", "photo_skin"), ("Brighten Eyes", "photo_eye"), ("Whiten Teeth", "photo_teeth"))), ("Pose & Alignment", (("Auto-detect Orientation", "photo_auto_rotate"), ("Confirm Before Processing", "photo_confirm_orientation"), ("Shoulder Warp", "photo_shoulder_warp"))), ("Background & Post-processing", (("Remove Background", "photo_remove_bg"), ("Upscale 2x", "photo_upscale"))), ("Validation & Safety", (("Validate Standard", "photo_validate"), ("Preview", "photo_preview_enabled")))):
+                    group_menu = workshop_menu.addMenu(group_name)
+                    for label_text, attr in options:
+                        option_action = QAction(label_text, self)
+                        option_action.setCheckable(True)
+                        option_action.triggered.connect(lambda checked=False, name=attr: self._set_photo_option_from_menu(name, checked))
+                        group_menu.addAction(option_action)
             elif item.workshop_id == "repo_intake":
                 workshop_menu.addAction("Inspect / Intake", self._repo_submit)
         window_menu.addSeparator()
@@ -1496,6 +1504,11 @@ class QtNaChanceWindow(QMainWindow):
         if path:
             self._source_path = path
             self.photo_input_label.setText(path)
+
+    def _set_photo_option_from_menu(self, name: str, checked: bool) -> None:
+        control = getattr(self, name, None)
+        if control is not None:
+            control.setChecked(checked)
 
     def _photo_options_qt(self) -> dict[str, Any]:
         return {

@@ -131,7 +131,7 @@
 | Orientation/shoulder/confirm | Photo UI | Qt có auto rotate, confirm orientation và shoulder warp options | Một phần | Port side panel confirmation behavior |
 | Validation/preview toggles | Photo UI | Qt có validation và preview toggles | Một phần | Nối preview panel và result state |
 | Preview side panel | Photo UI `_toggle_photo_preview` | Qt Photo Preview/Result side panel, native X cleanup | Một phần | Dùng preview request/confirmation đầy đủ |
-| Photo menu actions | `_menu_photo_content` | Chưa port | Thiếu |
+| Photo menu actions | `_menu_photo_content` | Qt cascade có Open/Run và checkable Face, Pose, Background, Validation groups | Một phần | Đồng bộ checked state ngược từ controls khi menu mở |
 | Engine/worker/output | `PhotoQAAgent`, `NaChanceEngine` | Có worker | Một phần |
 
 ## Tầng 10 — Repo Intake Workshop
@@ -186,7 +186,7 @@
 | Theme parity | load/switch/persist test | Qt theme test đã có | Một phần | Hoàn thiện child style injection và busy/orientation block |
 | Multi-window lifecycle | open/close/focus/tile test | Native close/focus hierarchy test đã có; tile còn cần kiểm | Một phần | Hoàn tất placement và side-panel ownership |
 | Layout parity | multi-preset/output test | Đạt một phần |
-| Photo parity | full controls/output test | Chưa đạt |
+| Photo parity | full controls/output test | Controls/options/preview/orientation tests đã có; engine e2e chưa chạy weights | Một phần | Kiểm thử output thật với runtime weights |
 | Repo Intake parity | full intake flow test | Chưa đạt |
 
 ## Quy tắc hoàn thành
