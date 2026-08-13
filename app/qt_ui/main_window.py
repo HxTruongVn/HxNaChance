@@ -98,9 +98,13 @@ class _PhotoWorker(QObject):
             from app.photo_agent import PhotoQAAgent
 
             spec = SPEC_PRESETS[self.preset]
+            if QThread.currentThread().isInterruptionRequested():
+                return
             agent_result = PhotoQAAgent(self.engine, max_retries=3).process(
                 self.source, spec, self.bg_color, self.options
             )
+            if QThread.currentThread().isInterruptionRequested():
+                return
             result = agent_result.engine_result
             if not result.get("success") or result.get("image") is None:
                 errors = "; ".join(result.get("validation_errors", [])) or agent_result.verdict
@@ -109,6 +113,8 @@ class _PhotoWorker(QObject):
             if getattr(image, "ndim", 0) == 3 and image.shape[2] == 3:
                 image = image[:, :, ::-1]
             Image.fromarray(image).save(self.output, quality=95)
+            if QThread.currentThread().isInterruptionRequested():
+                return
             self.finished.emit(self.output, agent_result.verdict)
         except Exception:
             self.failed.emit(traceback.format_exc())
@@ -128,6 +134,8 @@ class _LayoutWorker(QObject):
 
     def run(self) -> None:
         try:
+            if QThread.currentThread().isInterruptionRequested():
+                return
             canvas, payload = build_layout_canvas(
                 self.sources if len(self.sources) > 1 else self.sources[0],
                 self.config,
@@ -135,6 +143,8 @@ class _LayoutWorker(QObject):
                 self.existing,
             )
             save_layout(canvas, payload, self.output)
+            if QThread.currentThread().isInterruptionRequested():
+                return
             self.finished.emit(self.output, str(canvas.size))
         except Exception:
             self.failed.emit(traceback.format_exc())
@@ -1135,8 +1145,12 @@ class QtNaChanceWindow(QMainWindow):
         self.layout_preview_button.clicked.connect(self._layout_preview_toggle_qt)
         self.layout_run_button = QPushButton("LƯU / CHẠY LAYOUT")
         self.layout_run_button.clicked.connect(self._run_layout)
+        self.layout_cancel_button = QPushButton("HỦY")
+        self.layout_cancel_button.setEnabled(False)
+        self.layout_cancel_button.clicked.connect(self._cancel_layout_qt)
         preview_actions.addWidget(self.layout_preview_button)
         preview_actions.addWidget(self.layout_run_button)
+        preview_actions.addWidget(self.layout_cancel_button)
         layout.addLayout(preview_actions)
         self.layout_preview = QLabel("Preview sẽ hiển thị ở đây")
         self.layout_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -1223,8 +1237,12 @@ class QtNaChanceWindow(QMainWindow):
         self.photo_preview_button.clicked.connect(self._photo_preview_toggle_qt)
         self.photo_run_button = QPushButton("Run Photo Workshop")
         self.photo_run_button.clicked.connect(self._run_photo)
+        self.photo_cancel_button = QPushButton("Cancel")
+        self.photo_cancel_button.setEnabled(False)
+        self.photo_cancel_button.clicked.connect(self._cancel_photo_qt)
         photo_actions.addWidget(self.photo_preview_button)
         photo_actions.addWidget(self.photo_run_button)
+        photo_actions.addWidget(self.photo_cancel_button)
         layout.addLayout(photo_actions)
         self.photo_status = QLabel(
             "Photo dùng đúng NaChanceEngine của main. Runtime AI được tải/kiểm tra khi người dùng chạy, không tự tải khi mở Qt."
@@ -1478,6 +1496,7 @@ class QtNaChanceWindow(QMainWindow):
             if not existing:
                 return
         self.layout_run_button.setEnabled(False)
+        self.layout_cancel_button.setEnabled(True)
         self._layout_thread = QThread(self)
         self._layout_worker = _LayoutWorker(sources, output, self._layout_config_qt(), self.chk_append.isChecked(), existing)
         self._layout_worker.moveToThread(self._layout_thread)
@@ -1486,8 +1505,16 @@ class QtNaChanceWindow(QMainWindow):
         self._layout_worker.failed.connect(self._layout_failed)
         self._layout_worker.finished.connect(self._layout_thread.quit)
         self._layout_worker.failed.connect(self._layout_thread.quit)
-        self._layout_thread.finished.connect(lambda: self.layout_run_button.setEnabled(True))
+        self._layout_thread.finished.connect(lambda: (self.layout_run_button.setEnabled(True), self.layout_cancel_button.setEnabled(False)))
         self._layout_thread.start()
+
+    def _cancel_layout_qt(self) -> None:
+        thread = getattr(self, "_layout_thread", None)
+        if thread is not None and thread.isRunning():
+            thread.requestInterruption()
+            self.layout_cancel_button.setEnabled(False)
+            self.layout_run_button.setEnabled(True)
+            self.log.appendPlainText("Layout cancellation requested.")
 
     def _layout_finished(self, output: str, size: str) -> None:
         self.log.appendPlainText(f"Layout output: {output} ({size})")
@@ -1596,6 +1623,7 @@ class QtNaChanceWindow(QMainWindow):
                 from workshops.photo import NaChanceEngine
                 self._photo_engine = NaChanceEngine(weights_dir=str(PROJECT_ROOT / "weights"))
             self.photo_run_button.setEnabled(False)
+            self.photo_cancel_button.setEnabled(True)
             self.photo_status.setText("Photo is processing with the main engine…")
             self._photo_thread = QThread(self)
             self._photo_worker = _PhotoWorker(
@@ -1612,12 +1640,20 @@ class QtNaChanceWindow(QMainWindow):
             self._photo_worker.failed.connect(self._photo_failed)
             self._photo_worker.finished.connect(self._photo_thread.quit)
             self._photo_worker.failed.connect(self._photo_thread.quit)
-            self._photo_thread.finished.connect(lambda: self.photo_run_button.setEnabled(True))
+            self._photo_thread.finished.connect(lambda: (self.photo_run_button.setEnabled(True), self.photo_cancel_button.setEnabled(False)))
             self._photo_thread.start()
         except Exception as exc:
             self.photo_run_button.setEnabled(True)
             self.photo_status.setText(f"Photo is not ready: {exc}")
             self.log.appendPlainText(traceback.format_exc())
+
+    def _cancel_photo_qt(self) -> None:
+        thread = getattr(self, "_photo_thread", None)
+        if thread is not None and thread.isRunning():
+            thread.requestInterruption()
+            self.photo_cancel_button.setEnabled(False)
+            self.photo_run_button.setEnabled(True)
+            self.photo_status.setText("Photo cancellation requested.")
 
     def _photo_finished(self, output: str, verdict: str) -> None:
         self.photo_status.setText(f"Photo completed: {verdict} — {output}")

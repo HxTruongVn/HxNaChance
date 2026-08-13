@@ -171,7 +171,7 @@
 | Saved `.nachance-state` | `Document.save_state` | Qt state JSON lưu theme, active Workshop, Layout, Photo, Repo Intake | Một phần | Tương thích đầy đủ với Document format của main |
 | Watcher changes | `WorkshopWatcher` | Qt khởi động/dừng watcher, UI status flush bằng QTimer | Một phần | Thêm added/removed detail và reload action |
 | Missing Workshop notification | `_show_workshop_change_status` | Chưa port | Thiếu |
-| Worker cancellation | main workers/timers | Chưa đầy đủ | Thiếu |
+| Worker cancellation | main workers/timers | Qt Cancel buttons request QThread interruption; workers check before/after processing | Một phần | Engine-level cooperative cancellation đầy đủ |
 
 ## Tầng 13 — Verification gates
 
@@ -185,7 +185,7 @@
 | Shortcut parity | QTest key events | Chưa kiểm |
 | Theme parity | load/switch/persist test | Qt theme test đã có | Một phần | Hoàn thiện child style injection và busy/orientation block |
 | Multi-window lifecycle | open/close/focus/tile test | Native close/focus hierarchy test đã có; tile còn cần kiểm | Một phần | Hoàn tất placement và side-panel ownership |
-| Layout parity | multi-preset/output test | Đạt một phần |
+| Layout parity | multi-preset/output test | Multi-preset/config/output + preview/cancel path đã có | Một phần | Full menu/orientation/saved-state test |
 | Photo parity | full controls/output test | Controls/options/preview/orientation tests đã có; engine e2e chưa chạy weights | Một phần | Kiểm thử output thật với runtime weights |
 | Repo Intake parity | full intake flow test | Chưa đạt |
 
