@@ -151,14 +151,14 @@
 
 | Hạng mục | Nguồn main | Qt hiện tại | Trạng thái |
 |---|---|---|---|
-| Core status panel | `main_ui._show_core_panel` | Có inspector | Một phần |
-| Environment report | `_show_environment_report` | Có text cơ bản | Một phần |
-| Resource compatibility | `_show_resource_compatibility` | Chưa port | Thiếu |
-| Workshop requirements | `_show_workshop_requirements` | Chưa port | Thiếu |
+| Core status panel | `main_ui._show_core_panel` | Qt host có runtime/workshop inspector, Tool dialogs và Workshop Exchange | Một phần | Bổ sung full Core control surface/quick pipeline list |
+| Environment report | `_show_environment_report` | Qt QDialog hiển thị `runtime_report.summary_text()` | Một phần | Giữ đầy đủ refresh/reload actions |
+| Resource compatibility | `_show_resource_compatibility` | Qt QDialog đọc/sửa/save policy tolerance | Một phần | Bổ sung hardware detection và re-evaluate đầy đủ |
+| Workshop requirements | `_show_workshop_requirements` | Qt text dialog gọi `app.workshop_requirements.analyze` | Một phần | Bổ sung overlap sections và action links |
 | Pipeline Builder window | `_show_pipeline_builder` | Qt dialog chọn/thêm/xóa/sắp xếp Workshop và lưu PipelineStore | Một phần | Bổ sung edit pipeline, snapshot state và run pipeline execution |
 | Pipeline node/edge UI | `ui/pipeline_mixin.py` | Qt hiện là ordered-step builder; chưa có node/edge canvas | Một phần | Port phần trình bày node/edge nếu main dùng trực tiếp |
 | Undo/Redo/Save context | command providers | Save state thật; Undo/Redo gọi active Workshop nếu cung cấp document API | Một phần | Nối ContextCommandRouter đầy đủ và enablement động |
-| Workshop exchange | `_workshop_exchange_targets` | Chưa port | Thiếu |
+| Workshop exchange | `_workshop_exchange_targets` | Core host có target discovery từ manifest, latest output và route vào Photo input | Một phần | Thêm receiver contract cho mọi Workshop nhận image và temp-file lifecycle |
 
 ## Tầng 12 — Persistence, watcher và state
 

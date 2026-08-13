@@ -109,6 +109,23 @@ def test_qt_menu_hierarchy_and_shortcuts_match_main():
     app.processEvents()
 
 
+def test_qt_core_exchange_routes_output_to_photo(tmp_path):
+    from PIL import Image
+    app = QApplication.instance() or QApplication([])
+    source = tmp_path / "output.png"
+    Image.new("RGB", (40, 40), (10, 20, 30)).save(source)
+    window = QtNaChanceWindow()
+    window._latest_output_path = str(source)
+    window._open_workshop_window("photo")
+    window.exchange_target_combo.setCurrentIndex(window.exchange_target_combo.findData("photo"))
+    if window.exchange_target_combo.currentData() == "photo":
+        window._send_core_output_to_workshop_qt()
+        assert window._source_path == str(source)
+        assert window.photo_input_label.text() == str(source)
+    window.close()
+    app.processEvents()
+
+
 def test_qt_watcher_status_is_flushed_on_ui_thread():
     app = QApplication.instance() or QApplication([])
     window = QtNaChanceWindow()

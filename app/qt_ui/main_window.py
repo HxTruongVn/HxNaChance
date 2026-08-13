@@ -1019,6 +1019,15 @@ class QtNaChanceWindow(QMainWindow):
         self.workshop_label = QLabel("Workshops: checking…")
         self.workshop_label.setWordWrap(True)
         layout.addWidget(self.workshop_label)
+        exchange_group = QGroupBox("Workshop Exchange")
+        exchange_layout = QHBoxLayout(exchange_group)
+        self.exchange_target_combo = QComboBox()
+        self._refresh_exchange_targets_qt()
+        exchange_button = QPushButton("Gửi output hiện tại")
+        exchange_button.clicked.connect(self._send_core_output_to_workshop_qt)
+        exchange_layout.addWidget(self.exchange_target_combo, 1)
+        exchange_layout.addWidget(exchange_button)
+        layout.addWidget(exchange_group)
         layout.addStretch(1)
         return page
 
@@ -1363,6 +1372,48 @@ class QtNaChanceWindow(QMainWindow):
             window.close()
         super().closeEvent(event)
 
+    def _refresh_exchange_targets_qt(self) -> None:
+        if not hasattr(self, "exchange_target_combo"):
+            return
+        self.exchange_target_combo.clear()
+        targets = []
+        for item in self._discovered_workshops:
+            manifest_path = PROJECT_ROOT / "workshops" / item.workshop_id / "manifest.json"
+            try:
+                data = json.loads(manifest_path.read_text(encoding="utf-8"))
+                accepts = (data.get("io") or {}).get("accepts") or []
+                if "image" in accepts:
+                    targets.append((item.workshop_id, item.menu_label or item.workshop_name))
+            except (OSError, ValueError, TypeError):
+                continue
+        for workshop_id, label in targets:
+            self.exchange_target_combo.addItem(label, workshop_id)
+        if not targets:
+            self.exchange_target_combo.addItem("(Không có Workshop nhận ảnh)", "")
+
+    def _send_core_output_to_workshop_qt(self) -> None:
+        output = getattr(self, "_latest_output_path", None)
+        target_id = self.exchange_target_combo.currentData() if hasattr(self, "exchange_target_combo") else None
+        if not output or not Path(output).is_file():
+            QMessageBox.information(self, "Workshop Exchange", "Chưa có kết quả ảnh để gửi.")
+            return
+        if not target_id:
+            QMessageBox.information(self, "Workshop Exchange", "Không có Workshop nào khai báo nhận ảnh.")
+            return
+        target = self._open_workshop_window(str(target_id))
+        if target_id == "photo" and hasattr(self, "photo_input_label"):
+            self._source_path = output
+            self.photo_input_label.setText(output)
+            self.photo_status.setText(f"Đã nhận output từ Core: {output}")
+            self.status_bar.showMessage("Core đã chuyển output tới Photo Workshop.", 4000)
+            return
+        receiver = getattr(target, "receive_input", None)
+        if callable(receiver):
+            receiver(output)
+            self.status_bar.showMessage(f"Core đã chuyển output tới {target_id}.", 4000)
+            return
+        QMessageBox.warning(self, "Workshop Exchange", f"Workshop '{target_id}' chưa cung cấp cổng nhận dữ liệu cho Core.")
+
     def _load_runtime_report(self) -> None:
         try:
             workshops = discover_workshops(PROJECT_ROOT / "workshops", load_ui=False)
@@ -1517,6 +1568,7 @@ class QtNaChanceWindow(QMainWindow):
             self.log.appendPlainText("Layout cancellation requested.")
 
     def _layout_finished(self, output: str, size: str) -> None:
+        self._latest_output_path = output
         self.log.appendPlainText(f"Layout output: {output} ({size})")
         image = QImage(output)
         self.layout_preview.setPixmap(QPixmap.fromImage(image).scaled(
@@ -1656,6 +1708,7 @@ class QtNaChanceWindow(QMainWindow):
             self.photo_status.setText("Photo cancellation requested.")
 
     def _photo_finished(self, output: str, verdict: str) -> None:
+        self._latest_output_path = output
         self.photo_status.setText(f"Photo completed: {verdict} — {output}")
         self.log.appendPlainText(f"Photo output: {output}")
         panel = self._side_panel_windows.get("photo")
