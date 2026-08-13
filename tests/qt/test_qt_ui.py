@@ -8,7 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 PySide6 = pytest.importorskip("PySide6")
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QAbstractSpinBox, QGridLayout, QMenu, QPushButton, QScrollArea
+from PySide6.QtWidgets import QApplication, QAbstractSpinBox, QGridLayout, QGroupBox, QHBoxLayout, QMenu, QPushButton, QScrollArea
 
 from app.qt_ui import QtNaChanceWindow
 
@@ -108,6 +108,18 @@ def test_qt_menu_hierarchy_and_shortcuts_match_main():
     assert shortcuts["Next Workshop"] == "Ctrl+`"
     assert shortcuts["Previous Workshop"] == "Ctrl+Shift+`"
     assert shortcuts["Close active Workshop"] == "Ctrl+W"
+    window.close()
+    app.processEvents()
+
+
+def test_qt_layout_adjustment_has_three_horizontal_parts():
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    layout_window = window._open_workshop_window("layout")
+    adjustment = layout_window.findChild(QGroupBox, "layoutAdjustment")
+    assert adjustment is not None
+    assert isinstance(adjustment.layout(), QHBoxLayout)
+    assert adjustment.layout().count() == 3
     window.close()
     app.processEvents()
 

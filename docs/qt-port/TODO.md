@@ -169,3 +169,22 @@
 - [x] Prevent quantity digits from being clipped at 100% font scale
 - [x] Verify quantity cluster rendering at 90%, 100%, 110%, 125%, and 150%
 
+
+## Layout adjustment and automatic weight loading
+
+- [x] Split Layout Điều chỉnh into three clear sub-sections while preserving all config fields
+- [x] Trace why a Shop does not automatically request/download missing weights
+- [x] Compare Qt startup/resource flow with main RuntimeManager and Model Registry flow
+- [ ] Restore automatic weight/resource loading only through the canonical resource contract
+- [x] Add tests for adjustment layout and Core weight intake/hash lifecycle
+
+
+## Clarification: Core owns weights; one-line Layout adjustment
+
+- [x] Keep Layout Điều chỉnh as three side-by-side sections on one row, with responsive minimum widths
+- [x] Document that Shops never own the canonical weight store or downloader
+- [x] Make Core intake any Shop-supplied weight, hash it with SHA-256, and register it centrally
+- [ ] Make Core resolve/download/cache missing weights from canonical resource manifests
+- [ ] Make Shops expose only resource requirements and consume Core-provided resolved paths
+- [x] Add tests proving Shop weight files are submitted/hashed by Core before use
+
