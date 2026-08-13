@@ -222,3 +222,12 @@
 - [x] Preserve each Workshop's current state while applying the new stylesheet
 - [x] Add tests for idle and active Workshop theme updates
 
+
+## Hotkey reliability and routing
+
+- [x] Inventory every QAction, QShortcut, widget shortcut, keyPressEvent, mnemonic, and focus scope
+- [x] Remove duplicate bindings and route global commands through one application-level dispatcher
+- [x] Keep text-input exceptions deterministic for Ctrl+S/Z/Y and related commands
+- [x] Verify F2, Ctrl+R, grave navigation, Esc, mnemonics, and Layout/Photo shortcuts with real key events
+- [x] Add regression tests for focus changes and repeated key presses
+

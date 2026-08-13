@@ -7,6 +7,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 PySide6 = pytest.importorskip("PySide6")
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QAbstractSpinBox, QGridLayout, QGroupBox, QHBoxLayout, QMenu, QPushButton, QScrollArea, QWidget
 
@@ -171,16 +172,49 @@ def test_qt_grave_shortcuts_change_workspace_state():
     app = QApplication.instance() or QApplication([])
     window = QtNaChanceWindow()
     window.show()
-    assert [shortcut.key().toString() for shortcut in window._qt_shortcuts] == ["F2", "Ctrl+R", "Ctrl+`", "Ctrl+Shift+`", "Ctrl+Alt+`"]
-    window._qt_shortcuts[2].activated.emit()
+    assert window._qt_shortcuts == []
+    window._next_workshop_qt()
     app.processEvents()
     assert window._active_workshop_id == "photo"
-    window._qt_shortcuts[3].activated.emit()
+    window._previous_workshop_qt()
     app.processEvents()
     assert window._active_workshop_id == "layout"
-    window._qt_shortcuts[4].activated.emit()
+    window._return_to_core_qt()
     app.processEvents()
     assert window._active_workshop_id is None
+    window.close()
+    app.processEvents()
+
+
+def test_qt_f2_key_event_routes_to_active_workshop_preview():
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    window.show()
+    workshop = window._open_workshop_window("layout")
+    workshop.show()
+    workshop.activateWindow()
+    QTest.keyClick(workshop, Qt.Key.Key_F2)
+    app.processEvents()
+    panel = window._side_panel_windows.get("layout")
+    assert panel is not None and panel.isVisible()
+    QTest.keyClick(workshop, Qt.Key.Key_F2)
+    app.processEvents()
+    window.close()
+    app.processEvents()
+
+
+def test_qt_application_actions_have_single_global_shortcut_owner():
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    shortcuts = {}
+    for action in window.findChildren(QAction):
+        key = action.shortcut().toString()
+        if key:
+            shortcuts.setdefault(key, []).append(action)
+    assert len(shortcuts["F2"]) == 1
+    assert len(shortcuts["Ctrl+R"]) == 1
+    assert len(shortcuts["Ctrl+`"]) == 1
+    assert len(shortcuts["Ctrl+Shift+`"]) == 1
     window.close()
     app.processEvents()
 

@@ -13,7 +13,7 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, QThread, QTimer, Signal, Qt
+from PySide6.QtCore import QEvent, QObject, QThread, QTimer, Signal, Qt
 from PySide6.QtGui import QAction, QActionGroup, QIcon, QImage, QPixmap, QKeySequence, QShortcut, QPainter
 from PySide6.QtPrintSupport import QPrintDialog, QPrinter
 from PySide6.QtWidgets import (
@@ -349,6 +349,9 @@ class QtNaChanceWindow(QMainWindow):
         self.pipeline_store = PipelineStore(PROJECT_ROOT / "data" / "pipelines.db")
         self._build_actions()
         self._build_ui()
+        app = QApplication.instance()
+        if app is not None:
+            app.installEventFilter(self)
         self._install_core_shortcuts_qt()
         self._load_runtime_report()
         self._start_workshop_watcher_qt()
@@ -357,10 +360,12 @@ class QtNaChanceWindow(QMainWindow):
         file_menu = self.menuBar().addMenu("&File")
         open_action = QAction("Open image…", self)
         open_action.setShortcut("Ctrl+O")
+        open_action.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
         open_action.triggered.connect(self._choose_photo_source)
         file_menu.addAction(open_action)
         saved_state_action = QAction("Open Saved State…", self)
         saved_state_action.setShortcut("Ctrl+Shift+O")
+        saved_state_action.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
         saved_state_action.triggered.connect(self._open_saved_state_qt)
         file_menu.addAction(saved_state_action)
         file_menu.addSeparator()
@@ -377,6 +382,7 @@ class QtNaChanceWindow(QMainWindow):
         ):
             action = QAction(label, self)
             action.setShortcut(shortcut)
+            action.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
             action.triggered.connect(handler)
             edit_menu.addAction(action)
             self._context_actions[label.lower()] = action
@@ -391,7 +397,9 @@ class QtNaChanceWindow(QMainWindow):
         pipeline_open.triggered.connect(self._show_pipeline_builder_qt)
         pipeline_menu.addAction(pipeline_open)
         pipeline_run = QAction("Run active pipeline", self)
-        pipeline_run.triggered.connect(self._run_active_workshop_qt)
+        pipeline_run.setShortcut("Ctrl+R")
+        pipeline_run.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
+        pipeline_run.triggered.connect(self._shortcut_run_qt)
         pipeline_menu.addAction(pipeline_run)
 
         window_menu = self.menuBar().addMenu("&Window")
@@ -408,18 +416,14 @@ class QtNaChanceWindow(QMainWindow):
             workshop_menu.addAction(close_action)
             if item.workshop_id == "layout":
                 choose_action = workshop_menu.addAction("Choose Source Image…", self._choose_layout_source)
-                choose_action.setShortcut("Ctrl+O")
                 add_action = workshop_menu.addAction("Add Source Image…", self._add_layout_source)
-                add_action.setShortcut("Ctrl+Shift+O")
-                preview_action = workshop_menu.addAction("Preview (mở/đóng)", self._layout_preview_toggle_qt)
-                preview_action.setShortcut("F2")
-                run_action = workshop_menu.addAction("Run Layout", self._run_layout)
-                run_action.setShortcut("Ctrl+R")
+                preview_action = workshop_menu.addAction("Preview (mở/đóng)", self._toggle_active_preview_qt)
+                run_action = workshop_menu.addAction("Run Layout", self._shortcut_run_qt)
                 workshop_menu.addAction("Save Layout…", self._run_layout)
                 workshop_menu.addAction("Print Layout…", self._run_layout)
             elif item.workshop_id == "photo":
-                workshop_menu.addAction("Open Preview", self._photo_preview_toggle_qt)
-                workshop_menu.addAction("Run Photo", self._run_photo)
+                workshop_menu.addAction("Open Preview", self._toggle_active_preview_qt)
+                workshop_menu.addAction("Run Photo", self._shortcut_run_qt)
                 workshop_menu.addSeparator()
                 for group_name, options in (("Face", (("Face Restore", "photo_face_restore"), ("Skin Smoothing", "photo_skin"), ("Brighten Eyes", "photo_eye"), ("Whiten Teeth", "photo_teeth"))), ("Pose & Alignment", (("Auto-detect Orientation", "photo_auto_rotate"), ("Confirm Before Processing", "photo_confirm_orientation"), ("Shoulder Warp", "photo_shoulder_warp"))), ("Background & Post-processing", (("Remove Background", "photo_remove_bg"), ("Upscale 2x", "photo_upscale"))), ("Validation & Safety", (("Validate Standard", "photo_validate"), ("Preview", "photo_preview_enabled")))):
                     group_menu = workshop_menu.addMenu(group_name)
@@ -433,16 +437,24 @@ class QtNaChanceWindow(QMainWindow):
             elif item.workshop_id == "repo_intake":
                 workshop_menu.addAction("Inspect / Intake", self._repo_submit)
         window_menu.addSeparator()
+        preview_active = QAction("Preview active Workshop", self)
+        preview_active.setShortcut("F2")
+        preview_active.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
+        preview_active.triggered.connect(self._toggle_active_preview_qt)
+        window_menu.addAction(preview_active)
         next_action = QAction("Next Workshop", self)
         next_action.setShortcut("Ctrl+`")
+        next_action.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
         next_action.triggered.connect(self._next_workshop_qt)
         window_menu.addAction(next_action)
         previous_action = QAction("Previous Workshop", self)
         previous_action.setShortcut("Ctrl+Shift+`")
+        previous_action.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
         previous_action.triggered.connect(self._previous_workshop_qt)
         window_menu.addAction(previous_action)
         close_active = QAction("Close active Workshop", self)
         close_active.setShortcut("Ctrl+W")
+        close_active.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
         close_active.triggered.connect(self._close_active_workshop_qt)
         window_menu.addAction(close_active)
 
@@ -514,19 +526,43 @@ class QtNaChanceWindow(QMainWindow):
         return CommandContext(kind=WorkspaceKind.CORE, workspace_id="core", target=self, metadata={"host": self})
 
     def _install_core_shortcuts_qt(self) -> None:
+        # Keyboard commands are routed by eventFilter so they remain reliable
+        # when focus is inside a separate Workshop top-level window.
         self._qt_shortcuts = []
-        shortcuts = (
-            (QKeySequence("F2"), self._toggle_active_preview_qt),
-            (QKeySequence("Ctrl+R"), self._shortcut_run_qt),
-            (QKeySequence(Qt.KeyboardModifier.ControlModifier | Qt.Key.Key_QuoteLeft), self._next_workshop_qt),
-            (QKeySequence(Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier | Qt.Key.Key_QuoteLeft), self._previous_workshop_qt),
-            (QKeySequence(Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.AltModifier | Qt.Key.Key_QuoteLeft), self._return_to_core_qt),
-        )
-        for sequence, callback in shortcuts:
-            shortcut = QShortcut(sequence, self)
-            shortcut.setContext(Qt.ShortcutContext.ApplicationShortcut)
-            shortcut.activated.connect(callback)
-            self._qt_shortcuts.append(shortcut)
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if event.type() != QEvent.Type.KeyPress:
+            return super().eventFilter(watched, event)
+        key_event = event
+        if getattr(key_event, "isAutoRepeat", lambda: False)():
+            return super().eventFilter(watched, event)
+        modifiers = key_event.modifiers()
+        key = key_event.key()
+        control = bool(modifiers & Qt.KeyboardModifier.ControlModifier)
+        shift = bool(modifiers & Qt.KeyboardModifier.ShiftModifier)
+        alt = bool(modifiers & Qt.KeyboardModifier.AltModifier)
+        if key == Qt.Key.Key_F2 and not control and not shift and not alt:
+            self._toggle_active_preview_qt()
+            return True
+        if key == Qt.Key.Key_R and control and not shift and not alt:
+            self._shortcut_run_qt()
+            return True
+        if key == Qt.Key.Key_QuoteLeft and control and alt and not shift:
+            self._return_to_core_qt()
+            return True
+        if key == Qt.Key.Key_QuoteLeft and control and shift and not alt:
+            self._previous_workshop_qt()
+            return True
+        if key == Qt.Key.Key_QuoteLeft and control and not shift and not alt:
+            self._next_workshop_qt()
+            return True
+        if key == Qt.Key.Key_Escape and not control and not shift and not alt:
+            self._cancel_active_qt()
+            return True
+        if key == Qt.Key.Key_W and control and not shift and not alt:
+            self._close_active_workshop_qt()
+            return True
+        return super().eventFilter(watched, event)
 
     def _toggle_active_preview_qt(self) -> None:
         preview_handlers = {
@@ -536,6 +572,12 @@ class QtNaChanceWindow(QMainWindow):
         handler = preview_handlers.get(self._active_workshop_id or "")
         if handler is not None:
             handler()
+
+    def _cancel_active_qt(self) -> None:
+        if self._layout_thread is not None and self._layout_thread.isRunning():
+            self._cancel_layout_qt()
+        if self._photo_thread is not None and self._photo_thread.isRunning():
+            self._cancel_photo_qt()
 
     def _shortcut_run_qt(self) -> None:
         context = self._current_command_context()
@@ -1360,13 +1402,10 @@ class QtNaChanceWindow(QMainWindow):
         self.layout_source_label = QLabel("(Chưa chọn - dùng ảnh đã xử lý)")
         self.layout_source_label.setWordWrap(True)
         choose = QPushButton("Chọn ảnh")
-        choose.setShortcut("Ctrl+O")
         choose.clicked.connect(self._choose_layout_source)
         add = QPushButton("Thêm ảnh")
-        add.setShortcut("Ctrl+Shift+O")
         add.clicked.connect(self._add_layout_source)
         change = QPushButton("Đổi ảnh")
-        change.setShortcut("Ctrl+Alt+O")
         change.clicked.connect(self._choose_layout_source)
         source_actions = QWidget()
         source_row = QHBoxLayout(source_actions)
@@ -1510,10 +1549,8 @@ class QtNaChanceWindow(QMainWindow):
         self.layout_preview_button = QPushButton("MỞ XEM TRƯỚC (F2)")
         self.layout_preview_button.clicked.connect(self._layout_preview_toggle_qt)
         self.layout_run_button = QPushButton("LƯU / CHẠY LAYOUT (Ctrl+R)")
-        self.layout_run_button.setShortcut("Ctrl+R")
         self.layout_run_button.clicked.connect(self._run_layout)
         self.layout_cancel_button = QPushButton("HỦY (Esc)")
-        self.layout_cancel_button.setShortcut("Esc")
         self.layout_cancel_button.setEnabled(False)
         self.layout_cancel_button.clicked.connect(self._cancel_layout_qt)
         preview_actions.addWidget(self.layout_preview_button)
@@ -1621,14 +1658,11 @@ class QtNaChanceWindow(QMainWindow):
         layout.addWidget(self.photo_bg_container)
 
         photo_actions = QHBoxLayout()
-        self.photo_preview_button = QPushButton("Preview (F3)")
-        self.photo_preview_button.setShortcut("F3")
+        self.photo_preview_button = QPushButton("Preview (F2)")
         self.photo_preview_button.clicked.connect(self._photo_preview_toggle_qt)
         self.photo_run_button = QPushButton("Run (Ctrl+R)")
-        self.photo_run_button.setShortcut("Ctrl+R")
         self.photo_run_button.clicked.connect(self._run_photo)
         self.photo_cancel_button = QPushButton("Cancel (Esc)")
-        self.photo_cancel_button.setShortcut("Esc")
         self.photo_cancel_button.setEnabled(False)
         self.photo_cancel_button.clicked.connect(self._cancel_photo_qt)
         photo_actions.addWidget(self.photo_preview_button)
@@ -1782,8 +1816,15 @@ class QtNaChanceWindow(QMainWindow):
         self.log.appendPlainText("Managed Workshop changed; restart/reload is required to rebuild the session.")
 
     def closeEvent(self, event) -> None:
+        app = QApplication.instance()
+        if app is not None:
+            app.removeEventFilter(self)
         weight_thread = getattr(self, "_weight_thread", None)
-        if weight_thread is not None and weight_thread.isRunning():
+        try:
+            running = weight_thread is not None and weight_thread.isRunning()
+        except RuntimeError:
+            running = False
+        if running:
             weight_thread.requestInterruption()
             weight_thread.quit()
             weight_thread.wait(3000)
