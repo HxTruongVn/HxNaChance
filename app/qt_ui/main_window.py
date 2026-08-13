@@ -165,7 +165,9 @@ class _WeightSyncWorker(QObject):
             from setup.weight_manager import CoreWeightManager
             manager = CoreWeightManager(self.project_root)
             failed = manager.sync_declared_resources()
-            self.finished.emit({"inventory": len(manager.inventory()), "failed": failed})
+            inventory = manager.inventory()
+            resolved = {resource_id: record.get("path") for resource_id, record in inventory.items() if isinstance(record, dict) and manager.resolve(resource_id) is not None}
+            self.finished.emit({"inventory": len(inventory), "failed": failed, "resolved": resolved})
         except Exception as exc:
             self.failed.emit(str(exc))
 
@@ -210,6 +212,15 @@ class QtWorkshopWindow(QMainWindow):
         self.setStyleSheet(stylesheet)
         for widget in self.findChildren(QWidget):
             widget.setStyleSheet(stylesheet)
+
+    def receive_input(self, source_path: str) -> None:
+        if not Path(source_path).is_file():
+            raise FileNotFoundError(source_path)
+        host = self.parent()
+        receiver = getattr(host, "_receive_workshop_input_qt", None)
+        if not callable(receiver):
+            raise RuntimeError(f"Workshop {self.workshop_id} chưa có receiver handler.")
+        receiver(self.workshop_id, source_path)
 
     def set_preview_panel(self, panel: "QtSidePanelWindow | None") -> None:
         self._preview_panel = panel
@@ -322,7 +333,10 @@ class QtNaChanceWindow(QMainWindow):
         self._photo_worker: _PhotoWorker | None = None
         self._weight_thread: QThread | None = None
         self._weight_worker: _WeightSyncWorker | None = None
+        self._core_resource_paths: dict[str, str] = {}
         self._source_path = ""
+        self._photo_source_paths: list[str] = []
+        self._photo_orientation_queue: dict[str, Any] | None = None
         self._workshop_windows: dict[str, QtWorkshopWindow] = {}
         self._side_panel_windows: dict[str, QtSidePanelWindow] = {}
         self._workshop_order: list[str] = []
@@ -339,6 +353,7 @@ class QtNaChanceWindow(QMainWindow):
         self._context_actions: dict[str, QAction] = {}
         self._managed_workshop_watcher = None
         self._workshop_change_pending = False
+        self._workshop_change_payload: tuple[Any, Any] | None = None
         self._command_router = ContextCommandRouter([
             PipelineCommandProvider(), WorkshopCommandProvider(), CoreCommandProvider()
         ])
@@ -649,14 +664,30 @@ class QtNaChanceWindow(QMainWindow):
     def save_workspace(self) -> None:
         self._save_state_qt()
 
+    def _document_for_qt_state(self):
+        from PIL import Image
+        from workshops.photo.document import Document
+        source = self._source_path or getattr(self, "_latest_output_path", "")
+        if not source or not Path(source).is_file():
+            return None
+        image = __import__("numpy").asarray(Image.open(source).convert("RGB")).copy()
+        return Document(str(source), image)
+
     def _save_state_qt(self) -> None:
-        path, _ = QFileDialog.getSaveFileName(self, "Save NaChance State", "nachance-state.json", "NaChance State (*.nachance-state *.json)")
+        path, _ = QFileDialog.getSaveFileName(self, "Save NaChance State", "nachance-state.nachance-state", "NaChance State (*.nachance-state)")
         if not path:
             return
         try:
-            Path(path).write_text(json.dumps(self._state_payload_qt(), ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-            self.status_bar.showMessage(f"Đã lưu state: {path}", 4000)
-        except OSError as exc:
+            document = self._document_for_qt_state()
+            if document is None:
+                raise ValueError("Chưa có ảnh nguồn hoặc output để tạo state bundle.")
+            if not path.endswith(".nachance-state"):
+                path += ".nachance-state"
+            active = self._active_workshop_id or "photo"
+            state = dict(self._state_payload_qt().get(active) or {})
+            document.save_state(path, workshop_id=active, workshop_version=None, workshop_state=state)
+            self.status_bar.showMessage(f"Đã lưu state bundle: {path}", 4000)
+        except (OSError, ValueError, TypeError) as exc:
             QMessageBox.critical(self, "Save State", str(exc))
 
     def _restore_layout_state_qt(self, payload: dict[str, Any]) -> None:
@@ -695,6 +726,21 @@ class QtNaChanceWindow(QMainWindow):
         if not path:
             return
         try:
+            if path.endswith(".nachance-state"):
+                from workshops.photo.document import Document
+                import tempfile
+                document, manifest = Document.load_state(path)
+                output_path = str(Path(tempfile.gettempdir()) / "nachance_restored_state.png")
+                from PIL import Image
+                Image.fromarray(document.current_image).save(output_path)
+                self._source_path = output_path
+                self._latest_output_path = output_path
+                self._restored_state_manifest = manifest
+                workshop_id = manifest.get("workshop_id") or "photo"
+                self._open_workshop_window(workshop_id)
+                self._apply_pipeline_step_state_qt(workshop_id, manifest.get("workshop_state") or {})
+                self.status_bar.showMessage(f"Đã mở state bundle: bước {document.cursor + 1}/{len(document.steps)}", 5000)
+                return
             payload = json.loads(Path(path).read_text(encoding="utf-8"))
             theme = payload.get("theme")
             if theme in self._themes:
@@ -1098,6 +1144,7 @@ class QtNaChanceWindow(QMainWindow):
         }
         title, builder = builders[workshop_id]
         window = QtWorkshopWindow(workshop_id, title, builder(), self)
+        window.core_resource_paths = dict(self._core_resource_paths)
         window.apply_theme(self._stylesheet())
         self._workshop_windows[workshop_id] = window
         if workshop_id not in self._workshop_order:
@@ -1222,24 +1269,112 @@ class QtNaChanceWindow(QMainWindow):
         up.clicked.connect(lambda: move_step(-1))
         down.clicked.connect(lambda: move_step(1))
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
-        def save_pipeline() -> None:
+        run_saved = QPushButton("Lưu và chạy")
+        buttons.addButton(run_saved, QDialogButtonBox.ButtonRole.AcceptRole)
+        def save_pipeline(run_after_save: bool = False) -> None:
             if steps.count() == 0:
                 QMessageBox.warning(dialog, "Pipeline", "Pipeline phải có ít nhất một Workshop.")
                 return
             pipeline_steps = []
             for index in range(steps.count()):
                 item = steps.item(index).data(Qt.ItemDataRole.UserRole)
-                pipeline_steps.append({"workshop_id": item.workshop_id, "workshop_name": item.menu_label or item.workshop_name, "workshop_version": item.version, "state": {}})
+                pipeline_steps.append({"workshop_id": item.workshop_id, "workshop_name": item.menu_label or item.workshop_name, "workshop_version": item.version, "state": self._capture_workshop_pipeline_state_qt(item.workshop_id)})
             try:
                 pipeline_id = self.pipeline_store.save(name.text(), pipeline_steps)
                 self.log.appendPlainText(f"Pipeline saved: {name.text()} ({pipeline_id})")
-                dialog.accept()
+                if run_after_save:
+                    pipeline = self.pipeline_store.get(pipeline_id)
+                    dialog.accept()
+                    if pipeline:
+                        self._run_pipeline_qt(pipeline)
+                else:
+                    dialog.accept()
             except Exception as exc:
                 QMessageBox.critical(dialog, "Pipeline", str(exc))
-        buttons.accepted.connect(save_pipeline)
+        buttons.accepted.connect(lambda: save_pipeline(False))
+        run_saved.clicked.connect(lambda: save_pipeline(True))
         buttons.rejected.connect(dialog.reject)
         root.addWidget(buttons)
         dialog.exec()
+
+    def _capture_workshop_pipeline_state_qt(self, workshop_id: str) -> dict[str, Any]:
+        payload = self._state_payload_qt()
+        return dict(payload.get(workshop_id) or {})
+
+    def _apply_pipeline_step_state_qt(self, workshop_id: str, state: dict[str, Any]) -> None:
+        if workshop_id == "layout":
+            self._restore_layout_state_qt(state)
+        elif workshop_id == "photo":
+            if hasattr(self, "photo_preset") and state.get("preset"):
+                index = self.photo_preset.findData(state["preset"])
+                if index >= 0:
+                    self.photo_preset.setCurrentIndex(index)
+            if hasattr(self, "photo_bg_mode"):
+                self.photo_bg_mode.setCurrentText(state.get("background_mode", self.photo_bg_mode.currentText()))
+                self.photo_bg_hex.setText(state.get("background_hex", self.photo_bg_hex.text()))
+            for key, value in (state.get("options") or {}).items():
+                control = getattr(self, f"photo_{key}", None)
+                if control is not None and hasattr(control, "setChecked"):
+                    control.setChecked(bool(value))
+        elif workshop_id == "repo_intake":
+            self._restore_repo_state_qt(state)
+
+    def _run_pipeline_qt(self, pipeline: dict[str, Any]) -> None:
+        steps = list(pipeline.get("steps") or [])
+        if not steps:
+            QMessageBox.information(self, "Pipeline", "Pipeline không có bước để chạy.")
+            return
+        self._pipeline_run = {"pipeline": pipeline, "steps": steps, "index": 0, "failed": False}
+        self.status_bar.showMessage(f"Đang chạy Pipeline: {pipeline.get('name', '')}", 4000)
+        self._run_next_pipeline_step_qt()
+
+    def _run_next_pipeline_step_qt(self) -> None:
+        run = getattr(self, "_pipeline_run", None)
+        if not run or run.get("failed"):
+            return
+        if run["index"] >= len(run["steps"]):
+            self.status_bar.showMessage("Pipeline hoàn tất", 5000)
+            self.log.appendPlainText("Pipeline completed successfully")
+            self._pipeline_run = None
+            return
+        step = run["steps"][run["index"]]
+        workshop_id = step["workshop_id"]
+        self._open_workshop_window(workshop_id)
+        self._apply_pipeline_step_state_qt(workshop_id, step.get("state") or {})
+        run["index"] += 1
+        if workshop_id == "layout":
+            self._run_layout_for_pipeline_qt()
+        elif workshop_id == "photo":
+            self._run_photo_for_pipeline_qt()
+        else:
+            self.log.appendPlainText(f"Pipeline step {workshop_id}: no executable Qt worker; step loaded")
+            QTimer.singleShot(0, self._run_next_pipeline_step_qt)
+
+    def _run_layout_for_pipeline_qt(self) -> None:
+        if not [p for p in getattr(self, "layout_sources", []) if Path(p).is_file()]:
+            self.log.appendPlainText("Pipeline Layout step skipped: no source image")
+            QTimer.singleShot(0, self._run_next_pipeline_step_qt)
+            return
+        self._run_layout()
+        QTimer.singleShot(100, self._poll_pipeline_worker_qt)
+
+    def _run_photo_for_pipeline_qt(self) -> None:
+        if not getattr(self, "_source_path", ""):
+            self.log.appendPlainText("Pipeline Photo step skipped: no source image")
+            QTimer.singleShot(0, self._run_next_pipeline_step_qt)
+            return
+        self._run_photo()
+        QTimer.singleShot(100, self._poll_pipeline_worker_qt)
+
+    def _poll_pipeline_worker_qt(self) -> None:
+        run = getattr(self, "_pipeline_run", None)
+        if not run:
+            return
+        active = self._layout_thread if run["steps"][run["index"] - 1]["workshop_id"] == "layout" else self._photo_thread
+        if active is not None and active.isRunning():
+            QTimer.singleShot(100, self._poll_pipeline_worker_qt)
+            return
+        QTimer.singleShot(0, self._run_next_pipeline_step_qt)
 
     def _show_text_dialog_qt(self, title: str, text: str, width: int = 720, height: int = 560) -> None:
         dialog = QDialog(self)
@@ -1374,9 +1509,17 @@ class QtNaChanceWindow(QMainWindow):
         self.quick_pipeline_list = QListWidget()
         self.quick_pipeline_list.itemDoubleClicked.connect(self._open_saved_pipeline_qt)
         quick_layout.addWidget(self.quick_pipeline_list)
-        refresh_pipelines = QPushButton("Refresh Pipelines")
+        pipeline_actions = QHBoxLayout()
+        load_pipeline = QPushButton("Nạp snapshot")
+        load_pipeline.clicked.connect(self._load_selected_pipeline_qt)
+        run_pipeline = QPushButton("Chạy Pipeline")
+        run_pipeline.clicked.connect(self._run_selected_pipeline_qt)
+        refresh_pipelines = QPushButton("Làm mới")
         refresh_pipelines.clicked.connect(self._refresh_quick_pipelines_qt)
-        quick_layout.addWidget(refresh_pipelines)
+        pipeline_actions.addWidget(load_pipeline)
+        pipeline_actions.addWidget(run_pipeline)
+        pipeline_actions.addWidget(refresh_pipelines)
+        quick_layout.addLayout(pipeline_actions)
         layout.addWidget(quick_group)
         self._refresh_quick_pipelines_qt()
         layout.addStretch(1)
@@ -1771,6 +1914,9 @@ class QtNaChanceWindow(QMainWindow):
         payload = result if isinstance(result, dict) else {}
         failed = payload.get("failed", [])
         inventory = payload.get("inventory", 0)
+        self._core_resource_paths = {str(key): str(value) for key, value in (payload.get("resolved") or {}).items() if value}
+        for window in self._workshop_windows.values():
+            window.core_resource_paths = dict(self._core_resource_paths)
         if failed:
             text = f"Core weight sync: {len(failed)} resource chưa sẵn sàng"
             self.status_label.setText(text)
@@ -1796,7 +1942,7 @@ class QtNaChanceWindow(QMainWindow):
                 previous.stop()
             self._managed_workshop_watcher = WorkshopWatcher(
                 PROJECT_ROOT / "workshops",
-                callback=lambda *_args: setattr(self, "_workshop_change_pending", True),
+                callback=lambda current=None, previous=None: (setattr(self, "_workshop_change_payload", (current, previous)), setattr(self, "_workshop_change_pending", True)),
                 interval=1.0,
             )
             self._managed_workshop_watcher.start()
@@ -1811,9 +1957,25 @@ class QtNaChanceWindow(QMainWindow):
         if not self._workshop_change_pending:
             return
         self._workshop_change_pending = False
-        self.status_label.setText("Managed Workshop thay đổi hoặc bị xóa — cần kiểm tra approval marker.")
-        self.status_bar.showMessage("Workshop trên đĩa đã thay đổi; phiên hiện tại chưa tự reload.", 6000)
-        self.log.appendPlainText("Managed Workshop changed; restart/reload is required to rebuild the session.")
+        current, previous = self._workshop_change_payload or ([], [])
+        current_map = {row[0]: row[1] for row in (current or [])}
+        previous_map = {row[0]: row[1] for row in (previous or [])}
+        added = sorted(set(current_map) - set(previous_map))
+        removed = sorted(set(previous_map) - set(current_map))
+        changed = sorted(name for name in set(current_map) & set(previous_map) if current_map[name] != previous_map[name])
+        parts = []
+        if added:
+            parts.append("thêm: " + ", ".join(added))
+        if removed:
+            parts.append("xóa: " + ", ".join(removed))
+        if changed:
+            parts.append("thay đổi: " + ", ".join(changed))
+        detail = " | ".join(parts) or "approval/resource snapshot thay đổi"
+        self.status_label.setText("Managed Workshop thay đổi — cần reload phiên.")
+        self.status_bar.showMessage(detail, 8000)
+        self.log.appendPlainText("Managed Workshop changed: " + detail)
+        if self._workshop_windows:
+            self.log.appendPlainText("Các cửa sổ đang mở được giữ nguyên; reload thủ công để áp dụng discovery mới.")
 
     def closeEvent(self, event) -> None:
         app = QApplication.instance()
@@ -1851,6 +2013,27 @@ class QtNaChanceWindow(QMainWindow):
         if self.quick_pipeline_list.count() == 0:
             self.quick_pipeline_list.addItem("Chưa có Pipeline nhanh.")
 
+    def _selected_pipeline_qt(self) -> dict[str, Any] | None:
+        if not hasattr(self, "quick_pipeline_list"):
+            return None
+        item = self.quick_pipeline_list.currentItem()
+        pipeline_id = item.data(Qt.ItemDataRole.UserRole) if item is not None else None
+        if pipeline_id is None:
+            return None
+        return self.pipeline_store.get(int(pipeline_id))
+
+    def _load_selected_pipeline_qt(self) -> None:
+        item = self.quick_pipeline_list.currentItem() if hasattr(self, "quick_pipeline_list") else None
+        if item is not None:
+            self._open_saved_pipeline_qt(item)
+
+    def _run_selected_pipeline_qt(self) -> None:
+        pipeline = self._selected_pipeline_qt()
+        if pipeline is None:
+            QMessageBox.information(self, "Pipeline", "Chọn một Pipeline trước.")
+            return
+        self._run_pipeline_qt(pipeline)
+
     def _open_saved_pipeline_qt(self, item: QListWidgetItem) -> None:
         pipeline_id = item.data(Qt.ItemDataRole.UserRole)
         if pipeline_id is None:
@@ -1864,7 +2047,24 @@ class QtNaChanceWindow(QMainWindow):
             return
         for step in pipeline["steps"]:
             self._open_workshop_window(step["workshop_id"])
+            self._apply_pipeline_step_state_qt(step["workshop_id"], step.get("state") or {})
         self.status_bar.showMessage(f"Đã nạp Pipeline: {pipeline['name']} (snapshot cấu hình được giữ nguyên).", 5000)
+
+    def _receive_workshop_input_qt(self, workshop_id: str, source_path: str) -> None:
+        if workshop_id == "photo":
+            self._source_path = source_path
+            if hasattr(self, "photo_input_label"):
+                self.photo_input_label.setText(source_path)
+            if hasattr(self, "photo_status"):
+                self.photo_status.setText(f"Đã nhận output từ Core: {source_path}")
+            return
+        if workshop_id == "layout":
+            self.layout_sources = [source_path]
+            if hasattr(self, "layout_source_label"):
+                self.layout_source_label.setText(source_path)
+            self._layout_live_preview_qt()
+            return
+        raise RuntimeError(f"Workshop {workshop_id} chưa khai báo receiver cho image.")
 
     def _refresh_exchange_targets_qt(self) -> None:
         if not hasattr(self, "exchange_target_combo"):
@@ -1895,12 +2095,6 @@ class QtNaChanceWindow(QMainWindow):
             QMessageBox.information(self, "Workshop Exchange", "Không có Workshop nào khai báo nhận ảnh.")
             return
         target = self._open_workshop_window(str(target_id))
-        if target_id == "photo" and hasattr(self, "photo_input_label"):
-            self._source_path = output
-            self.photo_input_label.setText(output)
-            self.photo_status.setText(f"Đã nhận output từ Core: {output}")
-            self.status_bar.showMessage("Core đã chuyển output tới Photo Workshop.", 4000)
-            return
         receiver = getattr(target, "receive_input", None)
         if callable(receiver):
             receiver(output)
@@ -2136,10 +2330,11 @@ class QtNaChanceWindow(QMainWindow):
         QMessageBox.critical(self, "Layout failed", trace.splitlines()[-1] if trace else "Unknown error")
 
     def _choose_photo_source(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Choose portrait", "", "Images (*.png *.jpg *.jpeg *.bmp)")
-        if path:
-            self._source_path = path
-            self.photo_input_label.setText(path)
+        paths, _ = QFileDialog.getOpenFileNames(self, "Choose portrait(s)", "", "Images (*.png *.jpg *.jpeg *.bmp)")
+        if paths:
+            self._photo_source_paths = list(paths)
+            self._source_path = paths[0]
+            self.photo_input_label.setText(paths[0] if len(paths) == 1 else f"{len(paths)} ảnh đã chọn — ảnh đầu: {Path(paths[0]).name}")
 
     def _sync_photo_menu_checks(self) -> None:
         for name, action in self._photo_menu_actions.items():
@@ -2229,6 +2424,69 @@ class QtNaChanceWindow(QMainWindow):
         panel.activateWindow()
         self.photo_preview_button.setText("Close Preview")
 
+    def _start_photo_orientation_queue_qt(self, paths: list[str]) -> None:
+        from PIL import Image
+        from PIL.ImageQt import ImageQt
+        if not paths:
+            return
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Confirm Orientations")
+        dialog.resize(560, 680)
+        root = QVBoxLayout(dialog)
+        title = QLabel()
+        preview = QLabel()
+        preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        root.addWidget(title)
+        root.addWidget(preview, 1)
+        controls = QHBoxLayout()
+        rotate_left = QPushButton("↶ 90°")
+        rotate_right = QPushButton("↷ 90°")
+        skip = QPushButton("Bỏ qua")
+        cancel = QPushButton("Hủy")
+        continue_button = QPushButton("Tiếp tục")
+        for button in (rotate_left, rotate_right, skip, cancel, continue_button):
+            controls.addWidget(button)
+        root.addLayout(controls)
+        state = {"index": 0, "angle": 0, "output": []}
+        self._photo_orientation_queue = state
+
+        def render() -> None:
+            try:
+                image = Image.open(paths[state["index"]]).convert("RGB")
+                rotated = image.rotate(-state["angle"], expand=True)
+                preview.setPixmap(QPixmap.fromImage(QImage(ImageQt(rotated))).scaled(500, 520, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                title.setText(f"Ảnh {state['index'] + 1}/{len(paths)}: {Path(paths[state['index']]).name}")
+            except (OSError, ValueError) as exc:
+                title.setText(str(exc))
+
+        def finish_current(save_current: bool) -> None:
+            if save_current:
+                image = Image.open(paths[state["index"]]).convert("RGB").rotate(-state["angle"], expand=True)
+                output = str(Path(os.getenv("TEMP", "/tmp")) / f"nachance_oriented_{os.getpid()}_{state['index']}_{abs(hash(paths[state['index']]))}.jpg")
+                image.save(output, quality=95)
+                state["output"].append(output)
+            state["index"] += 1
+            state["angle"] = 0
+            if state["index"] >= len(paths):
+                self._photo_orientation_queue = None
+                dialog.close()
+                if state["output"]:
+                    self._photo_source_paths = state["output"]
+                    self._source_path = state["output"][0]
+                    self.photo_input_label.setText(state["output"][0] if len(state["output"]) == 1 else f"{len(state['output'])} ảnh đã định hướng")
+                    self._run_photo()
+                return
+            render()
+
+        rotate_left.clicked.connect(lambda: (state.__setitem__("angle", (state["angle"] - 90) % 360), render()))
+        rotate_right.clicked.connect(lambda: (state.__setitem__("angle", (state["angle"] + 90) % 360), render()))
+        skip.clicked.connect(lambda: finish_current(False))
+        continue_button.clicked.connect(lambda: finish_current(True))
+        cancel.clicked.connect(dialog.close)
+        dialog.finished.connect(lambda _: setattr(self, "_photo_orientation_queue", None))
+        render()
+        dialog.show()
+
     def _confirm_photo_orientation_qt(self, source_path: str) -> str | None:
         from PIL import Image
         from PIL.ImageQt import ImageQt
@@ -2271,6 +2529,10 @@ class QtNaChanceWindow(QMainWindow):
             QMessageBox.warning(self, "Photo", "Choose a portrait first.")
             return
         source_path = self._source_path
+        selected_paths = list(self._photo_source_paths or [source_path])
+        if self.photo_confirm_orientation.isChecked() and len(selected_paths) > 1:
+            self._start_photo_orientation_queue_qt(selected_paths)
+            return
         if self.photo_confirm_orientation.isChecked():
             source_path = self._confirm_photo_orientation_qt(source_path)
             if not source_path:

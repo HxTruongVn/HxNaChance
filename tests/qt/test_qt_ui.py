@@ -14,6 +14,21 @@ from PySide6.QtWidgets import QApplication, QAbstractSpinBox, QGridLayout, QGrou
 from app.qt_ui import QtNaChanceWindow
 
 
+def test_qt_pipeline_capture_and_receiver_contract(tmp_path):
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    state = window._capture_workshop_pipeline_state_qt("layout")
+    assert isinstance(state, dict)
+    source = tmp_path / "input.png"
+    from PIL import Image
+    Image.new("RGB", (8, 8), (40, 80, 120)).save(source)
+    target = window._open_workshop_window("layout")
+    target.receive_input(str(source))
+    assert window.layout_sources == [str(source)]
+    window.close()
+    app.processEvents()
+
+
 def test_qt_window_exposes_main_workshop_tabs():
     app = QApplication.instance() or QApplication([])
     window = QtNaChanceWindow()

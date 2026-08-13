@@ -20,7 +20,7 @@
 - [x] Reproduce per-Workshop OPEN/CLOSE state and active-window indication
 - [x] Reproduce side-by-side Workshop windows and WindowManager placement/order
 - [x] Reproduce the main menu groups: File, Edit, Pipeline, Window, View, Tool, System, Help
-- [ ] Reproduce keyboard shortcuts and Workshop switching actions
+- [x] Reproduce keyboard shortcuts and Workshop switching actions
 - [x] Reproduce the main status/runtime report placement and visibility
 
 ## Multi-level UI parity correction
@@ -30,8 +30,8 @@
 - [x] Port separate Workshop windows instead of flattening all UI into host tabs
 - [x] Port nested side panels for orientation, result and Layout preview
 - [x] Preserve active workspace/window state and session ordering
-- [ ] Port context-sensitive menu/shortcut behavior at each display level
-- [ ] Port multi-level dialogs and About/Environment/Resource panels
+- [x] Port context-sensitive menu/shortcut behavior at each display level
+- [x] Port multi-level dialogs and About/Environment/Resource panels
 - [x] Add hierarchy tests for host, Workshop windows and side panels
 
 ## Layout parity correction
@@ -48,11 +48,11 @@
 ## UI parity correction
 
 - [x] Match the main window geometry, title bar and overall visual hierarchy
-- [ ] Port the full adaptive menu and keyboard shortcut behavior
-- [ ] Port theme switching and persisted theme selection
+- [x] Port the full adaptive menu and keyboard shortcut behavior
+- [x] Port theme switching and persisted theme selection
 - [x] Port left/right panels, workspace navigation and status areas
-- [ ] Port the full Photo, Layout and Repo Intake tab presentation
-- [ ] Port preview, orientation, saved-state and dialog interactions
+- [x] Port the full Photo, Layout and Repo Intake tab presentation
+- [x] Port preview, orientation, saved-state and dialog interactions
 - [ ] Compare Qt screenshots against the main UI before calling the port complete
 
 
@@ -67,9 +67,9 @@
 - [x] Add Repo Intake manifest view
 - [x] Add offscreen Qt smoke test
 - [x] Run main regression tests
-- [ ] Port remaining main UI actions and dialogs
-- [ ] Port adaptive menus and shortcuts with main behavior parity
-- [ ] Port orientation preview, side panels and saved-state dialogs
+- [x] Port remaining main UI actions and dialogs
+- [x] Port adaptive menus and shortcuts with main behavior parity
+- [x] Port orientation preview, side panels and saved-state dialogs
 - [ ] Validate full desktop flows on Windows/Linux with PySide6
 
 ## Native Qt and asset fidelity correction
@@ -84,13 +84,13 @@
 ## Full parity execution backlog
 
 - [x] Implement theme loading, grouping, live switching, persistence, and injection
-- [ ] Implement adaptive File/Edit/Pipeline/Window/View/Tool/System/Help menus from main
-- [ ] Connect ContextCommandRouter providers to Qt actions and context-sensitive enablement
+- [x] Implement adaptive File/Edit/Pipeline/Window/View/Tool/System/Help menus from main
+- [x] Connect ContextCommandRouter providers to Qt actions and context-sensitive enablement
 - [x] Implement all main keyboard shortcuts and workshop navigation semantics
 - [x] Complete WindowManager focus, native close cleanup, active state, ordering, and placement
-- [ ] Port Core Resource Compatibility, Workshop Requirements, Environment Report, and About dialogs
-- [ ] Port Pipeline Builder and Workshop exchange entry points
-- [ ] Complete Layout menu, orientation/state dialogs, preview and save-state interactions
+- [x] Port Core Resource Compatibility, Workshop Requirements, Environment Report, and About dialogs
+- [x] Port Pipeline Builder and Workshop exchange entry points
+- [x] Complete Layout menu, orientation/state dialogs, preview and save-state interactions
 - [x] Complete Photo controls, preview/orientation panels, and processing options
 - [x] Complete Repo Intake folder/ZIP intake, dossier, resources, scaffold, contract tests, and approval flow
 - [x] Implement config/state persistence, watcher updates, missing-workshop notices, and cancellation
@@ -128,7 +128,7 @@
 
 - [x] Extract every main keyboard binding, menu accelerator, mouse/keyboard combination, and context rule
 - [x] Compare all extracted bindings against Qt actions and QShortcuts
-- [ ] Port missing Core, Workshop, Pipeline, Layout, Photo, panel, dialog, and text-input shortcuts
+- [x] Port missing Core, Workshop, Pipeline, Layout, Photo, panel, dialog, and text-input shortcuts
 - [x] Preserve Alt menu mnemonics and Ctrl/Alt/Shift combinations without collisions
 - [x] Make Layout preset quantity fields wide enough to display values clearly
 - [x] Define selected-preset keyboard adjustment for increase/decrease quantity
@@ -175,7 +175,7 @@
 - [x] Split Layout Điều chỉnh into three clear sub-sections while preserving all config fields
 - [x] Trace why a Shop does not automatically request/download missing weights
 - [x] Compare Qt startup/resource flow with main RuntimeManager and Model Registry flow
-- [ ] Restore automatic weight/resource loading only through the canonical resource contract
+- [x] Restore automatic weight/resource loading only through the canonical resource contract
 - [x] Add tests for adjustment layout and Core weight intake/hash lifecycle
 
 
@@ -184,8 +184,8 @@
 - [x] Keep Layout Điều chỉnh as three side-by-side sections on one row, with responsive minimum widths
 - [x] Document that Shops never own the canonical weight store or downloader
 - [x] Make Core intake any Shop-supplied weight, hash it with SHA-256, and register it centrally
-- [ ] Make Core resolve/download/cache missing weights from canonical resource manifests
-- [ ] Make Shops expose only resource requirements and consume Core-provided resolved paths
+- [x] Make Core resolve/download/cache missing weights from canonical resource manifests
+- [x] Make Shops expose only resource requirements and consume Core-provided resolved paths
 - [x] Add tests proving Shop weight files are submitted/hashed by Core before use
 
 
@@ -211,7 +211,7 @@
 - [x] Report checking, skipped-existing, downloading, verifying, ready, and failed states
 - [x] Download only resources absent from the canonical Core store
 - [x] Verify SHA-256 before registering each downloaded resource
-- [ ] Let Workshops consume resolved Core resources after sync completes
+- [x] Let Workshops consume resolved Core resources after sync completes
 - [x] Add deterministic worker tests with mocked downloader and no-redownload assertions
 
 
