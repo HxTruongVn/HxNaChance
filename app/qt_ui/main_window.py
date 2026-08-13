@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QCheckBox,
     QFormLayout,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -27,6 +28,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
+    QSplitter,
     QSpinBox,
     QTabWidget,
     QVBoxLayout,
@@ -137,43 +139,217 @@ class QtNaChanceWindow(QMainWindow):
         self._photo_thread: QThread | None = None
         self._photo_worker: _PhotoWorker | None = None
         self._source_path = ""
+        self._theme = {
+            "bg": "#111827",
+            "surface": "#1f2937",
+            "surface2": "#374151",
+            "border": "#4b5563",
+            "text": "#f9fafb",
+            "muted": "#9ca3af",
+            "accent": "#3b82f6",
+            "accent_hover": "#60a5fa",
+            "success": "#22c55e",
+            "danger": "#ef4444",
+        }
         self._build_actions()
         self._build_ui()
         self._load_runtime_report()
 
     def _build_actions(self) -> None:
         file_menu = self.menuBar().addMenu("File")
+        open_action = QAction("Open image…", self)
+        open_action.setShortcut("Ctrl+O")
+        open_action.triggered.connect(self._choose_photo_source)
+        file_menu.addAction(open_action)
+        file_menu.addSeparator()
         exit_action = QAction("Exit", self)
         exit_action.setShortcut("Ctrl+Q")
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
-        view_menu = self.menuBar().addMenu("View")
+        edit_menu = self.menuBar().addMenu("Edit")
         refresh_action = QAction("Refresh runtime", self)
         refresh_action.setShortcut("F5")
         refresh_action.triggered.connect(self._load_runtime_report)
-        view_menu.addAction(refresh_action)
+        edit_menu.addAction(refresh_action)
+
+        view_menu = self.menuBar().addMenu("View")
+        self.inspector_action = QAction("Inspector", self)
+        self.inspector_action.setCheckable(True)
+        self.inspector_action.setChecked(True)
+        self.inspector_action.triggered.connect(self._toggle_inspector)
+        view_menu.addAction(self.inspector_action)
+
+        window_menu = self.menuBar().addMenu("Window")
+        for index, label in enumerate(("Core", "Layout", "Photo", "Repo Intake")):
+            action = QAction(label, self)
+            action.triggered.connect(lambda checked=False, i=index: self._select_tab(i))
+            window_menu.addAction(action)
+
+        system_menu = self.menuBar().addMenu("System")
+        report_action = QAction("Show environment report", self)
+        report_action.triggered.connect(self._load_runtime_report)
+        system_menu.addAction(report_action)
+
+        help_menu = self.menuBar().addMenu("Help")
+        about_action = QAction("About NaChance", self)
+        about_action.triggered.connect(self._show_about)
+        help_menu.addAction(about_action)
 
     def _build_ui(self) -> None:
+        self.setStyleSheet(self._stylesheet())
         root = QWidget(self)
         root_layout = QVBoxLayout(root)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
         self.setCentralWidget(root)
 
+        root_layout.addWidget(self._build_title_bar())
         self.status_label = QLabel("Starting Core…")
         self.status_label.setObjectName("statusLabel")
-        root_layout.addWidget(self.status_label)
 
         self.tabs = QTabWidget()
+        self.tabs.tabBar().hide()
         self.tabs.addTab(self._build_home_tab(), "Core")
         self.tabs.addTab(self._build_layout_tab(), "Layout")
         self.tabs.addTab(self._build_photo_tab(), "Photo")
         self.tabs.addTab(self._build_repo_intake_tab(), "Repo Intake")
-        root_layout.addWidget(self.tabs, 1)
 
+        splitter = QSplitter()
+        splitter.setObjectName("mainSplitter")
+        splitter.addWidget(self._build_navigation())
+        splitter.addWidget(self.tabs)
+        self.inspector_panel = self._build_inspector()
+        splitter.addWidget(self.inspector_panel)
+        splitter.setSizes([210, 720, 280])
+        root_layout.addWidget(splitter, 1)
+        root_layout.addWidget(self.status_label)
+
+        self.status_bar = self.statusBar()
+        self.status_bar.showMessage("Core is starting…")
+
+    def _build_title_bar(self) -> QWidget:
+        bar = QFrame()
+        bar.setObjectName("titleBar")
+        row = QHBoxLayout(bar)
+        row.setContentsMargins(16, 8, 12, 8)
+        brand = QLabel("NaChance")
+        brand.setObjectName("brandLabel")
+        row.addWidget(brand)
+        self.workspace_label = QLabel("CORE / HOME")
+        self.workspace_label.setObjectName("workspaceLabel")
+        row.addWidget(self.workspace_label)
+        row.addStretch(1)
+        self.quick_run = QPushButton("Run")
+        self.quick_run.setObjectName("primaryButton")
+        self.quick_run.setEnabled(False)
+        row.addWidget(self.quick_run)
+        return bar
+
+    def _build_navigation(self) -> QWidget:
+        panel = QFrame()
+        panel.setObjectName("navigationPanel")
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(12, 16, 12, 12)
+        heading = QLabel("WORKSPACES")
+        heading.setObjectName("sectionLabel")
+        layout.addWidget(heading)
+        self.nav_buttons: list[QPushButton] = []
+        for index, label in enumerate(("Core Home", "Layout Workshop", "Photo Workshop", "Repo Intake")):
+            button = QPushButton(label)
+            button.setCheckable(True)
+            button.setObjectName("navButton")
+            button.clicked.connect(lambda checked=False, i=index: self._select_tab(i))
+            layout.addWidget(button)
+            self.nav_buttons.append(button)
+        self.nav_buttons[0].setChecked(True)
+        layout.addSpacing(18)
+        heading = QLabel("WORKSHOPS")
+        heading.setObjectName("sectionLabel")
+        layout.addWidget(heading)
+        self.nav_workshops = QLabel("Discovering…")
+        self.nav_workshops.setWordWrap(True)
+        self.nav_workshops.setObjectName("mutedLabel")
+        layout.addWidget(self.nav_workshops)
+        layout.addStretch(1)
+        self.core_mode_label = QLabel("Lite mode ready")
+        self.core_mode_label.setObjectName("modeBadge")
+        layout.addWidget(self.core_mode_label)
+        return panel
+
+    def _build_inspector(self) -> QWidget:
+        panel = QFrame()
+        panel.setObjectName("inspectorPanel")
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(14, 16, 14, 12)
+        title = QLabel("INSPECTOR")
+        title.setObjectName("sectionLabel")
+        layout.addWidget(title)
+        self.inspector_title = QLabel("Core status")
+        self.inspector_title.setObjectName("panelTitle")
+        layout.addWidget(self.inspector_title)
+        self.inspector_details = QLabel("Runtime and Workshop state")
+        self.inspector_details.setWordWrap(True)
+        self.inspector_details.setObjectName("mutedLabel")
+        layout.addWidget(self.inspector_details)
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setObjectName("separator")
+        layout.addWidget(separator)
+        log_title = QLabel("EVENT LOG")
+        log_title.setObjectName("sectionLabel")
+        layout.addWidget(log_title)
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setMaximumBlockCount(1000)
-        root_layout.addWidget(self.log)
+        layout.addWidget(self.log, 1)
+        return panel
+
+    def _stylesheet(self) -> str:
+        c = self._theme
+        return f"""
+        QMainWindow, QWidget {{ background: {c['bg']}; color: {c['text']}; font-size: 13px; }}
+        QMenuBar {{ background: {c['surface']}; color: {c['text']}; padding: 4px 8px; border-bottom: 1px solid {c['border']}; }}
+        QMenuBar::item:selected, QMenu::item:selected {{ background: {c['surface2']}; }}
+        QMenu {{ background: {c['surface']}; color: {c['text']}; border: 1px solid {c['border']}; }}
+        QMenu::item {{ padding: 7px 24px; }}
+        #titleBar {{ background: {c['surface']}; border-bottom: 1px solid {c['border']}; }}
+        #brandLabel {{ color: {c['accent_hover']}; font-size: 20px; font-weight: 700; }}
+        #workspaceLabel, #sectionLabel {{ color: {c['muted']}; font-size: 11px; font-weight: 700; letter-spacing: 1px; }}
+        #navigationPanel, #inspectorPanel {{ background: {c['surface']}; border: 1px solid {c['border']}; }}
+        #navButton {{ text-align: left; padding: 10px 12px; border: 1px solid transparent; border-radius: 6px; color: {c['text']}; }}
+        #navButton:hover {{ background: {c['surface2']}; }}
+        #navButton:checked {{ background: {c['accent']}; color: white; }}
+        #primaryButton, QPushButton {{ background: {c['accent']}; color: white; border: none; border-radius: 6px; padding: 8px 14px; }}
+        QPushButton:hover {{ background: {c['accent_hover']}; }}
+        QPushButton:disabled {{ background: {c['surface2']}; color: {c['muted']}; }}
+        QLineEdit, QComboBox, QSpinBox, QPlainTextEdit {{ background: {c['bg']}; color: {c['text']}; border: 1px solid {c['border']}; border-radius: 5px; padding: 6px; }}
+        QGroupBox {{ border: 1px solid {c['border']}; border-radius: 8px; margin-top: 12px; padding: 12px; }}
+        QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 4px; color: {c['accent_hover']}; }}
+        #panelTitle {{ font-size: 16px; font-weight: 600; }}
+        #mutedLabel {{ color: {c['muted']}; }}
+        #modeBadge {{ color: {c['success']}; padding: 6px; border: 1px solid {c['success']}; border-radius: 5px; }}
+        #statusLabel {{ background: {c['surface']}; color: {c['muted']}; padding: 5px 12px; border-top: 1px solid {c['border']}; }}
+        #separator {{ color: {c['border']}; }}
+        QSplitter::handle {{ background: {c['border']}; }}
+        """
+
+    def _select_tab(self, index: int) -> None:
+        self.tabs.setCurrentIndex(index)
+        for i, button in enumerate(self.nav_buttons):
+            button.setChecked(i == index)
+        labels = ("CORE / HOME", "WORKSHOP / LAYOUT", "WORKSHOP / PHOTO", "WORKSHOP / REPO INTAKE")
+        self.workspace_label.setText(labels[index])
+
+    def _toggle_inspector(self, checked: bool) -> None:
+        self.inspector_panel.setVisible(checked)
+
+    def _show_about(self) -> None:
+        QMessageBox.about(
+            self,
+            "About NaChance",
+            "NaChance — Qt desktop frontend\\n\\nLogic and Workshop engines are reused from the main application.",
+        )
 
     def _build_home_tab(self) -> QWidget:
         page = QWidget()
@@ -269,7 +445,10 @@ class QtNaChanceWindow(QMainWindow):
         try:
             workshops = discover_workshops(PROJECT_ROOT / "workshops", load_ui=False)
             rows = [f"{item.workshop_id} {item.version}" for item in workshops]
-            self.workshop_label.setText("Discovered Workshops: " + (", ".join(rows) or "none"))
+            workshop_text = ", ".join(rows) or "none"
+            self.workshop_label.setText("Discovered Workshops: " + workshop_text)
+            self.nav_workshops.setText(workshop_text)
+            self.inspector_details.setText(f"{len(workshops)} Workshop(s) discovered\\n{workshop_text}")
             self.log.appendPlainText(f"Discovered {len(workshops)} Workshop(s).")
         except Exception:
             self.workshop_label.setText("Discovered Workshops: unavailable")
@@ -280,11 +459,14 @@ class QtNaChanceWindow(QMainWindow):
             manager.ensure_weights_dir()
             report = manager.detect()
             self.runtime_label.setText(report.summary_text())
-            self.status_label.setText(
+            ready_text = (
                 "Core READY — Lite/Compatibility mode; missing Workshop dependencies are isolated."
                 if not report.can_run_full_ai
                 else "Core READY — Full runtime available."
             )
+            self.status_label.setText(ready_text)
+            self.status_bar.showMessage(ready_text)
+            self.core_mode_label.setText("Lite mode ready" if not report.can_run_full_ai else "Full runtime ready")
         except Exception:
             self.status_label.setText("Core startup failed; Workshop discovery remains available")
             self.runtime_label.setText("Runtime report unavailable")
