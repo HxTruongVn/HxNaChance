@@ -204,3 +204,13 @@
 - [x] Reject missing, malformed, or mismatched checksum before canonical registration
 - [x] Add tests for valid, missing, malformed, and mismatched download checksums
 
+
+## Core background automatic weight synchronization
+
+- [x] Start Core-owned background sync after startup without blocking the UI
+- [x] Report checking, skipped-existing, downloading, verifying, ready, and failed states
+- [x] Download only resources absent from the canonical Core store
+- [x] Verify SHA-256 before registering each downloaded resource
+- [ ] Let Workshops consume resolved Core resources after sync completes
+- [x] Add deterministic worker tests with mocked downloader and no-redownload assertions
+

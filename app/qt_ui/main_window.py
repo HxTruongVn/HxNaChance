@@ -152,6 +152,24 @@ class _LayoutWorker(QObject):
             self.failed.emit(traceback.format_exc())
 
 
+class _WeightSyncWorker(QObject):
+    finished = Signal(object)
+    failed = Signal(str)
+
+    def __init__(self, project_root: Path) -> None:
+        super().__init__()
+        self.project_root = project_root
+
+    def run(self) -> None:
+        try:
+            from setup.weight_manager import CoreWeightManager
+            manager = CoreWeightManager(self.project_root)
+            failed = manager.sync_declared_resources()
+            self.finished.emit({"inventory": len(manager.inventory()), "failed": failed})
+        except Exception as exc:
+            self.failed.emit(str(exc))
+
+
 class QtWorkshopWindow(QMainWindow):
     """Separate Qt window for one Workshop, mirroring main's CTkToplevel host."""
 
@@ -302,6 +320,8 @@ class QtNaChanceWindow(QMainWindow):
         self._photo_engine: Any = None
         self._photo_thread: QThread | None = None
         self._photo_worker: _PhotoWorker | None = None
+        self._weight_thread: QThread | None = None
+        self._weight_worker: _WeightSyncWorker | None = None
         self._source_path = ""
         self._workshop_windows: dict[str, QtWorkshopWindow] = {}
         self._side_panel_windows: dict[str, QtSidePanelWindow] = {}
@@ -1689,6 +1709,42 @@ class QtNaChanceWindow(QMainWindow):
         outer.addWidget(scroll)
         return page
 
+    def _start_core_weight_sync(self) -> None:
+        if self._weight_thread is not None and self._weight_thread.isRunning():
+            return
+        self.status_bar.showMessage("Core đang kiểm tra kho weight…")
+        self._weight_thread = QThread(self)
+        self._weight_worker = _WeightSyncWorker(PROJECT_ROOT)
+        self._weight_worker.moveToThread(self._weight_thread)
+        self._weight_thread.started.connect(self._weight_worker.run)
+        self._weight_worker.finished.connect(self._on_core_weight_sync_finished)
+        self._weight_worker.failed.connect(self._on_core_weight_sync_failed)
+        self._weight_worker.finished.connect(self._weight_thread.quit)
+        self._weight_worker.failed.connect(self._weight_thread.quit)
+        self._weight_thread.finished.connect(self._weight_thread.deleteLater)
+        self._weight_thread.start()
+
+    def _on_core_weight_sync_finished(self, result: object) -> None:
+        payload = result if isinstance(result, dict) else {}
+        failed = payload.get("failed", [])
+        inventory = payload.get("inventory", 0)
+        if failed:
+            text = f"Core weight sync: {len(failed)} resource chưa sẵn sàng"
+            self.status_label.setText(text)
+            self.status_bar.showMessage(text)
+            self.log.appendPlainText(f"Core weight sync failed: {failed}")
+        else:
+            text = f"Core weight store ready: {inventory} resource(s) verified"
+            self.status_label.setText(text)
+            self.status_bar.showMessage(text)
+            self.log.appendPlainText(text)
+
+    def _on_core_weight_sync_failed(self, message: str) -> None:
+        text = f"Core weight sync blocked: {message}"
+        self.status_label.setText(text)
+        self.status_bar.showMessage(text)
+        self.log.appendPlainText(text)
+
     def _start_workshop_watcher_qt(self) -> None:
         try:
             from app.workshop_watcher import WorkshopWatcher
@@ -1717,6 +1773,11 @@ class QtNaChanceWindow(QMainWindow):
         self.log.appendPlainText("Managed Workshop changed; restart/reload is required to rebuild the session.")
 
     def closeEvent(self, event) -> None:
+        weight_thread = getattr(self, "_weight_thread", None)
+        if weight_thread is not None and weight_thread.isRunning():
+            weight_thread.requestInterruption()
+            weight_thread.quit()
+            weight_thread.wait(3000)
         watcher = getattr(self, "_managed_workshop_watcher", None)
         if watcher is not None:
             watcher.stop()
@@ -1828,6 +1889,7 @@ class QtNaChanceWindow(QMainWindow):
             self.status_label.setText(ready_text)
             self.status_bar.showMessage(ready_text)
             self.core_mode_label.setText("Lite mode ready" if not report.can_run_full_ai else "Full runtime ready")
+            self._start_core_weight_sync()
         except Exception:
             self.status_label.setText("Core startup failed; Workshop discovery remains available")
             self.runtime_label.setText("Runtime report unavailable")
