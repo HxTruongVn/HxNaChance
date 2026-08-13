@@ -492,6 +492,35 @@ class QtNaChanceWindow(QMainWindow):
         except OSError as exc:
             QMessageBox.critical(self, "Save State", str(exc))
 
+    def _restore_layout_state_qt(self, payload: dict[str, Any]) -> None:
+        if not hasattr(self, "layout_cfg_vars"):
+            return
+        for key, value in payload.items():
+            field = self.layout_cfg_vars.get(key)
+            if field is not None and key not in {"presets"}:
+                field.setText(str(value))
+        for key, preset in (payload.get("presets") or {}).items():
+            controls = self.layout_preset_vars.get(key)
+            if controls is None:
+                continue
+            count = int(preset.get("count", 0))
+            controls["count"].setValue(max(0, count))
+            controls["chk"].setChecked(count > 0)
+        self._layout_controls_changed()
+
+    def _restore_repo_state_qt(self, payload: dict[str, Any]) -> None:
+        if hasattr(self, "repo_source"):
+            self.repo_source.setText(str(payload.get("source", "")))
+        for key, value in (payload.get("profile") or {}).items():
+            field = getattr(self, "repo_profile_fields", {}).get(key)
+            if field is not None:
+                field.setText(str(value))
+        plan = payload.get("plan")
+        if hasattr(self, "repo_plan") and plan is not None:
+            index = self.repo_plan.findData(plan)
+            if index >= 0:
+                self.repo_plan.setCurrentIndex(index)
+
     def _open_saved_state_qt(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, "Open Saved State", "", "NaChance State (*.nachance-state *.json)")
         if not path:
@@ -509,6 +538,14 @@ class QtNaChanceWindow(QMainWindow):
             if hasattr(self, "photo_bg_mode"):
                 self.photo_bg_mode.setCurrentText(photo.get("background_mode", self.photo_bg_mode.currentText()))
                 self.photo_bg_hex.setText(photo.get("background_hex", self.photo_bg_hex.text()))
+                for key, value in (photo.get("options") or {}).items():
+                    control = getattr(self, f"photo_{key}", None)
+                    if control is not None and hasattr(control, "setChecked"):
+                        control.setChecked(bool(value))
+            if payload.get("layout"):
+                self._restore_layout_state_qt(payload["layout"])
+            if payload.get("repo_intake"):
+                self._restore_repo_state_qt(payload["repo_intake"])
             self.status_bar.showMessage(f"Đã mở state: {path}", 4000)
         except (OSError, ValueError, TypeError) as exc:
             QMessageBox.critical(self, "Open State", str(exc))

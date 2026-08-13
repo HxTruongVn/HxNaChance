@@ -164,10 +164,10 @@
 
 | Hạng mục | Nguồn main | Qt hiện tại | Trạng thái |
 |---|---|---|---|
-| Config load/save | `_load_config`, `_save_config` | Theme config dùng cùng `~/.nachance_ai.json`; state có file riêng | Một phần | Nạp đầy đủ save_dir và Workshop config |
+| Config load/save | `_load_config`, `_save_config` | Theme dùng `~/.nachance_ai.json`; state lưu/restore Layout, Photo, Repo Intake payload | Một phần | Nạp đầy đủ save_dir và canonical Workshop config |
 | Theme persistence | ThemeMixin | Qt đọc/ghi `~/.nachance_ai.json`, live apply child windows | Một phần | Hoàn thiện busy/orientation block và startup isolation test |
-| Layout state persistence | Layout UI/config | Một phần | Thiếu |
-| Photo state persistence | Photo UI/config | Một phần | Thiếu |
+| Layout state persistence | Layout UI/config | Qt state payload lưu và restore numeric config/preset counts | Một phần | Tương thích công thức/custom đầy đủ và file format main |
+| Photo state persistence | Photo UI/config | Qt state payload lưu và restore preset/background/options | Một phần | Restore source/history/output document đầy đủ |
 | Saved `.nachance-state` | `Document.save_state` | Qt state JSON lưu theme, active Workshop, Layout, Photo, Repo Intake | Một phần | Tương thích đầy đủ với Document format của main |
 | Watcher changes | `WorkshopWatcher` | Qt khởi động/dừng watcher, UI status flush bằng QTimer | Một phần | Thêm added/removed detail và reload action |
 | Missing Workshop notification | `_show_workshop_change_status` | Chưa port | Thiếu |
