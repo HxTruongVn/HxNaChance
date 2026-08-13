@@ -46,6 +46,8 @@ from PySide6.QtWidgets import (
 )
 
 from app.workshop_discovery import discover_workshops
+from app.commands.context import CommandContext, ContextCommandRouter, WorkspaceKind
+from app.commands.providers import CoreCommandProvider, PipelineCommandProvider, WorkshopCommandProvider
 from setup.runtime_manager import RuntimeManager
 from workshops.layout.print_layout import (
     DEFAULT_LAYOUT_CONFIG,
@@ -258,6 +260,9 @@ class QtNaChanceWindow(QMainWindow):
         self._theme_actions: dict[str, QAction] = {}
         self._managed_workshop_watcher = None
         self._workshop_change_pending = False
+        self._command_router = ContextCommandRouter([
+            PipelineCommandProvider(), WorkshopCommandProvider(), CoreCommandProvider()
+        ])
         self._discovered_workshops = discover_workshops(PROJECT_ROOT / "workshops", load_ui=False)
         from app.pipeline_store import PipelineStore
         self.pipeline_store = PipelineStore(PROJECT_ROOT / "data" / "pipelines.db")
@@ -284,9 +289,9 @@ class QtNaChanceWindow(QMainWindow):
 
         edit_menu = self.menuBar().addMenu("Edit")
         for label, shortcut, handler in (
-            ("Undo", "Ctrl+Z", self._undo_qt),
-            ("Redo", "Ctrl+Y", self._redo_qt),
-            ("Save", "Ctrl+S", self._save_state_qt),
+            ("Undo", "Ctrl+Z", lambda: self._dispatch_context_command("edit.undo", self._undo_qt)),
+            ("Redo", "Ctrl+Y", lambda: self._dispatch_context_command("edit.redo", self._redo_qt)),
+            ("Save", "Ctrl+S", lambda: self._dispatch_context_command("file.save", self._save_state_qt)),
         ):
             action = QAction(label, self)
             action.setShortcut(shortcut)
@@ -387,6 +392,23 @@ class QtNaChanceWindow(QMainWindow):
 
     def _noop_context_action(self) -> None:
         self.log.appendPlainText("Command is reserved for the active Core/Workshop context.")
+
+    def _current_command_context(self) -> CommandContext:
+        workshop_id = self._active_workshop_id
+        target = self._workshop_windows.get(workshop_id or "")
+        if workshop_id:
+            kind = WorkspaceKind.PIPELINE if workshop_id == "pipeline" else WorkspaceKind.WORKSHOP
+            return CommandContext(kind=kind, workspace_id=workshop_id, target=target, metadata={"host": self})
+        return CommandContext(kind=WorkspaceKind.CORE, workspace_id="core", target=self, metadata={"host": self})
+
+    def _dispatch_context_command(self, command_id: str, fallback=None) -> None:
+        context = self._current_command_context()
+        command = self._command_router.resolve(command_id, context)
+        if command is not None and command.is_enabled():
+            command.execute()
+            return
+        if callable(fallback):
+            fallback()
 
     def _undo_qt(self) -> None:
         target = self._workshop_windows.get(self._active_workshop_id or "")

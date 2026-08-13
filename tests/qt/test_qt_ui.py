@@ -6,7 +6,7 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 PySide6 = pytest.importorskip("PySide6")
-from PySide6.QtWidgets import QApplication, QPushButton
+from PySide6.QtWidgets import QApplication, QMenu, QPushButton
 
 from app.qt_ui import QtNaChanceWindow
 
@@ -87,6 +87,24 @@ def test_qt_state_payload_contains_shared_workshop_state():
     assert payload["theme"] == window._theme_name
     assert payload["active_workshop"] == "photo"
     assert payload["photo"]["options"]["face_restore_fidelity"] == 0.64
+    window.close()
+    app.processEvents()
+
+
+def test_qt_menu_hierarchy_and_shortcuts_match_main():
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    menus = [action.text().replace("&", "") for action in window.menuBar().actions()]
+    assert menus[:7] == ["File", "Edit", "Pipeline", "Window", "View", "Tool", "Help"]
+    menus_by_title = {menu.title().replace("&", ""): menu for menu in window.findChildren(QMenu)}
+    view = menus_by_title["View"]
+    assert "Theme" in [action.text().replace("&", "") for action in view.actions()]
+    window_menu = menus_by_title["Window"]
+    workshop_cascades = [action.text().replace("&", "") for action in window_menu.actions() if action.menu() is not None]
+    assert any("layout" in text.lower() for text in workshop_cascades)
+    shortcuts = {action.text().replace("&", ""): action.shortcut().toString() for action in window_menu.actions()}
+    assert shortcuts["Next Workshop"] == "Ctrl+Tab"
+    assert shortcuts["Close active Workshop"] == "Ctrl+W"
     window.close()
     app.processEvents()
 

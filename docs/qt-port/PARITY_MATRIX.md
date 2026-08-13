@@ -53,20 +53,20 @@
 | System | `_menu_system` dưới Tool | Qt có Tool → System với report/reload/resource actions | Một phần | Giữ settings, watcher, runtime actions |
 | Help | `_menu_help` | About cơ bản | Một phần | About, docs, Workshop About, environment report |
 | Dynamic Workshop menu | manifest `menu_build_method` | Window menu lấy `menu_label` từ metadata discovery | Một phần | Gọi menu_build_method riêng của từng Workshop |
-| Menu rebuild state | `_popup_menu` builds each open | Native Qt static actions | Thiếu | Enabled/checked state cập nhật theo active context |
+| Menu rebuild state | `_popup_menu` builds each open | Qt menu hierarchy có Theme/Workshop cascades; action context dispatch đã nối | Một phần | Rebuild enabled/checked state khi active context đổi |
 
 ## Tầng 4 — Keyboard shortcuts và context
 
 | Hạng mục | Nguồn main | Qt hiện tại | Trạng thái | Điều kiện đạt |
 |---|---|---|---|---|
 | Ctrl+O | `_shortcut_open` | Có File Open | Một phần | Mở active Workshop theo context |
-| Ctrl+S | `_shortcut_save_state` | Placeholder | Thiếu | Không chặn text input, lưu state thật |
-| Ctrl+Z/Ctrl+Y | `_shortcut_undo/redo` | Placeholder | Thiếu | Route tới active document/pipeline/Workshop |
-| Ctrl+R | `_shortcut_run` | RUN log | Thiếu | Route `pipeline.run` hoặc `workshop.run` thật |
+| Ctrl+S | `_shortcut_save_state` | Save state thật qua `_save_state_qt` và ContextCommandRouter fallback | Một phần | Không chặn text input và tương thích format main |
+| Ctrl+Z/Ctrl+Y | `_shortcut_undo/redo` | ContextCommandRouter + active Workshop fallback | Một phần | Route document/pipeline history thật |
+| Ctrl+R | `_shortcut_run` | Qt host RUN/Workshop run route | Một phần | Route `pipeline.run` hoặc `workshop.run` theo context |
 | Ctrl+` / Ctrl+Shift+` | Workshop navigation | Có Next/Previous khác phím | Một phần | Giữ đúng phím main và session order |
 | Alt+menu key | menu bar custom | Native Qt mnemonic | Một phần | Kiểm tra parity trên Windows |
-| Context resolution | `ContextCommandRouter` | Chưa dùng đầy đủ | Thiếu | TEXT_INPUT → PIPELINE → WORKSHOP → CORE |
-| Enable/disable command | providers | Có action tĩnh | Thiếu | Recompute theo focus/active window |
+| Context resolution | `ContextCommandRouter` | Qt router chọn PIPELINE/WORKSHOP/CORE context, metadata host | Một phần | Thêm TEXT_INPUT và focused widget |
+| Enable/disable command | providers | Dispatch kiểm tra `is_enabled`; menu action vẫn cần refresh động | Một phần | Recompute theo focus/active window |
 
 ## Tầng 5 — Core host launcher/session
 
@@ -165,11 +165,11 @@
 | Hạng mục | Nguồn main | Qt hiện tại | Trạng thái |
 |---|---|---|---|
 | Config load/save | `_load_config`, `_save_config` | Theme config dùng cùng `~/.nachance_ai.json`; state có file riêng | Một phần | Nạp đầy đủ save_dir và Workshop config |
-| Theme persistence | ThemeMixin | Chưa có | Thiếu |
+| Theme persistence | ThemeMixin | Qt đọc/ghi `~/.nachance_ai.json`, live apply child windows | Một phần | Hoàn thiện busy/orientation block và startup isolation test |
 | Layout state persistence | Layout UI/config | Một phần | Thiếu |
 | Photo state persistence | Photo UI/config | Một phần | Thiếu |
 | Saved `.nachance-state` | `Document.save_state` | Qt state JSON lưu theme, active Workshop, Layout, Photo, Repo Intake | Một phần | Tương thích đầy đủ với Document format của main |
-| Watcher changes | `WorkshopWatcher` | Chưa port | Thiếu |
+| Watcher changes | `WorkshopWatcher` | Qt khởi động/dừng watcher, UI status flush bằng QTimer | Một phần | Thêm added/removed detail và reload action |
 | Missing Workshop notification | `_show_workshop_change_status` | Chưa port | Thiếu |
 | Worker cancellation | main workers/timers | Chưa đầy đủ | Thiếu |
 
