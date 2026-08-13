@@ -15,6 +15,10 @@ from pathlib import Path
 from typing import Any, Callable, Iterable
 
 
+class WeightConflictError(RuntimeError):
+    """A canonical Core weight exists but does not match its registered hash."""
+
+
 @dataclass(frozen=True)
 class WeightRecord:
     resource_id: str
@@ -85,7 +89,35 @@ class CoreWeightManager:
             )
         filename = source.name
         destination = self.weights_dir / filename
-        if source.resolve() != destination.resolve():
+        inventory = self.inventory()
+        previous = inventory.get(resource_id)
+        if isinstance(previous, dict):
+            previous_path = Path(str(previous.get("path", "")))
+            previous_hash = str(previous.get("sha256", ""))
+            if previous_path.is_file():
+                current_hash = self.sha256_file(previous_path)
+                if current_hash != previous_hash:
+                    raise WeightConflictError(
+                        f"Core weight conflict for {resource_id}: registered SHA-256 "
+                        f"{previous_hash}, found {current_hash}"
+                    )
+                if current_hash == actual_hash:
+                    return WeightRecord(
+                        resource_id=resource_id,
+                        filename=previous_path.name,
+                        sha256=current_hash,
+                        size_bytes=previous_path.stat().st_size,
+                        path=str(previous_path),
+                        source_workshop=previous.get("source_workshop"),
+                    )
+        if destination.is_file():
+            existing_hash = self.sha256_file(destination)
+            if existing_hash != actual_hash:
+                raise WeightConflictError(
+                    f"Core filename conflict for {filename}: existing SHA-256 {existing_hash}, "
+                    f"submitted SHA-256 {actual_hash}"
+                )
+        elif source.resolve() != destination.resolve():
             shutil.copy2(source, destination)
         record = WeightRecord(
             resource_id=resource_id,
@@ -148,6 +180,23 @@ class CoreWeightManager:
         failed: list[str] = []
         for resource_id, metadata in resources:
             if self.resolve(resource_id) is not None:
+                continue
+            target = self.weights_dir / resource_id.split("::", 1)[-1]
+            registered = self.inventory().get(resource_id)
+            if isinstance(registered, dict) and target.is_file():
+                expected = str(registered.get("sha256", ""))
+                actual = self.sha256_file(target)
+                if expected and actual != expected:
+                    raise WeightConflictError(
+                        f"Core weight conflict for {resource_id}: registered SHA-256 {expected}, found {actual}"
+                    )
+                self.register_existing(target, resource_id)
+                continue
+            # A file already present in the canonical Core directory is adopted
+            # and hashed; it is never downloaded again merely because inventory
+            # metadata was not written yet.
+            if target.is_file():
+                self.register_existing(target, resource_id)
                 continue
             item = dict(metadata)
             item["_weights_dir"] = str(self.weights_dir)

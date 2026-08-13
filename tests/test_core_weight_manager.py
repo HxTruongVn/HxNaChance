@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 
-from setup.weight_manager import CoreWeightManager
+from setup.weight_manager import CoreWeightManager, WeightConflictError
 
 
 def test_core_intakes_and_hashes_shop_weight(tmp_path):
@@ -22,6 +22,46 @@ def test_core_intakes_and_hashes_shop_weight(tmp_path):
     assert record.sha256 == expected
     assert manager.resolve("photo::face.bin") == project / "weights" / "shop-weight.bin"
     assert manager.inventory()["photo::face.bin"]["source_workshop"] == "photo"
+
+
+def test_core_never_downloads_existing_canonical_weight(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    canonical = project / "weights"
+    canonical.mkdir()
+    existing = canonical / "face.bin"
+    existing.write_bytes(b"already-in-core")
+    manager = CoreWeightManager(project)
+    calls = []
+
+    def downloader(resource_id, metadata):
+        calls.append(resource_id)
+        return True
+
+    assert manager.sync_downloads(
+        [("photo::face.bin", {"sources": [{"url": "https://invalid.test/face.bin"}]})],
+        downloader,
+    ) == []
+    assert calls == []
+    assert manager.resolve("photo::face.bin") == existing
+
+
+def test_core_rejects_existing_filename_with_different_hash(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    canonical = project / "weights"
+    canonical.mkdir()
+    (canonical / "face.bin").write_bytes(b"canonical")
+    submitted = tmp_path / "face.bin"
+    submitted.write_bytes(b"different")
+    manager = CoreWeightManager(project)
+
+    try:
+        manager.intake_file(submitted, resource_id="photo::face.bin")
+    except WeightConflictError as exc:
+        assert "filename conflict" in str(exc)
+    else:
+        raise AssertionError("Core silently overwrote a canonical weight")
 
 
 def test_core_rejects_wrong_submitted_hash(tmp_path):

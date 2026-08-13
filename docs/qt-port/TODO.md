@@ -188,3 +188,11 @@
 - [ ] Make Shops expose only resource requirements and consume Core-provided resolved paths
 - [x] Add tests proving Shop weight files are submitted/hashed by Core before use
 
+
+## Core weight no-redownload invariant
+
+- [x] Never download a weight when the Core inventory points to an existing file with valid SHA-256
+- [x] Never silently overwrite an existing filename with a different SHA-256
+- [x] Treat missing file or hash mismatch as an explicit Core resource conflict/missing state
+- [x] Add tests proving the downloader is not called for valid existing weights
+
