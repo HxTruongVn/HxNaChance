@@ -1082,9 +1082,22 @@ class QtNaChanceWindow(QMainWindow):
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         def evaluate_policy_qt() -> None:
             try:
+                from setup.runtime_manager import verify_workshop_environment
+                report = RuntimeManager(weights_dir=str(PROJECT_ROOT / "weights")).detect()
+                problems: list[str] = []
+                for manifest_path in sorted((PROJECT_ROOT / "workshops").glob("*/manifest.json")):
+                    problems.extend(verify_workshop_environment(str(manifest_path), report))
+                hardware = [
+                    f"RAM: {getattr(report, 'ram_gb', None) or '?'} GB",
+                    f"VRAM: {getattr(report, 'vram_gb', None) or '?'} GB",
+                    f"Storage: {getattr(report, 'storage_free_gb', None) or '?'} GB",
+                    f"CPU cores: {getattr(report, 'cpu_cores', None) or '?'}",
+                ]
+                if problems:
+                    result_label.setText("⚠ Workshop chưa đủ tài nguyên:\n" + "\n".join(f"• {problem}" for problem in problems) + "\n\n" + " | ".join(hardware))
+                else:
+                    result_label.setText("✓ Tất cả Workshop hiện tại đạt Resource Compatibility.\n" + " | ".join(hardware))
                 self._load_runtime_report()
-                report = getattr(self, "runtime_report", None) or getattr(self, "_runtime_report", None)
-                result_label.setText(report.summary_text() if report is not None and hasattr(report, "summary_text") else "Runtime report unavailable.")
             except Exception as exc:
                 result_label.setText(f"Không thể đánh giá lại: {exc}")
         evaluate_button = QPushButton("Re-evaluate")
