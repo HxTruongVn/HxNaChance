@@ -100,7 +100,7 @@
 |---|---|---|---|---|
 | Workshop title/header | `WorkshopWindow._build_window_chrome` | Có | Một phần | Logo/title/focus/close parity |
 | Status bar | `_build_status_bar` | Có label | Một phần | Visibility/persist/status updates |
-| Scrollable content | `CTkScrollableFrame` | QScrollArea Layout | Một phần | Mỗi Workshop giữ hierarchy và scroll |
+| Scrollable content | `CTkScrollableFrame` | Core, Layout, Photo và Repo Intake đều dùng QScrollArea; Workshop giữ cửa sổ riêng và content scroll | Một phần | Kiểm chứng resize/native viewport trên desktop platforms |
 | Busy/processing lock | `_lock_unavailable_features` | Chưa đầy đủ | Thiếu | Disable đúng capability khi runtime thiếu |
 | About Workshop | `_show_workshop_about` | Chưa có | Thiếu | Dùng manifest metadata |
 | Requirements dialog | `_show_workshop_requirements` | Chưa có | Thiếu | Hiển thị dependency/resource readiness |
@@ -113,10 +113,10 @@
 | Source/append controls | `workshops/layout/ui.py` | Có | Đủ |
 | Multi-preset selection | `layout_presets.json` | Có | Đủ |
 | Count/formula | Layout UI | Có | Đủ |
-| Technical advanced config | Layout UI | Có | Đủ |
+| Technical advanced config | Layout UI | Có group Điều chỉnh/Vùng in, có nút thu gọn/mở rộng | Một phần | Persist expanded state và full validation parity |
 | Preview side panel | `_show_side_panel` | Có Qt side panel | Một phần |
 | Save/print/output | `save_layout` | Có | Một phần |
-| Layout menu actions | `workshops/layout/ui.py:_menu_layout_content` | Qt cascade có Choose/Add Source, Preview F2, Run Ctrl+R, Save và Print | Một phần | Save/Print cần route riêng nếu main phân biệt output/print |
+| Layout menu actions | `workshops/layout/ui.py:_menu_layout_content` | Qt có Chọn/Thêm/Đổi ảnh với shortcut, Preview F2, Run Ctrl+R; Preview side panel là nơi duy nhất có In/Lưu | Một phần | Native key event và print contract trên desktop |
 | Layout orientation/state dialogs | Layout UI | Chưa port riêng; Layout preview/save đã có | Một phần | Port orientation/state dialog nếu Layout main dùng trực tiếp |
 
 ## Tầng 9 — Photo Workshop
@@ -125,12 +125,12 @@
 |---|---|---|---|
 | Input file/folder | `workshops/photo/ui.py` | Có file cơ bản | Một phần |
 | Image type/preset | Photo UI | Có preset cơ bản | Một phần |
-| Background/remove/white-blue-red/custom | Photo UI | Qt có mode, custom HEX và remove background | Một phần | Giữ đầy đủ background validation/render behavior |
+| Background/remove/white-blue-red/custom | Photo UI | ReBG bật mới hiện background mode/custom HEX; custom HEX chỉ hiện ở mode Tùy chỉnh | Một phần | Giữ đầy đủ background validation/render behavior |
 | Face restore/skin/eyes/teeth | Photo UI | Qt có checkbox và skin/fidelity sliders, options truyền vào PhotoQAAgent | Một phần | Bổ sung strength riêng cho eyes/teeth và menu actions |
 | Sliders/fidelity/strength | Photo UI | Qt có fidelity và skin strength sliders | Một phần | Bổ sung đầy đủ slider spec/quality |
 | Orientation/shoulder/confirm | Photo UI | Qt có auto rotate/confirm/shoulder options và dialog preview xoay 0/90/180/270 tạo file tạm | Một phần | Port queue nhiều ảnh/skip/cancel side-panel đầy đủ |
 | Validation/preview toggles | Photo UI | Qt có validation và preview toggles | Một phần | Nối preview panel và result state |
-| Preview side panel | Photo UI `_toggle_photo_preview` | Qt Photo Preview/Result side panel, native X cleanup | Một phần | Dùng preview request/confirmation đầy đủ |
+| Preview side panel | Photo UI `_toggle_photo_preview` | Qt Photo Preview/Result side panel; action row đưa gần chọn ảnh và có F3/Cancel Esc | Một phần | Dùng preview request/confirmation đầy đủ |
 | Photo menu actions | `_menu_photo_content` | Qt cascade có Open/Run và checkable Face, Pose, Background, Validation groups | Một phần | Đồng bộ checked state ngược từ controls khi menu mở |
 | Engine/worker/output | `PhotoQAAgent`, `NaChanceEngine` | Có worker | Một phần |
 

@@ -108,3 +108,18 @@
 - [x] Test theme propagation across host, Workshop, and side panel
 - [x] Test Ctrl backtick, reverse transition, navigation combinations, and Alt-menu keys with Qt key events
 
+
+## Core, Layout and Photo UI correction
+
+- [x] Make Core host content scrollable/adaptive when launcher, log, or status sections exceed viewport height
+- [x] Make Workshop content scrollable without hard-coded fixed-height clipping
+- [x] Consolidate Layout choose/add/change image controls into one clear three-action group
+- [x] Remove duplicate quantity controls and keep one canonical minus/value/plus control
+- [x] Add collapsible Advanced Technical Configuration section with persisted expanded state
+- [x] Add Layout shortcuts for choose/add/change image, preview, print, save, run, and cancel
+- [x] Make Layout Preview own the Print/Save actions and avoid duplicate always-visible preview canvas
+- [x] Make Layout Cancel actually interrupt worker, clear busy state, and restore controls
+- [x] Move Photo function actions near image selection and assign shortcuts
+- [x] Show Photo background customization only when ReBG is enabled
+- [x] Add Photo shortcut/action state tests and conditional ReBG visibility tests
+

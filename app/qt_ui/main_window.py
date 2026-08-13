@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QObject, QThread, QTimer, Signal, Qt
-from PySide6.QtGui import QAction, QActionGroup, QIcon, QImage, QPixmap, QKeySequence, QShortcut
+from PySide6.QtGui import QAction, QActionGroup, QIcon, QImage, QPixmap, QKeySequence, QShortcut, QPainter
+from PySide6.QtPrintSupport import QPrintDialog, QPrinter
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -490,6 +491,7 @@ class QtNaChanceWindow(QMainWindow):
         payload: dict[str, Any] = {"version": 1, "theme": self._theme_name, "active_workshop": self._active_workshop_id}
         if hasattr(self, "layout_preset_vars"):
             payload["layout"] = self._layout_config_qt()
+            payload["layout"]["advanced_expanded"] = self.layout_advanced_body.isVisible()
         if hasattr(self, "photo_preset"):
             payload["photo"] = {"preset": self.photo_preset.currentData(), "options": self._photo_options_qt(), "background_mode": self.photo_bg_mode.currentText(), "background_hex": self.photo_bg_hex.text()}
         if hasattr(self, "repo_source"):
@@ -515,9 +517,11 @@ class QtNaChanceWindow(QMainWindow):
     def _restore_layout_state_qt(self, payload: dict[str, Any]) -> None:
         if not hasattr(self, "layout_cfg_vars"):
             return
+        if hasattr(self, "layout_advanced_body"):
+            self._toggle_layout_advanced_qt(bool(payload.get("advanced_expanded", True)))
         for key, value in payload.items():
             field = self.layout_cfg_vars.get(key)
-            if field is not None and key not in {"presets"}:
+            if field is not None and key not in {"presets", "advanced_expanded"}:
                 field.setText(str(value))
         for key, preset in (payload.get("presets") or {}).items():
             controls = self.layout_preset_vars.get(key)
@@ -1189,7 +1193,11 @@ class QtNaChanceWindow(QMainWindow):
         layout.addWidget(quick_group)
         self._refresh_quick_pipelines_qt()
         layout.addStretch(1)
-        return page
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidget(page)
+        return scroll
 
     def _build_layout_tab(self) -> QWidget:
         outer = QWidget()
@@ -1206,16 +1214,22 @@ class QtNaChanceWindow(QMainWindow):
         self.layout_append_existing: str | None = None
         self.layout_source_label = QLabel("(Chưa chọn - dùng ảnh đã xử lý)")
         self.layout_source_label.setWordWrap(True)
-        choose = QPushButton("Đổi ảnh")
+        choose = QPushButton("Chọn ảnh")
+        choose.setShortcut("Ctrl+O")
         choose.clicked.connect(self._choose_layout_source)
         add = QPushButton("Thêm ảnh")
+        add.setShortcut("Ctrl+Shift+O")
         add.clicked.connect(self._add_layout_source)
+        change = QPushButton("Đổi ảnh")
+        change.setShortcut("Ctrl+Alt+O")
+        change.clicked.connect(self._choose_layout_source)
         source_actions = QWidget()
         source_row = QHBoxLayout(source_actions)
         source_row.setContentsMargins(0, 0, 0, 0)
         source_row.addWidget(self.layout_source_label, 1)
         source_row.addWidget(choose)
         source_row.addWidget(add)
+        source_row.addWidget(change)
         source_form.addRow("Nguồn", source_actions)
         layout.addWidget(source_box)
 
@@ -1233,19 +1247,11 @@ class QtNaChanceWindow(QMainWindow):
             count.setRange(0, 999)
             count.setValue(1 if idx == 0 else 0)
             count.setFixedWidth(70)
-            minus = QPushButton("−")
-            plus = QPushButton("+")
-            minus.setFixedWidth(26)
-            plus.setFixedWidth(26)
-            minus.clicked.connect(lambda _=False, s=count, c=check: self._adjust_layout_count(s, c, -1))
-            plus.clicked.connect(lambda _=False, s=count, c=check: self._adjust_layout_count(s, c, 1))
             check.toggled.connect(lambda checked, s=count: s.setValue(max(1, s.value()) if checked else 0))
             check.toggled.connect(self._layout_controls_changed)
             count.valueChanged.connect(lambda _=0: self._layout_controls_changed())
             tile_layout.addWidget(check, 1)
-            tile_layout.addWidget(minus)
             tile_layout.addWidget(count)
-            tile_layout.addWidget(plus)
             row, col = divmod(idx, 2)
             preset_grid.addWidget(tile, row, col)
             self.layout_preset_vars[key] = {"chk": check, "count": count}
@@ -1259,6 +1265,9 @@ class QtNaChanceWindow(QMainWindow):
 
         advanced = QGroupBox("🔧 CẤU HÌNH KỸ THUẬT NÂNG CAO")
         advanced_layout = QVBoxLayout(advanced)
+        self.layout_advanced_body = QWidget()
+        advanced_body_layout = QVBoxLayout(self.layout_advanced_body)
+        advanced_body_layout.setContentsMargins(0, 0, 0, 0)
         adjust = QGroupBox("Điều chỉnh")
         adjust_form = QFormLayout(adjust)
         self.caf_mode = QComboBox()
@@ -1281,7 +1290,7 @@ class QtNaChanceWindow(QMainWindow):
         stroke_layout.addWidget(self.entry_stroke_color)
         stroke_layout.addStretch(1)
         adjust_form.addRow("Stroke", stroke_row)
-        advanced_layout.addWidget(adjust)
+        advanced_body_layout.addWidget(adjust)
 
         region = QGroupBox("📏 VÙNG IN")
         region_grid = QGridLayout(region)
@@ -1303,18 +1312,27 @@ class QtNaChanceWindow(QMainWindow):
             region_grid.addWidget(cell, row, col)
             self.layout_cfg_vars[key] = entry
             entry.editingFinished.connect(self._layout_controls_changed)
-        advanced_layout.addWidget(region)
+        advanced_body_layout.addWidget(region)
         self.chk_append = QCheckBox("Xếp tiếp vào file có sẵn")
         self.chk_append.toggled.connect(self._layout_controls_changed)
-        advanced_layout.addWidget(self.chk_append)
+        advanced_body_layout.addWidget(self.chk_append)
+        advanced_layout.addWidget(self.layout_advanced_body)
+        self.layout_advanced_toggle = QPushButton("Thu gọn cấu hình nâng cao")
+        self.layout_advanced_toggle.setCheckable(True)
+        self.layout_advanced_toggle.setChecked(True)
+        self.layout_advanced_toggle.clicked.connect(self._toggle_layout_advanced_qt)
+        advanced_layout.insertWidget(0, self.layout_advanced_toggle)
         layout.addWidget(advanced)
 
         preview_actions = QHBoxLayout()
-        self.layout_preview_button = QPushButton("MỞ XEM TRƯỚC")
+        self.layout_preview_button = QPushButton("MỞ XEM TRƯỚC (F2)")
+        self.layout_preview_button.setShortcut("F2")
         self.layout_preview_button.clicked.connect(self._layout_preview_toggle_qt)
-        self.layout_run_button = QPushButton("LƯU / CHẠY LAYOUT")
+        self.layout_run_button = QPushButton("LƯU / CHẠY LAYOUT (Ctrl+R)")
+        self.layout_run_button.setShortcut("Ctrl+R")
         self.layout_run_button.clicked.connect(self._run_layout)
-        self.layout_cancel_button = QPushButton("HỦY")
+        self.layout_cancel_button = QPushButton("HỦY (Esc)")
+        self.layout_cancel_button.setShortcut("Esc")
         self.layout_cancel_button.setEnabled(False)
         self.layout_cancel_button.clicked.connect(self._cancel_layout_qt)
         preview_actions.addWidget(self.layout_preview_button)
@@ -1325,7 +1343,7 @@ class QtNaChanceWindow(QMainWindow):
         self.layout_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout_preview.setMinimumHeight(260)
         self.layout_preview.setObjectName("layoutPreview")
-        layout.addWidget(self.layout_preview)
+        self.layout_preview.setVisible(False)
         layout.addStretch(1)
         scroll.setWidget(body)
         outer_layout.addWidget(scroll)
@@ -1383,7 +1401,8 @@ class QtNaChanceWindow(QMainWindow):
 
         post_group = QGroupBox("Background & Post-processing")
         post_layout = QFormLayout(post_group)
-        self.photo_remove_bg = QCheckBox("Remove background")
+        self.photo_remove_bg = QCheckBox("ReBG — Remove background")
+        self.photo_remove_bg.toggled.connect(self._toggle_photo_bg_qt)
         self.photo_upscale = QCheckBox("Upscale 2x")
         self.photo_validate = QCheckBox("Validate standard")
         self.photo_validate.setChecked(True)
@@ -1394,32 +1413,43 @@ class QtNaChanceWindow(QMainWindow):
         post_layout.addRow(self.photo_preview_enabled)
         layout.addWidget(post_group)
 
+        self.photo_bg_container = QWidget()
+        bg_layout = QFormLayout(self.photo_bg_container)
         self.photo_bg_mode = QComboBox()
         self.photo_bg_mode.addItems(["Xanh", "Trắng", "Đỏ", "Tùy chỉnh"])
+        self.photo_bg_mode.currentTextChanged.connect(self._toggle_photo_custom_bg_qt)
         self.photo_bg_hex = QLineEdit("2772D0")
-        layout.addWidget(QLabel("Background"))
-        layout.addWidget(self.photo_bg_mode)
-        layout.addWidget(self.photo_bg_hex)
+        bg_layout.addRow("Background", self.photo_bg_mode)
+        bg_layout.addRow("Custom HEX", self.photo_bg_hex)
+        self.photo_bg_container.setVisible(False)
+        layout.addWidget(self.photo_bg_container)
 
         photo_actions = QHBoxLayout()
-        self.photo_preview_button = QPushButton("Open Preview")
+        self.photo_preview_button = QPushButton("Preview (F3)")
+        self.photo_preview_button.setShortcut("F3")
         self.photo_preview_button.clicked.connect(self._photo_preview_toggle_qt)
-        self.photo_run_button = QPushButton("Run Photo Workshop")
+        self.photo_run_button = QPushButton("Run (Ctrl+R)")
+        self.photo_run_button.setShortcut("Ctrl+R")
         self.photo_run_button.clicked.connect(self._run_photo)
-        self.photo_cancel_button = QPushButton("Cancel")
+        self.photo_cancel_button = QPushButton("Cancel (Esc)")
+        self.photo_cancel_button.setShortcut("Esc")
         self.photo_cancel_button.setEnabled(False)
         self.photo_cancel_button.clicked.connect(self._cancel_photo_qt)
         photo_actions.addWidget(self.photo_preview_button)
         photo_actions.addWidget(self.photo_run_button)
         photo_actions.addWidget(self.photo_cancel_button)
-        layout.addLayout(photo_actions)
+        layout.insertLayout(1, photo_actions)
         self.photo_status = QLabel(
             "Photo dùng đúng NaChanceEngine của main. Runtime AI được tải/kiểm tra khi người dùng chạy, không tự tải khi mở Qt."
         )
         self.photo_status.setWordWrap(True)
         layout.addWidget(self.photo_status)
         layout.addStretch(1)
-        return page
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidget(page)
+        return scroll
 
     def _build_repo_intake_tab(self) -> QWidget:
         from core.review.workflow import ReviewWorkflow
@@ -1680,6 +1710,41 @@ class QtNaChanceWindow(QMainWindow):
             "strokeColor": self.entry_stroke_color.text().strip() or "686868", "presets": presets,
         }
 
+    def _toggle_layout_advanced_qt(self, checked: bool) -> None:
+        self.layout_advanced_body.setVisible(bool(checked))
+        self.layout_advanced_toggle.setText("Thu gọn cấu hình nâng cao" if checked else "Mở cấu hình kỹ thuật nâng cao")
+
+    def _save_layout_preview_qt(self) -> None:
+        canvas = getattr(self, "_layout_canvas", None)
+        if canvas is None:
+            self._layout_live_preview_qt()
+            canvas = getattr(self, "_layout_canvas", None)
+        if canvas is None:
+            QMessageBox.warning(self, "Layout Preview", "Chưa có preview để lưu.")
+            return
+        output, _ = QFileDialog.getSaveFileName(self, "Lưu preview Layout", "layout_preview.jpg", "JPEG (*.jpg *.jpeg);;PNG (*.png)")
+        if output:
+            canvas.save(output)
+            self._latest_output_path = output
+            self.status_bar.showMessage(f"Đã lưu preview: {output}", 3000)
+
+    def _print_layout_preview_qt(self) -> None:
+        canvas = getattr(self, "_layout_canvas", None)
+        if canvas is None:
+            self._layout_live_preview_qt()
+            canvas = getattr(self, "_layout_canvas", None)
+        if canvas is None:
+            QMessageBox.warning(self, "Layout Preview", "Chưa có preview để in.")
+            return
+        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        dialog = QPrintDialog(printer, self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            from PIL.ImageQt import ImageQt
+            image = QImage(ImageQt(canvas))
+            painter = QPainter(printer)
+            painter.drawImage(printer.pageRect(QPrinter.Unit.DevicePixel).toRect(), image)
+            painter.end()
+
     def _layout_live_preview_qt(self) -> None:
         sources = [p for p in self.layout_sources if Path(p).is_file()]
         active = any(v["chk"].isChecked() and v["count"].value() > 0 for v in self.layout_preset_vars.values())
@@ -1714,8 +1779,13 @@ class QtNaChanceWindow(QMainWindow):
         canvas = getattr(self, "_layout_canvas", None)
         if canvas is not None:
             panel.set_pil_image(canvas)
-        save = QPushButton("Lưu bản in")
-        save.clicked.connect(self._run_layout)
+        save = QPushButton("Lưu")
+        save.setShortcut("Ctrl+Shift+S")
+        save.clicked.connect(self._save_layout_preview_qt)
+        print_button = QPushButton("In")
+        print_button.setShortcut("Ctrl+P")
+        print_button.clicked.connect(self._print_layout_preview_qt)
+        panel.action_row.addWidget(print_button)
         panel.action_row.addWidget(save)
         panel.show()
         self.layout_preview_button.setText("ĐÓNG XEM TRƯỚC")
@@ -1758,6 +1828,9 @@ class QtNaChanceWindow(QMainWindow):
         self._latest_output_path = output
         self.log.appendPlainText(f"Layout output: {output} ({size})")
         image = QImage(output)
+        panel = self._side_panel_windows.get("layout")
+        if panel is not None and panel.isVisible():
+            panel.set_image(output)
         self.layout_preview.setPixmap(QPixmap.fromImage(image).scaled(
             self.layout_preview.size(),
             Qt.AspectRatioMode.KeepAspectRatio,
@@ -1784,6 +1857,14 @@ class QtNaChanceWindow(QMainWindow):
         control = getattr(self, name, None)
         if control is not None:
             control.setChecked(checked)
+
+    def _toggle_photo_bg_qt(self, enabled: bool) -> None:
+        self.photo_bg_container.setVisible(bool(enabled))
+        if enabled:
+            self._toggle_photo_custom_bg_qt(self.photo_bg_mode.currentText())
+
+    def _toggle_photo_custom_bg_qt(self, mode: str) -> None:
+        self.photo_bg_hex.setVisible(mode == "Tùy chỉnh" and self.photo_remove_bg.isChecked())
 
     def _photo_options_qt(self) -> dict[str, Any]:
         return {

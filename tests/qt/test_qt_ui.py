@@ -8,7 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 PySide6 = pytest.importorskip("PySide6")
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QMenu, QPushButton
+from PySide6.QtWidgets import QApplication, QMenu, QPushButton, QScrollArea
 
 from app.qt_ui import QtNaChanceWindow
 
@@ -108,6 +108,34 @@ def test_qt_menu_hierarchy_and_shortcuts_match_main():
     assert shortcuts["Next Workshop"] == "Ctrl+`"
     assert shortcuts["Previous Workshop"] == "Ctrl+Shift+`"
     assert shortcuts["Close active Workshop"] == "Ctrl+W"
+    window.close()
+    app.processEvents()
+
+
+def test_qt_core_layout_photo_controls_are_nonredundant_and_scrollable():
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    assert isinstance(window.tabs.widget(0), QScrollArea)
+    layout_window = window._open_workshop_window("layout")
+    layout_buttons = [button.text() for button in layout_window.findChildren(QPushButton)]
+    assert any("Chọn ảnh" in text for text in layout_buttons)
+    assert any("Thêm ảnh" in text for text in layout_buttons)
+    assert any("Đổi ảnh" in text for text in layout_buttons)
+    assert "Thu gọn cấu hình nâng cao" in layout_buttons
+    assert layout_window.findChildren(QScrollArea)
+    window._toggle_layout_advanced_qt(False)
+    assert not window.layout_advanced_body.isVisible()
+    window._toggle_layout_advanced_qt(True)
+    assert window.layout_advanced_body.isVisible()
+    photo_window = window._open_workshop_window("photo")
+    assert photo_window.findChildren(QScrollArea)
+    assert not window.photo_bg_container.isVisible()
+    window.photo_remove_bg.setChecked(True)
+    assert window.photo_bg_container.isVisible()
+    window.photo_bg_mode.setCurrentText("Tùy chỉnh")
+    assert window.photo_bg_hex.isVisible()
+    window.photo_remove_bg.setChecked(False)
+    assert not window.photo_bg_container.isVisible()
     window.close()
     app.processEvents()
 
