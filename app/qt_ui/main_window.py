@@ -1066,6 +1066,9 @@ class QtNaChanceWindow(QMainWindow):
         dialog.resize(620, 360)
         layout = QVBoxLayout(dialog)
         layout.addWidget(QLabel("Điều chỉnh tolerance tài nguyên theo policy của main."))
+        result_label = QLabel("Chưa đánh giá lại.")
+        result_label.setWordWrap(True)
+        layout.addWidget(result_label)
         form = QFormLayout()
         fields: dict[str, QDoubleSpinBox] = {}
         for key, label in (("ram", "RAM tolerance (%)"), ("vram", "VRAM tolerance (%)"), ("storage", "Storage tolerance (%)"), ("cpu_cores", "CPU cores tolerance (%)")):
@@ -1077,12 +1080,22 @@ class QtNaChanceWindow(QMainWindow):
             form.addRow(label, spin)
         layout.addLayout(form)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        def evaluate_policy_qt() -> None:
+            try:
+                self._load_runtime_report()
+                report = getattr(self, "runtime_report", None) or getattr(self, "_runtime_report", None)
+                result_label.setText(report.summary_text() if report is not None and hasattr(report, "summary_text") else "Runtime report unavailable.")
+            except Exception as exc:
+                result_label.setText(f"Không thể đánh giá lại: {exc}")
+        evaluate_button = QPushButton("Re-evaluate")
+        evaluate_button.clicked.connect(evaluate_policy_qt)
+        layout.addWidget(evaluate_button)
         def save_policy_qt() -> None:
             tolerance = policy.setdefault("resource_tolerance", {})
             for key, spin in fields.items():
                 tolerance[key] = spin.value() / 100.0
             save_policy(policy)
-            self._load_runtime_report()
+            evaluate_policy_qt()
             dialog.accept()
         buttons.accepted.connect(save_policy_qt)
         buttons.rejected.connect(dialog.reject)

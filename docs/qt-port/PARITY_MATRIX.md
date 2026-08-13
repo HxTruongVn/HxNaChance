@@ -153,7 +153,7 @@
 |---|---|---|---|
 | Core status panel | `main_ui._show_core_panel` | Qt host có runtime/workshop inspector, Tool dialogs, Workshop Exchange và Quick Pipelines list | Một phần | Áp dụng snapshot state vào từng Workshop |
 | Environment report | `_show_environment_report` | Qt QDialog hiển thị `runtime_report.summary_text()` | Một phần | Giữ đầy đủ refresh/reload actions |
-| Resource compatibility | `_show_resource_compatibility` | Qt QDialog đọc/sửa/save policy tolerance | Một phần | Bổ sung hardware detection và re-evaluate đầy đủ |
+| Resource compatibility | `_show_resource_compatibility` | Qt QDialog đọc/sửa/save policy tolerance, Re-evaluate và hiển thị runtime summary | Một phần | Bổ sung hardware detection chi tiết và per-Workshop result rows |
 | Workshop requirements | `_show_workshop_requirements` | Qt text dialog gọi `app.workshop_requirements.analyze` | Một phần | Bổ sung overlap sections và action links |
 | Pipeline Builder window | `_show_pipeline_builder` | Qt dialog chọn/thêm/xóa/sắp xếp và lưu PipelineStore; Core có Quick Pipelines loader | Một phần | Bổ sung edit pipeline, snapshot state apply và run pipeline execution |
 | Pipeline node/edge UI | `ui/pipeline_mixin.py` | Qt hiện là ordered-step builder; chưa có node/edge canvas | Một phần | Port phần trình bày node/edge nếu main dùng trực tiếp |
