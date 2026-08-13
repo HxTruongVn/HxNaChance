@@ -231,3 +231,14 @@
 - [x] Verify F2, Ctrl+R, grave navigation, Esc, mnemonics, and Layout/Photo shortcuts with real key events
 - [x] Add regression tests for focus changes and repeated key presses
 
+
+## Core sequential pipeline contract
+
+- [x] Define the Pipeline input as an explicit initial source selected by Core
+- [x] Configure the active Shop before adding its snapshot as a Pipeline step
+- [x] Store each step's complete Workshop configuration at insertion time
+- [x] Pass Shop N output as Shop N+1 input
+- [ ] Continue sequential execution until the final configured Shop
+- [x] Stop and report the exact failing step when a Shop has no receiver or output
+- [ ] Add chain tests proving input → Shop A → output A → Shop B → output B
+

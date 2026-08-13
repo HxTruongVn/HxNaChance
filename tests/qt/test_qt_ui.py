@@ -29,6 +29,38 @@ def test_qt_pipeline_capture_and_receiver_contract(tmp_path):
     app.processEvents()
 
 
+def test_qt_pipeline_chain_passes_output_to_next_step(tmp_path, monkeypatch):
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    output_a = tmp_path / "output_a.png"
+    output_a.write_bytes(b"step-a")
+    next_calls = []
+    window._pipeline_run = {"steps": [{"workshop_id": "layout"}, {"workshop_id": "photo"}], "index": 1, "current_input": "input.png", "outputs": [], "failed": False}
+    monkeypatch.setattr(window, "_run_next_pipeline_step_qt", lambda: next_calls.append(window._pipeline_run["current_input"]))
+    window._pipeline_worker_finished_qt(str(output_a), "size")
+    app.processEvents()
+    assert window._pipeline_run["current_input"] == str(output_a)
+    assert window._pipeline_run["outputs"] == [str(output_a)]
+    assert next_calls == [str(output_a)]
+    window._pipeline_run = None
+    window.close()
+    app.processEvents()
+
+
+def test_qt_pipeline_step_snapshot_keeps_core_input(tmp_path):
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    source = tmp_path / "pipeline_input.png"
+    from PIL import Image
+    Image.new("RGB", (8, 8), (10, 20, 30)).save(source)
+    state = window._capture_workshop_pipeline_state_qt("layout")
+    state["pipeline_input"] = str(source)
+    pipeline = {"name": "chain", "steps": [{"workshop_id": "layout", "state": state}]}
+    assert pipeline["steps"][0]["state"]["pipeline_input"] == str(source)
+    window.close()
+    app.processEvents()
+
+
 def test_qt_window_exposes_main_workshop_tabs():
     app = QApplication.instance() or QApplication([])
     window = QtNaChanceWindow()

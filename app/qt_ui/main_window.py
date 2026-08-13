@@ -1229,6 +1229,15 @@ class QtNaChanceWindow(QMainWindow):
         name = QLineEdit("Pipeline mới")
         root.addWidget(QLabel("Tên Pipeline"))
         root.addWidget(name)
+        input_row = QHBoxLayout()
+        pipeline_input = QLineEdit(self._source_path)
+        pipeline_input.setPlaceholderText("Input ban đầu do Core cung cấp")
+        choose_input = QPushButton("Chọn input")
+        choose_input.clicked.connect(lambda: self._choose_pipeline_input_qt(pipeline_input))
+        input_row.addWidget(QLabel("Input Core"))
+        input_row.addWidget(pipeline_input, 1)
+        input_row.addWidget(choose_input)
+        root.addLayout(input_row)
         row = QHBoxLayout()
         available = QComboBox()
         for item in self._discovered_workshops:
@@ -1249,8 +1258,13 @@ class QtNaChanceWindow(QMainWindow):
             item = available.currentData()
             if item is None:
                 return
+            window = self._open_workshop_window(item.workshop_id)
+            window.raise_()
+            window.activateWindow()
+            snapshot = self._capture_workshop_pipeline_state_qt(item.workshop_id)
+            snapshot["pipeline_input"] = pipeline_input.text().strip()
             entry = QListWidgetItem(item.menu_label or item.workshop_name)
-            entry.setData(Qt.ItemDataRole.UserRole, item)
+            entry.setData(Qt.ItemDataRole.UserRole, {"workshop": item, "state": snapshot})
             steps.addItem(entry)
         def remove_step() -> None:
             row_index = steps.currentRow()
@@ -1277,8 +1291,10 @@ class QtNaChanceWindow(QMainWindow):
                 return
             pipeline_steps = []
             for index in range(steps.count()):
-                item = steps.item(index).data(Qt.ItemDataRole.UserRole)
-                pipeline_steps.append({"workshop_id": item.workshop_id, "workshop_name": item.menu_label or item.workshop_name, "workshop_version": item.version, "state": self._capture_workshop_pipeline_state_qt(item.workshop_id)})
+                entry = steps.item(index).data(Qt.ItemDataRole.UserRole)
+                item = entry["workshop"] if isinstance(entry, dict) else entry
+                state = dict(entry.get("state") or {}) if isinstance(entry, dict) else self._capture_workshop_pipeline_state_qt(item.workshop_id)
+                pipeline_steps.append({"workshop_id": item.workshop_id, "workshop_name": item.menu_label or item.workshop_name, "workshop_version": item.version, "state": state})
             try:
                 pipeline_id = self.pipeline_store.save(name.text(), pipeline_steps)
                 self.log.appendPlainText(f"Pipeline saved: {name.text()} ({pipeline_id})")
@@ -1296,6 +1312,11 @@ class QtNaChanceWindow(QMainWindow):
         buttons.rejected.connect(dialog.reject)
         root.addWidget(buttons)
         dialog.exec()
+
+    def _choose_pipeline_input_qt(self, field: QLineEdit) -> None:
+        path, _ = QFileDialog.getOpenFileName(self, "Chọn input ban đầu cho Pipeline", "", "Images (*.png *.jpg *.jpeg *.bmp)")
+        if path:
+            field.setText(path)
 
     def _capture_workshop_pipeline_state_qt(self, workshop_id: str) -> dict[str, Any]:
         payload = self._state_payload_qt()
@@ -1324,7 +1345,11 @@ class QtNaChanceWindow(QMainWindow):
         if not steps:
             QMessageBox.information(self, "Pipeline", "Pipeline không có bước để chạy.")
             return
-        self._pipeline_run = {"pipeline": pipeline, "steps": steps, "index": 0, "failed": False}
+        initial_input = ((steps[0].get("state") or {}).get("pipeline_input") or self._source_path or "").strip()
+        if not initial_input or not Path(initial_input).is_file():
+            QMessageBox.warning(self, "Pipeline", "Hãy xác định input ban đầu của Core trước khi chạy Pipeline.")
+            return
+        self._pipeline_run = {"pipeline": pipeline, "steps": steps, "index": 0, "failed": False, "current_input": initial_input, "outputs": []}
         self.status_bar.showMessage(f"Đang chạy Pipeline: {pipeline.get('name', '')}", 4000)
         self._run_next_pipeline_step_qt()
 
@@ -1339,32 +1364,97 @@ class QtNaChanceWindow(QMainWindow):
             return
         step = run["steps"][run["index"]]
         workshop_id = step["workshop_id"]
+        current_input = run.get("current_input")
         self._open_workshop_window(workshop_id)
         self._apply_pipeline_step_state_qt(workshop_id, step.get("state") or {})
+        if not current_input or not Path(current_input).is_file():
+            self._pipeline_step_failed_qt(f"Không có input hợp lệ cho bước {workshop_id}")
+            return
+        if workshop_id == "layout":
+            self.layout_sources = [current_input]
+            self._source_path = current_input
+        elif workshop_id == "photo":
+            self._source_path = current_input
+            self._photo_source_paths = [current_input]
         run["index"] += 1
         if workshop_id == "layout":
             self._run_layout_for_pipeline_qt()
         elif workshop_id == "photo":
             self._run_photo_for_pipeline_qt()
         else:
-            self.log.appendPlainText(f"Pipeline step {workshop_id}: no executable Qt worker; step loaded")
-            QTimer.singleShot(0, self._run_next_pipeline_step_qt)
+            self._pipeline_step_failed_qt(f"Shop '{workshop_id}' chưa có execution/output contract cho Pipeline")
+
+    def _pipeline_output_path_qt(self, workshop_id: str, index: int) -> str:
+        return str(Path(os.getenv("TEMP", "/tmp")) / f"nachance_pipeline_{os.getpid()}_{index}_{workshop_id}.png")
 
     def _run_layout_for_pipeline_qt(self) -> None:
-        if not [p for p in getattr(self, "layout_sources", []) if Path(p).is_file()]:
-            self.log.appendPlainText("Pipeline Layout step skipped: no source image")
-            QTimer.singleShot(0, self._run_next_pipeline_step_qt)
+        sources = [p for p in getattr(self, "layout_sources", []) if Path(p).is_file()]
+        run = self._pipeline_run
+        if not sources or run is None:
+            self._pipeline_step_failed_qt("Layout không có input hợp lệ")
             return
-        self._run_layout()
+        output = self._pipeline_output_path_qt("layout", run["index"] - 1)
+        self.layout_run_button.setEnabled(False)
+        self.layout_cancel_button.setEnabled(True)
+        self._layout_thread = QThread(self)
+        self._layout_worker = _LayoutWorker(sources, output, self._layout_config_qt(), False, None)
+        self._layout_worker.moveToThread(self._layout_thread)
+        self._layout_thread.started.connect(self._layout_worker.run)
+        self._layout_worker.finished.connect(self._pipeline_worker_finished_qt)
+        self._layout_worker.failed.connect(self._pipeline_worker_failed_qt)
+        self._layout_worker.finished.connect(self._layout_thread.quit)
+        self._layout_worker.failed.connect(self._layout_thread.quit)
+        self._layout_thread.finished.connect(lambda: (self.layout_run_button.setEnabled(True), self.layout_cancel_button.setEnabled(False)))
+        self._layout_thread.start()
         QTimer.singleShot(100, self._poll_pipeline_worker_qt)
 
     def _run_photo_for_pipeline_qt(self) -> None:
-        if not getattr(self, "_source_path", ""):
-            self.log.appendPlainText("Pipeline Photo step skipped: no source image")
-            QTimer.singleShot(0, self._run_next_pipeline_step_qt)
+        run = self._pipeline_run
+        if not getattr(self, "_source_path", "") or run is None:
+            self._pipeline_step_failed_qt("Photo không có input hợp lệ")
             return
-        self._run_photo()
-        QTimer.singleShot(100, self._poll_pipeline_worker_qt)
+        output = self._pipeline_output_path_qt("photo", run["index"] - 1)
+        try:
+            if self._photo_engine is None:
+                from workshops.photo import NaChanceEngine
+                self._photo_engine = NaChanceEngine(weights_dir=str(PROJECT_ROOT / "weights"))
+            self.photo_run_button.setEnabled(False)
+            self.photo_cancel_button.setEnabled(True)
+            self._photo_thread = QThread(self)
+            self._photo_worker = _PhotoWorker(self._photo_engine, self._source_path, output, self.photo_preset.currentData(), self._photo_options_qt(), self._photo_bg_color_qt())
+            self._photo_worker.moveToThread(self._photo_thread)
+            self._photo_thread.started.connect(self._photo_worker.run)
+            self._photo_worker.finished.connect(self._pipeline_worker_finished_qt)
+            self._photo_worker.failed.connect(self._pipeline_worker_failed_qt)
+            self._photo_worker.finished.connect(self._photo_thread.quit)
+            self._photo_worker.failed.connect(self._photo_thread.quit)
+            self._photo_thread.finished.connect(lambda: (self.photo_run_button.setEnabled(True), self.photo_cancel_button.setEnabled(False)))
+            self._photo_thread.start()
+            QTimer.singleShot(100, self._poll_pipeline_worker_qt)
+        except Exception as exc:
+            self._pipeline_step_failed_qt(str(exc))
+
+    def _pipeline_worker_finished_qt(self, output: str, detail: str) -> None:
+        run = getattr(self, "_pipeline_run", None)
+        if run is None:
+            return
+        run["current_input"] = output
+        run["outputs"].append(output)
+        self._latest_output_path = output
+        self.log.appendPlainText(f"Pipeline step output: {output} ({detail})")
+        QTimer.singleShot(0, self._run_next_pipeline_step_qt)
+
+    def _pipeline_worker_failed_qt(self, trace: str) -> None:
+        self._pipeline_step_failed_qt(trace.splitlines()[-1] if trace else "Unknown error")
+
+    def _pipeline_step_failed_qt(self, message: str) -> None:
+        run = getattr(self, "_pipeline_run", None)
+        if run is not None:
+            run["failed"] = True
+        self.status_bar.showMessage("Pipeline dừng ở bước hiện tại", 6000)
+        self.log.appendPlainText("Pipeline failed: " + message)
+        QMessageBox.critical(self, "Pipeline", message)
+        self._pipeline_run = None
 
     def _poll_pipeline_worker_qt(self) -> None:
         run = getattr(self, "_pipeline_run", None)
