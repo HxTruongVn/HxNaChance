@@ -144,3 +144,12 @@
 - [x] Add persisted theme-wide font scale setting with safe bounds and layout reflow
 - [x] Add offscreen tests for quantity visibility, two-column groups, and font scaling
 
+
+## Workshop-owned Preview docking
+
+- [x] Make every Preview panel owned by its originating Workshop window, not the Host
+- [x] Anchor Preview to the Workshop right edge and place it on the opposite edge when right-side space is insufficient
+- [x] Keep Preview synchronized with Workshop move, resize, focus, close, and native window events
+- [x] Route F2 through the active Workshop preview capability instead of Layout-only shortcut
+- [x] Add ownership, fallback geometry, lifecycle, and shared F2 tests
+

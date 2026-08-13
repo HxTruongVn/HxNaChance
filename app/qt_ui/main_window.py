@@ -185,6 +185,7 @@ class QtWorkshopWindow(QMainWindow):
         status.setObjectName("workshopStatus")
         shell_layout.addWidget(status)
         self.setCentralWidget(shell)
+        self._preview_panel: QtSidePanelWindow | None = None
         self.setStyleSheet("")
 
     def apply_theme(self, stylesheet: str) -> None:
@@ -192,7 +193,27 @@ class QtWorkshopWindow(QMainWindow):
         for widget in self.findChildren(QWidget):
             widget.setStyleSheet(stylesheet)
 
+    def set_preview_panel(self, panel: "QtSidePanelWindow | None") -> None:
+        self._preview_panel = panel
+        if panel is not None:
+            panel.set_owner_window(self)
+
+    def _sync_preview_panel(self) -> None:
+        if self._preview_panel is not None and self._preview_panel.isVisible():
+            self._preview_panel.sync_to_owner()
+
+    def moveEvent(self, event) -> None:
+        super().moveEvent(event)
+        self._sync_preview_panel()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._sync_preview_panel()
+
     def closeEvent(self, event) -> None:
+        if self._preview_panel is not None:
+            self._preview_panel.close()
+            self._preview_panel = None
         self.closed.emit(self.workshop_id)
         super().closeEvent(event)
 
@@ -202,10 +223,11 @@ class QtWorkshopWindow(QMainWindow):
 
 
 class QtSidePanelWindow(QMainWindow):
-    """Nested preview/result panel mirroring main's separate side panel."""
-
+    """Preview panel owned and positioned relative to its Workshop window."""
     def __init__(self, title: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self._owner_window: QtWorkshopWindow | None = None
+        self._owner_side = "right"
         self.setWindowTitle(f"NaChance — {title}")
         self.setWindowIcon(canonical_logo_icon())
         self.resize(420, 680)
@@ -225,6 +247,34 @@ class QtSidePanelWindow(QMainWindow):
         self.setStyleSheet(stylesheet)
         for widget in self.findChildren(QWidget):
             widget.setStyleSheet(stylesheet)
+
+    def set_owner_window(self, owner: QtWorkshopWindow) -> None:
+        self._owner_window = owner
+        self.setWindowTitle(f"NaChance — {owner.workshop_id} Preview")
+        self.sync_to_owner()
+
+    def sync_to_owner(self) -> None:
+        owner = self._owner_window
+        if owner is None:
+            return
+        screen = owner.screen() or QApplication.primaryScreen()
+        if screen is None:
+            return
+        available = screen.availableGeometry()
+        owner_rect = owner.frameGeometry()
+        panel_width = self.frameGeometry().width() or self.width()
+        panel_height = self.frameGeometry().height() or self.height()
+        right_x = owner_rect.right() + 1
+        left_x = owner_rect.left() - panel_width - 1
+        if right_x + panel_width <= available.right() + 1:
+            x = right_x
+            self._owner_side = "right"
+        else:
+            x = left_x
+            self._owner_side = "left"
+        x = max(available.left(), min(x, available.right() - panel_width + 1))
+        y = max(available.top(), min(owner_rect.top(), available.bottom() - panel_height + 1))
+        self.move(x, y)
 
     def set_image(self, image_path: str) -> None:
         image = QImage(image_path)
@@ -443,6 +493,7 @@ class QtNaChanceWindow(QMainWindow):
     def _install_core_shortcuts_qt(self) -> None:
         self._qt_shortcuts = []
         shortcuts = (
+            (QKeySequence("F2"), self._toggle_active_preview_qt),
             (QKeySequence("Ctrl+R"), self._shortcut_run_qt),
             (QKeySequence(Qt.KeyboardModifier.ControlModifier | Qt.Key.Key_QuoteLeft), self._next_workshop_qt),
             (QKeySequence(Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier | Qt.Key.Key_QuoteLeft), self._previous_workshop_qt),
@@ -450,8 +501,18 @@ class QtNaChanceWindow(QMainWindow):
         )
         for sequence, callback in shortcuts:
             shortcut = QShortcut(sequence, self)
+            shortcut.setContext(Qt.ShortcutContext.ApplicationShortcut)
             shortcut.activated.connect(callback)
             self._qt_shortcuts.append(shortcut)
+
+    def _toggle_active_preview_qt(self) -> None:
+        preview_handlers = {
+            "layout": self._layout_preview_toggle_qt,
+            "photo": self._photo_preview_toggle_qt,
+        }
+        handler = preview_handlers.get(self._active_workshop_id or "")
+        if handler is not None:
+            handler()
 
     def _shortcut_run_qt(self) -> None:
         context = self._current_command_context()
@@ -1386,7 +1447,6 @@ class QtNaChanceWindow(QMainWindow):
 
         preview_actions = QHBoxLayout()
         self.layout_preview_button = QPushButton("MỞ XEM TRƯỚC (F2)")
-        self.layout_preview_button.setShortcut("F2")
         self.layout_preview_button.clicked.connect(self._layout_preview_toggle_qt)
         self.layout_run_button = QPushButton("LƯU / CHẠY LAYOUT (Ctrl+R)")
         self.layout_run_button.setShortcut("Ctrl+R")
@@ -1853,7 +1913,11 @@ class QtNaChanceWindow(QMainWindow):
             self._side_panel_windows.pop("layout", None)
             self.layout_preview_button.setText("MỞ XEM TRƯỚC")
             return
-        panel = QtSidePanelWindow("Layout Preview", self)
+        owner = self._workshop_windows.get("layout")
+        if owner is None:
+            return
+        panel = QtSidePanelWindow("Layout Preview", owner)
+        owner.set_preview_panel(panel)
         panel.apply_theme(self._stylesheet())
         self._side_panel_windows["layout"] = panel
         panel.destroyed.connect(self._on_layout_panel_destroyed)
@@ -1978,11 +2042,17 @@ class QtNaChanceWindow(QMainWindow):
 
     def _on_photo_panel_destroyed(self) -> None:
         self._side_panel_windows.pop("photo", None)
+        owner = self._workshop_windows.get("photo")
+        if owner is not None:
+            owner.set_preview_panel(None)
         if hasattr(self, "photo_preview_button"):
             self.photo_preview_button.setText("Open Preview")
 
     def _on_layout_panel_destroyed(self) -> None:
         self._side_panel_windows.pop("layout", None)
+        owner = self._workshop_windows.get("layout")
+        if owner is not None:
+            owner.set_preview_panel(None)
         if hasattr(self, "layout_preview_button"):
             self.layout_preview_button.setText("MỞ XEM TRƯỚC")
 
@@ -1996,7 +2066,11 @@ class QtNaChanceWindow(QMainWindow):
         if not self._source_path:
             QMessageBox.warning(self, "Photo Preview", "Choose a portrait first.")
             return
-        panel = QtSidePanelWindow("Photo Preview", self)
+        owner = self._workshop_windows.get("photo")
+        if owner is None:
+            return
+        panel = QtSidePanelWindow("Photo Preview", owner)
+        owner.set_preview_panel(panel)
         panel.apply_theme(self._stylesheet())
         panel.set_image(self._source_path)
         self._side_panel_windows["photo"] = panel

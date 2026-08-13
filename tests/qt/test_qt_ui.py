@@ -159,16 +159,33 @@ def test_qt_grave_shortcuts_change_workspace_state():
     app = QApplication.instance() or QApplication([])
     window = QtNaChanceWindow()
     window.show()
-    assert [shortcut.key().toString() for shortcut in window._qt_shortcuts] == ["Ctrl+R", "Ctrl+`", "Ctrl+Shift+`", "Ctrl+Alt+`"]
-    window._qt_shortcuts[1].activated.emit()
-    app.processEvents()
-    assert window._active_workshop_id == "layout"
+    assert [shortcut.key().toString() for shortcut in window._qt_shortcuts] == ["F2", "Ctrl+R", "Ctrl+`", "Ctrl+Shift+`", "Ctrl+Alt+`"]
     window._qt_shortcuts[2].activated.emit()
     app.processEvents()
-    assert window._active_workshop_id == "repo_intake"
+    assert window._active_workshop_id == "layout"
     window._qt_shortcuts[3].activated.emit()
     app.processEvents()
+    assert window._active_workshop_id == "repo_intake"
+    window._qt_shortcuts[4].activated.emit()
+    app.processEvents()
     assert window._active_workshop_id is None
+    window.close()
+    app.processEvents()
+
+
+def test_qt_preview_is_owned_and_positioned_by_workshop():
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    workshop = window._open_workshop_window("layout")
+    window._layout_preview_toggle_qt()
+    panel = window._side_panel_windows["layout"]
+    assert panel.parent() is workshop
+    assert workshop._preview_panel is panel
+    assert panel._owner_window is workshop
+    assert panel._owner_side in {"left", "right"}
+    workshop.move(120, 100)
+    app.processEvents()
+    assert panel._owner_window is workshop
     window.close()
     app.processEvents()
 
