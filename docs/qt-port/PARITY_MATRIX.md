@@ -35,7 +35,7 @@
 | Theme groups/category | `THEME_GROUPS` | Qt nhóm category động thành submenu | Đủ | Hiển thị nhóm theme động |
 | View → Theme submenu | `ui/menu_bar_mixin.py:_menu_view` | Có View → Theme, QActionGroup và check state | Đủ | Mỗi theme có radio/check state |
 | Apply theme live | `ThemeMixin._on_theme_change` | Đổi palette live cho host, Workshop và side panels | Một phần | Còn cần loại bỏ stylesheet hardcode riêng của Workshop |
-| Block theme switch while busy/orient | ThemeMixin lines 74–89 | Chưa có | Thiếu | Hiện thông báo và không phá worker |
+| Block theme switch while busy/orient | ThemeMixin lines 74–89 | Qt chặn khi Layout/Photo worker đang chạy; orientation dialog là modal | Một phần | Đồng bộ block state với orientation queue non-blocking |
 | Persist selected theme | `_save_config` | Ghi trường `theme` vào `~/.nachance_ai.json` | Đủ | Theme giữ lại sau restart |
 | Workshop theme injection | `WorkshopWindow`/`SidePanelMixin` | Qt có stylesheet riêng | Một phần | Dùng palette/theme chung, không hardcode riêng |
 | Theme after rebuild order | ThemeMixin lines 105–123 | Qt áp stylesheet trực tiếp, không rebuild thứ tự widget | Một phần | Kiểm tra screenshot và child style parity |
@@ -117,7 +117,7 @@
 | Preview side panel | `_show_side_panel` | Có Qt side panel | Một phần |
 | Save/print/output | `save_layout` | Có | Một phần |
 | Layout menu actions | `workshops/layout/ui.py:_menu_layout_content` | Chưa port | Thiếu |
-| Layout orientation/state dialogs | Layout UI | Chưa port | Thiếu |
+| Layout orientation/state dialogs | Layout UI | Chưa port riêng; Layout preview/save đã có | Một phần | Port orientation/state dialog nếu Layout main dùng trực tiếp |
 
 ## Tầng 9 — Photo Workshop
 
@@ -128,7 +128,7 @@
 | Background/remove/white-blue-red/custom | Photo UI | Qt có mode, custom HEX và remove background | Một phần | Giữ đầy đủ background validation/render behavior |
 | Face restore/skin/eyes/teeth | Photo UI | Qt có checkbox và skin/fidelity sliders, options truyền vào PhotoQAAgent | Một phần | Bổ sung strength riêng cho eyes/teeth và menu actions |
 | Sliders/fidelity/strength | Photo UI | Qt có fidelity và skin strength sliders | Một phần | Bổ sung đầy đủ slider spec/quality |
-| Orientation/shoulder/confirm | Photo UI | Qt có auto rotate, confirm orientation và shoulder warp options | Một phần | Port side panel confirmation behavior |
+| Orientation/shoulder/confirm | Photo UI | Qt có auto rotate/confirm/shoulder options và dialog preview xoay 0/90/180/270 tạo file tạm | Một phần | Port queue nhiều ảnh/skip/cancel side-panel đầy đủ |
 | Validation/preview toggles | Photo UI | Qt có validation và preview toggles | Một phần | Nối preview panel và result state |
 | Preview side panel | Photo UI `_toggle_photo_preview` | Qt Photo Preview/Result side panel, native X cleanup | Một phần | Dùng preview request/confirmation đầy đủ |
 | Photo menu actions | `_menu_photo_content` | Qt cascade có Open/Run và checkable Face, Pose, Background, Validation groups | Một phần | Đồng bộ checked state ngược từ controls khi menu mở |

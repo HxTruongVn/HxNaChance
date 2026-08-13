@@ -1665,16 +1665,51 @@ class QtNaChanceWindow(QMainWindow):
         panel.activateWindow()
         self.photo_preview_button.setText("Close Preview")
 
+    def _confirm_photo_orientation_qt(self, source_path: str) -> str | None:
+        from PIL import Image
+        from PIL.ImageQt import ImageQt
+        try:
+            image = Image.open(source_path).convert("RGB")
+        except (OSError, ValueError) as exc:
+            QMessageBox.critical(self, "Orientation", str(exc))
+            return None
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Confirm Orientation")
+        dialog.resize(520, 620)
+        root = QVBoxLayout(dialog)
+        preview = QLabel()
+        preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        root.addWidget(preview, 1)
+        rotation = {"value": 0}
+        def render() -> None:
+            rotated = image.rotate(-rotation["value"], expand=True)
+            preview.setPixmap(QPixmap.fromImage(QImage(ImageQt(rotated))).scaled(460, 460, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        render()
+        rotate_row = QHBoxLayout()
+        for degrees in (0, 90, 180, 270):
+            button = QPushButton(f"{degrees}°")
+            button.clicked.connect(lambda checked=False, value=degrees: (rotation.__setitem__("value", value), render()))
+            rotate_row.addWidget(button)
+        root.addLayout(rotate_row)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        root.addWidget(buttons)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return None
+        rotated = image.rotate(-rotation["value"], expand=True)
+        temp_path = str(Path(os.getenv("TEMP", "/tmp")) / f"nachance_oriented_{os.getpid()}_{abs(hash(source_path))}.jpg")
+        rotated.save(temp_path, quality=95)
+        return temp_path
+
     def _run_photo(self) -> None:
         if not self._source_path:
             QMessageBox.warning(self, "Photo", "Choose a portrait first.")
             return
+        source_path = self._source_path
         if self.photo_confirm_orientation.isChecked():
-            answer = QMessageBox.question(
-                self, "Confirm Orientation", "Xác nhận ảnh đang đúng chiều trước khi xử lý?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            )
-            if answer != QMessageBox.StandardButton.Yes:
+            source_path = self._confirm_photo_orientation_qt(source_path)
+            if not source_path:
                 return
         output, _ = QFileDialog.getSaveFileName(self, "Save processed portrait", "photo_result.jpg", "JPEG (*.jpg *.jpeg)")
         if not output:
@@ -1689,7 +1724,7 @@ class QtNaChanceWindow(QMainWindow):
             self._photo_thread = QThread(self)
             self._photo_worker = _PhotoWorker(
                 self._photo_engine,
-                self._source_path,
+                source_path,
                 output,
                 self.photo_preset.currentData(),
                 self._photo_options_qt(),
