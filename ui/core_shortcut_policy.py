@@ -55,8 +55,41 @@ def install():
                 button.configure(text=_underlined(label, top.get(label, 0)))
             except Exception:
                 pass
+
+        # The menu bar is custom CTkButton UI, so Alt+letter must be handled
+        # explicitly. Replace the older generic binding with KeyPress form and
+        # stop propagation so a mnemonic opens exactly one menu.
+        for label, button in getattr(self, "_menu_buttons", {}).items():
+            key = label[0].lower()
+            try:
+                self.unbind_all(f"<Alt-{key}>")
+            except Exception:
+                pass
+            try:
+                self.unbind_all(f"<Alt-KeyPress-{key}>")
+            except Exception:
+                pass
+            self.bind_all(
+                f"<Alt-KeyPress-{key}>",
+                lambda e, b=button, build=self._menu_builder_for_label(label):
+                    self._popup_menu(b, build) or "break",
+                add="+",
+            )
+
+        # Navigation policy owned by Core.
         self.bind_all("<Control-Alt-KeyPress-grave>", self._shortcut_core_home, add="+")
         return result
+
+    def _menu_builder_for_label(self, label):
+        return {
+            "File": self._menu_file,
+            "Edit": self._menu_edit,
+            "Pipeline": self._menu_pipeline,
+            "Window": self._menu_window,
+            "View": self._menu_view,
+            "Tool": self._menu_tool,
+            "Help": self._menu_help,
+        }[label]
 
     def _shortcut_core_home(self, event=None):
         manager = getattr(self, "_window_manager", None)
@@ -153,6 +186,7 @@ def install():
                 continue
 
     MenuBarMixin._build_menu_bar = _build_menu_bar
+    MenuBarMixin._menu_builder_for_label = _menu_builder_for_label
     MenuBarMixin._shortcut_core_home = _shortcut_core_home
     MenuBarMixin._shortcut_next_workshop = _shortcut_next_workshop
     MenuBarMixin._shortcut_previous_workshop = _shortcut_previous_workshop
