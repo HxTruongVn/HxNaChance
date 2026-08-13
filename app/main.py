@@ -72,7 +72,9 @@ def _detect_runtime():
         print("\nLỖI: thiếu package bắt buộc, không thể chạy app:")
         for name in report.missing_required_packages:
             print(f"  - {name}")
-        print("\nCài đặt:  pip install -r requirements.txt")
+        print("\nCài dependency nền:  pip install -r setup/core_requirements.txt")
+        print("Dependency AI của từng Workshop có thể cài riêng khi cần, ví dụ:")
+        print("  pip install -r workshops/photo/requirements.txt")
         input("\nNhấn Enter để thoát...")
         sys.exit(1)
 

@@ -17,7 +17,7 @@ from app.workshop_discovery import discover_workshops, WorkshopUI
 
 
 def test_discover_workshops_finds_both_real_workshops():
-    """Chạy THẬT trên 2 manifest.json thật đang có trong repo — không
+    """Chạy trên các manifest Workshop thật đang có trong repo — không
     tạo manifest giả, xác nhận cơ chế đọc đúng dữ liệu thật."""
     workshops = discover_workshops()
     ids = [w.workshop_id for w in workshops]
@@ -29,11 +29,11 @@ def test_discover_workshops_get_fresh_folder_based_session_order():
     workshops = discover_workshops()
     # Identity and display name come from the Workshop directory, never from
     # hard-coded Vietnamese labels or manifest workshop_name/window_title.
-    assert [w.workshop_id for w in workshops] == ["layout", "photo"]
-    assert [w.workshop_name for w in workshops] == ["layout", "photo"]
-    assert [w.session_priority for w in workshops] == [0, 1]
+    assert [w.workshop_id for w in workshops] == ["layout", "photo", "repo_intake"]
+    assert [w.workshop_name for w in workshops] == ["layout", "photo", "repo_intake"]
+    assert [w.session_priority for w in workshops] == [0, 1, 2]
     assert [w.window_title for w in workshops] == [
-        "NaChance — layout", "NaChance — photo"
+        "NaChance — layout", "NaChance — photo", "NaChance — repo_intake"
     ]
 
 
@@ -45,8 +45,8 @@ def test_discover_workshops_mixin_class_has_declared_build_method():
 
 
 def test_discover_workshops_menu_fields_present_and_valid():
-    """Menu "Window" (ui/menu_bar_mixin.py::_menu_window) đọc menu_label/
-    menu_build_method — cả 2 Xưởng thật đều phải khai đủ, và
+    """Menu "Window" đọc menu_label/menu_build_method — mọi Workshop UI
+    thật đều phải khai đủ, và
     mixin_class phải thật sự có method đó."""
     workshops = discover_workshops()
     for w in workshops:
@@ -66,7 +66,7 @@ def test_discover_workshops_open_method_is_declared():
 
 def test_discover_workshops_description_present():
     """About dialog (app/main_ui.py::_show_about) đọc description để
-    hiện danh sách Xưởng động — cả 2 Xưởng thật phải có description
+    hiện danh sách Workshop động — mọi Workshop thật phải có description
     không rỗng."""
     workshops = discover_workshops()
     for w in workshops:

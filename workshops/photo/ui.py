@@ -13,6 +13,11 @@ from workshops.photo import SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME
 from workshops.photo.preview_controller import PhotoPreviewController
 
 
+
+def _theme_text_color(colors, role="text_primary"):
+    """Use the host NaChance theme for workshop UI text."""
+    return colors.get(role) if isinstance(colors, dict) else None
+
 class ProcessTabMixin:
     def _build_process_tab(self):
         tab = self.tab_photo  # compatibility alias tới WorkshopWindow.main_frame
@@ -68,7 +73,7 @@ class ProcessTabMixin:
         self.frame_custom.pack(fill="x", pady=(8, 0))
         self.frame_custom.pack_forget()
 
-        ctk.CTkLabel(self.frame_custom, text="HEX:", width=40, font=self.F_NORMAL).pack(side="left")
+        ctk.CTkLabel(self.frame_custom, text="HEX:", width=40, font=self.F_NORMAL, text_color=self.COLORS.get('text_primary')).pack(side="left")
         self.entry_hex = ctk.CTkEntry(
             self.frame_custom, width=100, font=self.F_NORMAL,
             fg_color=self.COLORS['bg_hover'], border_color=self.COLORS['border']
@@ -156,7 +161,7 @@ class ProcessTabMixin:
                                            button_hover_color=self.COLORS['accent_hover'])
         self.sld_fidelity.set(70)
         self.sld_fidelity.pack(side="left", fill="x", expand=True, padx=5)
-        self.lbl_fidelity = ctk.CTkLabel(fs, text="70%", width=35, font=self.F_SMALL)
+        self.lbl_fidelity = ctk.CTkLabel(fs, text="70%", width=35, font=self.F_SMALL, text_color=self.COLORS.get('text_primary'))
         self.lbl_fidelity.pack(side="left")
 
         fs2 = ctk.CTkFrame(fe1, fg_color="transparent")
@@ -169,7 +174,7 @@ class ProcessTabMixin:
                                        button_hover_color=self.COLORS['accent_hover'])
         self.sld_skin.set(50)
         self.sld_skin.pack(side="left", fill="x", expand=True, padx=5)
-        self.lbl_skin = ctk.CTkLabel(fs2, text="50%", width=35, font=self.F_SMALL)
+        self.lbl_skin = ctk.CTkLabel(fs2, text="50%", width=35, font=self.F_SMALL, text_color=self.COLORS.get('text_primary'))
         self.lbl_skin.pack(side="left")
         for slider in (self.sld_fidelity, self.sld_skin):
             slider.bind("<ButtonPress-1>", lambda _e: self._begin_preview_interaction(), add="+")
@@ -219,7 +224,7 @@ class ProcessTabMixin:
 
         fd = ctk.CTkFrame(self.adv_frame, fg_color="transparent")
         fd.pack(pady=5, fill="x", padx=10)
-        ctk.CTkLabel(fd, text="DPI:", width=90, anchor="w", font=self.F_NORMAL).pack(side="left")
+        ctk.CTkLabel(fd, text="DPI:", width=90, anchor="w", font=self.F_NORMAL, text_color=self.COLORS.get('text_primary')).pack(side="left")
         self.entry_dpi = ctk.CTkEntry(fd, font=self.F_NORMAL, width=80,
                                        fg_color=self.COLORS['bg_hover'], border_color=self.COLORS['border'])
         self.entry_dpi.insert(0, "300")
@@ -227,7 +232,7 @@ class ProcessTabMixin:
 
         fs = ctk.CTkFrame(self.adv_frame, fg_color="transparent")
         fs.pack(pady=5, fill="x", padx=10)
-        ctk.CTkLabel(fs, text="Thư mục lưu:", width=90, anchor="w", font=self.F_NORMAL).pack(side="left")
+        ctk.CTkLabel(fs, text="Thư mục lưu:", width=90, anchor="w", font=self.F_NORMAL, text_color=self.COLORS.get('text_primary')).pack(side="left")
         self.lbl_save_dir = ctk.CTkLabel(fs, text=self.save_dir, font=self.F_SMALL,
                                             text_color=self.COLORS['text_secondary'])
         self.lbl_save_dir.pack(side="left", fill="x", expand=True)

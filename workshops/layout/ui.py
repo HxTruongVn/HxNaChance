@@ -17,6 +17,11 @@ from workshops.layout.print_layout import build_layout_canvas, save_layout, LAYO
 from ui.utils import safe_float, safe_int
 
 
+
+def _theme_text_color(colors, role="text_primary"):
+    """Use the host NaChance theme for workshop UI text."""
+    return colors.get(role) if isinstance(colors, dict) else None
+
 class LayoutTabMixin:
     def _build_layout_tab(self):
         """Build a compact, task-first Layout workshop UI.
@@ -29,7 +34,7 @@ class LayoutTabMixin:
         def section_title(parent, title, subtitle=None):
             wrap = ctk.CTkFrame(parent, fg_color="transparent")
             wrap.pack(fill="x", pady=(8, 4))
-            ctk.CTkLabel(wrap, text=title, font=self.F_MEDIUM).pack(side="left")
+            ctk.CTkLabel(wrap, text=title, font=self.F_MEDIUM, text_color=self.COLORS.get('text_primary')).pack(side="left")
             if subtitle:
                 ctk.CTkLabel(wrap, text=subtitle, font=self.F_SMALL,
                              text_color=self.COLORS['text_secondary']).pack(
@@ -194,7 +199,7 @@ class LayoutTabMixin:
         self.chk_layout_stroke.select()
         self.chk_layout_stroke.pack(side="left")
 
-        ctk.CTkLabel(stroke_line, text="%:", font=self.F_SMALL).pack(side="left", padx=(12, 3))
+        ctk.CTkLabel(stroke_line, text="%:", font=self.F_SMALL, text_color=self.COLORS.get('text_primary')).pack(side="left", padx=(12, 3))
         self.entry_stroke_w = ctk.CTkEntry(
             stroke_line, width=52, font=self.F_SMALL,
             fg_color=self.COLORS['bg_hover'],
@@ -202,7 +207,7 @@ class LayoutTabMixin:
         self.entry_stroke_w.insert(0, "0.85")
         self.entry_stroke_w.pack(side="left")
 
-        ctk.CTkLabel(stroke_line, text="HEX:", font=self.F_SMALL).pack(side="left", padx=(10, 3))
+        ctk.CTkLabel(stroke_line, text="HEX:", font=self.F_SMALL, text_color=self.COLORS.get('text_primary')).pack(side="left", padx=(10, 3))
         self.entry_stroke_color = ctk.CTkEntry(
             stroke_line, width=76, font=self.F_SMALL,
             fg_color=self.COLORS['bg_hover'],

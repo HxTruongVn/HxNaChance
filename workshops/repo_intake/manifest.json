@@ -6,7 +6,11 @@
   "ui": {
     "module": "workshops.repo_intake.ui",
     "mixin_class": "RepoIntakeUIMixin",
-    "build_method": "_build_repo_intake_tab"
+    "build_method": "_build_repo_intake_tab",
+    "menu_label": "repo_intake",
+    "menu_build_method": "_menu_repo_intake_content",
+    "open_method": "_open_repo_intake",
+    "session_priority": 2
   },
   "capabilities_required": [],
   "capabilities_optional": [

@@ -39,8 +39,18 @@ class RuntimeService:
                     state = ResourceState.MISSING
                 resources.append(replace(resource, state=state))
 
-        missing = tuple(raw.missing_required_packages) + tuple(raw.missing_models)
-        state = RuntimeState.READY if not missing else RuntimeState.DEGRADED
+        # Core chỉ DEGRADED khi chính Core thiếu bootstrap dependency.
+        # Package/model của Workshop là inventory đầu vào cho Watcher/Warehouse:
+        # chúng tạo cảnh báo và resource request, tuyệt đối không chặn Core.
+        missing_core = tuple(raw.missing_required_packages)
+        missing_workshop_packages = tuple(
+            f"{workshop_id}::{package}"
+            for workshop_id, workshop_report in raw.workshop_reports.items()
+            for package, installed in workshop_report.get("packages", {}).items()
+            if not installed
+        )
+        missing = missing_core + tuple(raw.missing_models)
+        state = RuntimeState.READY if not missing_core else RuntimeState.DEGRADED
         return RuntimeReport(
             state=state,
             python_version=raw.python_version,
@@ -56,7 +66,11 @@ class RuntimeService:
             resources=tuple(resources),
             workshops=tuple(workshops),
             errors=(),
-            warnings=tuple(f"missing: {item}" for item in missing),
+            warnings=tuple(
+                [f"core-missing: {item}" for item in missing_core]
+                + [f"resource-missing: {item}" for item in raw.missing_models]
+                + [f"package-missing: {item}" for item in missing_workshop_packages]
+            ),
         )
 
 

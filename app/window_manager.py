@@ -85,13 +85,17 @@ class WorkshopWindowManager:
         window.close()  # tự gọi on_window_closed() ở dưới để dọn dict + tile lại
 
     def close_all(self):
-        for window in list(self.windows.values()):
+        """Close every managed window through the same lifecycle path as X/toggle."""
+        for workshop_id in list(self.windows):
             try:
-                window._closed = True
-                window.destroy()
+                self.close(workshop_id)
             except Exception:
-                pass
+                # Cleanup must remain best-effort during application shutdown.
+                self.windows.pop(workshop_id, None)
         self.windows.clear()
+        refresh = getattr(self.core, "_refresh_workshop_launcher_buttons", None)
+        if callable(refresh):
+            refresh()
 
     def on_window_closed(self, workshop_id):
         self.windows.pop(workshop_id, None)

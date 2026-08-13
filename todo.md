@@ -12,3 +12,16 @@
 - [ ] Gắn approval certificate và để watcher chỉ theo dõi repo đã managed
 - [ ] Mở rộng Core API v1 cho discovery và thao tác Workshop ngoài Photo
 - [ ] Cập nhật tài liệu Docs sau mỗi thay đổi kiến trúc
+- [x] Sửa lỗi đổi theme làm menu nằm trên title bar
+- [x] Sửa Core startup: không chặn toàn bộ app khi dependency AI của Workshop chưa được cài; chỉ dependency của Core mới được phép chặn khởi động
+- [x] Kiến trúc đúng: thiếu package/model/resource của Workshop chỉ tạo watcher/resource request, tuyệt đối không chặn Core startup
+- [ ] Chốt cây thư mục Pass 2 và mapping di chuyển không phá compatibility
+- [ ] Chốt mô hình Core ổn định và Workshop nhẹ chỉ khai báo nhu cầu resource/environment
+- [x] Chuẩn hóa WindowLifecycle: open/close/toggle, WM_DELETE_WINDOW và không tạo cửa sổ trùng
+- [x] Thêm lifecycle tests cho Workshop Window và các cửa sổ phụ
+- [ ] Sửa Docs: mô tả contract/discovery động, không hardcode nhánh Workshop hoặc phiên bản trong Core
+- [ ] Thiết kế Pipeline Builder để người dùng nối output Workshop này vào input Workshop khác
+- [ ] Thiết kế ContextCommandProvider và tích hợp menu theo Pipeline Builder context
+- [x] Implement ContextCommandProvider, router và context-aware menu/shortcuts
+- [ ] Cho phép tái sử dụng một Workshop nhiều lần trong Pipeline với node_id và options riêng
+- [x] Tạo bộ Docs theo dõi tiến trình Pass 2: status, roadmap, decisions và changelog

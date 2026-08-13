@@ -14,6 +14,11 @@ from core.review.models import IntegrationMode
 from core.review.workflow import ReviewWorkflow
 
 
+
+def _theme_text_color(colors, role="text_primary"):
+    """Use the host NaChance theme for workshop UI text."""
+    return colors.get(role) if isinstance(colors, dict) else None
+
 class RepoIntakeUIMixin:
     def _build_repo_intake_tab(self):
         import customtkinter as ctk
@@ -92,6 +97,18 @@ class RepoIntakeUIMixin:
             ctk.CTkButton(actions, text=label, command=command, width=125).grid(row=0, column=col, padx=3, pady=10)
         actions.grid_columnconfigure(7, weight=1)
         return frame
+
+    def _menu_repo_intake_content(self, menu=None):
+        """Optional menu hook; lifecycle remains owned by Core WindowManager."""
+        if menu is not None:
+            menu.add_command(label="Repository Intake", command=self._open_repo_intake)
+
+    def _open_repo_intake(self):
+        """Focus the already-managed Repo Intake window; never create a second one."""
+        focus = getattr(self, "focus_workshop", None)
+        if callable(focus):
+            focus()
+        return self
 
     def _repo_intake_section(self, parent, title):
         import customtkinter as ctk

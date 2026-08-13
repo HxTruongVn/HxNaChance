@@ -142,6 +142,12 @@ def _is_importable(module_name: str) -> bool:
         return False
 
 
+def _core_required_package_names() -> set[str]:
+    """Các package tối thiểu để mở Core shell và UI nền."""
+    core_file = Path(__file__).resolve().parent / "core_requirements.txt"
+    return {name.lower() for name in _parse_requirement_names(core_file)}
+
+
 # ------------------------------------------------------------------
 # 2. Báo cáo môi trường (bất biến, tạo 1 lần lúc khởi động)
 # ------------------------------------------------------------------
@@ -345,9 +351,14 @@ class RuntimeManager:
                 cap_status.setdefault(cap_name, False)
                 feature_available.setdefault(cap_name, cap_status[cap_name])
 
+            core_required = _core_required_package_names()
             for name, ok in pkg_status.items():
-                if not ok:
-                    missing_required.append(f"{spec['id']}::{name}")
+                # Dependency của Workshop chỉ làm Workshop đó unavailable;
+                # không được chặn Core và các Workshop nhẹ khác.
+                if not ok and name.lower() in core_required:
+                    blocker = f"core::{name}"
+                    if blocker not in missing_required:
+                        missing_required.append(blocker)
             for name, ok in model_status_local.items():
                 if not ok and not spec["weights"].get(name, {}).get("optional", False):
                     missing_models.append(f"{spec['id']}::{name}")
