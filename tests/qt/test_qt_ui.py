@@ -57,6 +57,26 @@ def test_qt_theme_menu_loads_groups_and_persists(tmp_path, monkeypatch):
     app.processEvents()
 
 
+def test_qt_photo_controls_map_to_main_options():
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    window._open_workshop_window("photo")
+    window.photo_face_restore.setChecked(False)
+    window.photo_fidelity.setValue(82)
+    window.photo_skin_strength.setValue(36)
+    window.photo_upscale.setChecked(True)
+    window.photo_remove_bg.setChecked(True)
+    options = window._photo_options_qt()
+    assert options["face_restore"] is False
+    assert options["face_restore_fidelity"] == 0.82
+    assert options["skin_strength"] == 0.36
+    assert options["upscale"] is True
+    assert options["remove_bg"] is True
+    assert window._photo_bg_color_qt() == (39, 114, 208)
+    window.close()
+    app.processEvents()
+
+
 def test_qt_layout_preserves_multiple_presets_and_counts(tmp_path):
     from PIL import Image
     from workshops.layout.print_layout import build_layout_canvas

@@ -125,12 +125,12 @@
 |---|---|---|---|
 | Input file/folder | `workshops/photo/ui.py` | Có file cơ bản | Một phần |
 | Image type/preset | Photo UI | Có preset cơ bản | Một phần |
-| Background/remove/white-blue-red/custom | Photo UI | Thiếu nhiều | Thiếu |
-| Face restore/skin/eyes/teeth | Photo UI | Thiếu nhiều | Thiếu |
-| Sliders/fidelity/strength | Photo UI | Thiếu | Thiếu |
-| Orientation/shoulder/confirm | Photo UI | Thiếu | Thiếu |
-| Validation/preview toggles | Photo UI | Thiếu | Thiếu |
-| Preview side panel | Photo UI `_toggle_photo_preview` | Chưa port | Thiếu |
+| Background/remove/white-blue-red/custom | Photo UI | Qt có mode, custom HEX và remove background | Một phần | Giữ đầy đủ background validation/render behavior |
+| Face restore/skin/eyes/teeth | Photo UI | Qt có checkbox và skin/fidelity sliders, options truyền vào PhotoQAAgent | Một phần | Bổ sung strength riêng cho eyes/teeth và menu actions |
+| Sliders/fidelity/strength | Photo UI | Qt có fidelity và skin strength sliders | Một phần | Bổ sung đầy đủ slider spec/quality |
+| Orientation/shoulder/confirm | Photo UI | Qt có auto rotate, confirm orientation và shoulder warp options | Một phần | Port side panel confirmation behavior |
+| Validation/preview toggles | Photo UI | Qt có validation và preview toggles | Một phần | Nối preview panel và result state |
+| Preview side panel | Photo UI `_toggle_photo_preview` | Qt Photo Preview/Result side panel, native X cleanup | Một phần | Dùng preview request/confirmation đầy đủ |
 | Photo menu actions | `_menu_photo_content` | Chưa port | Thiếu |
 | Engine/worker/output | `PhotoQAAgent`, `NaChanceEngine` | Có worker | Một phần |
 
@@ -138,13 +138,13 @@
 
 | Hạng mục | Nguồn main | Qt hiện tại | Trạng thái |
 |---|---|---|---|
-| Select folder | `repo_intake/ui.py` | Chưa port đầy đủ | Thiếu |
-| Select ZIP | Repo Intake UI | Chưa port | Thiếu |
-| Quarantine/intake | `core/review/workflow.py` | Chỉ label | Thiếu |
-| Dossier/profile/resource inventory | Repo Intake UI | Chưa port | Thiếu |
-| Adapter plan/scaffold | Repo Intake UI | Chưa port | Thiếu |
-| Contract tests | Repo Intake UI | Chưa port | Thiếu |
-| Approval/transport | Repo Intake UI | Chưa port | Thiếu |
+| Select folder | `repo_intake/ui.py` | Qt Folder picker + source field | Một phần | Giữ đầy đủ case lifecycle |
+| Select ZIP | Repo Intake UI | Qt ZIP picker + source field | Một phần | Giữ quarantine ZIP behavior |
+| Quarantine/intake | `core/review/workflow.py` | Qt submit gọi `ReviewWorkflow.submit` | Một phần | Kiểm thử folder/ZIP thật |
+| Dossier/profile/resource inventory | Repo Intake UI | Qt profile form + JSON report | Một phần | Giữ toàn bộ validation/missing fields |
+| Adapter plan/scaffold | Repo Intake UI | Qt plan + Build Scaffold gọi workflow | Một phần | Hiển thị kết quả scaffold đầy đủ |
+| Contract tests | Repo Intake UI | Qt Contract Test gọi workflow | Một phần | Hiển thị từng contract result |
+| Approval/transport | Repo Intake UI | Qt Approve gọi workflow approval | Một phần | Bổ sung transport approved UI |
 | Repo Intake menu | `_menu_repo_intake_content` | Chưa port | Thiếu |
 
 ## Tầng 11 — Core/Pipeline/Resource panels

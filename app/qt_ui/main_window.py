@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
     QSplitter,
     QSpinBox,
     QScrollArea,
+    QSlider,
     QTabWidget,
     QWidget,
     QVBoxLayout,
@@ -77,12 +78,14 @@ class _PhotoWorker(QObject):
     finished = Signal(str, str)
     failed = Signal(str)
 
-    def __init__(self, engine: Any, source: str, output: str, preset: str) -> None:
+    def __init__(self, engine: Any, source: str, output: str, preset: str, options: dict[str, Any], bg_color: tuple[int, int, int]) -> None:
         super().__init__()
         self.engine = engine
         self.source = source
         self.output = output
         self.preset = preset
+        self.options = options
+        self.bg_color = bg_color
 
     def run(self) -> None:
         try:
@@ -91,24 +94,8 @@ class _PhotoWorker(QObject):
             from app.photo_agent import PhotoQAAgent
 
             spec = SPEC_PRESETS[self.preset]
-            options = {
-                "face_restore": True,
-                "face_restore_fidelity": 0.7,
-                "upscale": False,
-                "skin_smooth": True,
-                "skin_strength": 0.5,
-                "eye_enhance": True,
-                "eye_strength": 0.3,
-                "teeth_whiten": True,
-                "teeth_strength": 0.3,
-                "remove_bg": True,
-                "validate": True,
-                "preview": False,
-                "auto_rotate_detect": True,
-                "shoulder_warp": False,
-            }
             agent_result = PhotoQAAgent(self.engine, max_retries=3).process(
-                self.source, spec, (39, 114, 208), options
+                self.source, spec, self.bg_color, self.options
             )
             result = agent_result.engine_result
             if not result.get("success") or result.get("image") is None:
@@ -315,9 +302,21 @@ class QtNaChanceWindow(QMainWindow):
         core_action.triggered.connect(lambda: self._select_tab(0))
         window_menu.addAction(core_action)
         for item in self._discovered_workshops:
-            action = QAction(item.menu_label or item.workshop_name, self)
-            action.triggered.connect(lambda checked=False, wid=item.workshop_id: self._open_workshop_window(wid))
-            window_menu.addAction(action)
+            workshop_menu = window_menu.addMenu(item.menu_label or item.workshop_name)
+            open_action = QAction("Open / Focus", self)
+            open_action.triggered.connect(lambda checked=False, wid=item.workshop_id: self._open_workshop_window(wid))
+            workshop_menu.addAction(open_action)
+            close_action = QAction("Close", self)
+            close_action.triggered.connect(lambda checked=False, wid=item.workshop_id: self._close_workshop_by_id(wid))
+            workshop_menu.addAction(close_action)
+            if item.workshop_id == "layout":
+                workshop_menu.addAction("Open Preview", self._layout_preview_toggle_qt)
+                workshop_menu.addAction("Run Layout", self._run_layout)
+            elif item.workshop_id == "photo":
+                workshop_menu.addAction("Open Preview", self._photo_preview_toggle_qt)
+                workshop_menu.addAction("Run Photo", self._run_photo)
+            elif item.workshop_id == "repo_intake":
+                workshop_menu.addAction("Inspect / Intake", self._repo_submit)
         window_menu.addSeparator()
         next_action = QAction("Next Workshop", self)
         next_action.setShortcut("Ctrl+Tab")
@@ -668,11 +667,15 @@ class QtNaChanceWindow(QMainWindow):
         self._open_workshop_window(order[(current - 1) % len(order)])
 
     def _close_active_workshop_qt(self) -> None:
-        if self._active_workshop_id and self._active_workshop_id in self._workshop_windows:
-            self._workshop_windows[self._active_workshop_id].close()
-            self._workshop_windows.pop(self._active_workshop_id, None)
+        if self._active_workshop_id:
+            self._close_workshop_by_id(self._active_workshop_id)
+
+    def _close_workshop_by_id(self, workshop_id: str) -> None:
+        window = self._workshop_windows.get(workshop_id)
+        if window is not None:
+            window.close()
+        else:
             self._refresh_launcher_buttons()
-            self._active_workshop_id = None
 
     def _open_workshop_window(self, workshop_id: str) -> QtWorkshopWindow:
         existing = self._workshop_windows.get(workshop_id)
@@ -991,9 +994,70 @@ class QtNaChanceWindow(QMainWindow):
             self.photo_preset.addItem(key, key)
         layout.addWidget(QLabel("Preset"))
         layout.addWidget(self.photo_preset)
+
+        face_group = QGroupBox("Face")
+        face_form = QFormLayout(face_group)
+        self.photo_face_restore = QCheckBox("Face Restore")
+        self.photo_face_restore.setChecked(True)
+        self.photo_fidelity = QSlider(Qt.Orientation.Horizontal)
+        self.photo_fidelity.setRange(0, 100)
+        self.photo_fidelity.setValue(70)
+        self.photo_skin = QCheckBox("Skin Smoothing")
+        self.photo_skin.setChecked(True)
+        self.photo_skin_strength = QSlider(Qt.Orientation.Horizontal)
+        self.photo_skin_strength.setRange(0, 100)
+        self.photo_skin_strength.setValue(50)
+        self.photo_eye = QCheckBox("Brighten Eyes")
+        self.photo_eye.setChecked(True)
+        self.photo_teeth = QCheckBox("Whiten Teeth")
+        self.photo_teeth.setChecked(True)
+        face_form.addRow(self.photo_face_restore)
+        face_form.addRow("Restore fidelity", self.photo_fidelity)
+        face_form.addRow(self.photo_skin)
+        face_form.addRow("Skin strength", self.photo_skin_strength)
+        face_form.addRow(self.photo_eye)
+        face_form.addRow(self.photo_teeth)
+        layout.addWidget(face_group)
+
+        pose_group = QGroupBox("Pose & Alignment")
+        pose_layout = QVBoxLayout(pose_group)
+        self.photo_auto_rotate = QCheckBox("Auto-detect orientation")
+        self.photo_auto_rotate.setChecked(True)
+        self.photo_confirm_orientation = QCheckBox("Confirm before processing")
+        self.photo_shoulder_warp = QCheckBox("Shoulder warp")
+        pose_layout.addWidget(self.photo_auto_rotate)
+        pose_layout.addWidget(self.photo_confirm_orientation)
+        pose_layout.addWidget(self.photo_shoulder_warp)
+        layout.addWidget(pose_group)
+
+        post_group = QGroupBox("Background & Post-processing")
+        post_layout = QFormLayout(post_group)
+        self.photo_remove_bg = QCheckBox("Remove background")
+        self.photo_upscale = QCheckBox("Upscale 2x")
+        self.photo_validate = QCheckBox("Validate standard")
+        self.photo_validate.setChecked(True)
+        self.photo_preview_enabled = QCheckBox("Preview")
+        post_layout.addRow(self.photo_remove_bg)
+        post_layout.addRow(self.photo_upscale)
+        post_layout.addRow(self.photo_validate)
+        post_layout.addRow(self.photo_preview_enabled)
+        layout.addWidget(post_group)
+
+        self.photo_bg_mode = QComboBox()
+        self.photo_bg_mode.addItems(["Xanh", "Trắng", "Đỏ", "Tùy chỉnh"])
+        self.photo_bg_hex = QLineEdit("2772D0")
+        layout.addWidget(QLabel("Background"))
+        layout.addWidget(self.photo_bg_mode)
+        layout.addWidget(self.photo_bg_hex)
+
+        photo_actions = QHBoxLayout()
+        self.photo_preview_button = QPushButton("Open Preview")
+        self.photo_preview_button.clicked.connect(self._photo_preview_toggle_qt)
         self.photo_run_button = QPushButton("Run Photo Workshop")
         self.photo_run_button.clicked.connect(self._run_photo)
-        layout.addWidget(self.photo_run_button)
+        photo_actions.addWidget(self.photo_preview_button)
+        photo_actions.addWidget(self.photo_run_button)
+        layout.addLayout(photo_actions)
         self.photo_status = QLabel(
             "Photo dùng đúng NaChanceEngine của main. Runtime AI được tải/kiểm tra khi người dùng chạy, không tự tải khi mở Qt."
         )
@@ -1003,20 +1067,74 @@ class QtNaChanceWindow(QMainWindow):
         return page
 
     def _build_repo_intake_tab(self) -> QWidget:
-        page = QWidget()
-        layout = QVBoxLayout(page)
-        label = QLabel(
-            "Repo Intake giữ nguyên Workshop và manifest của main. Qt branch chỉ hiển thị trạng thái; "
-            "quy trình intake vẫn được gọi từ code Workshop hiện có."
+        from core.review.workflow import ReviewWorkflow
+        from core.review.models import IntegrationMode
+        self._repo_intake_workflow = ReviewWorkflow(
+            PROJECT_ROOT / ".nachance" / "quarantine",
+            warehouse_root=PROJECT_ROOT / ".nachance" / "warehouse",
+            scaffold_root=PROJECT_ROOT / "workshops",
         )
-        label.setWordWrap(True)
-        layout.addWidget(label)
-        self.repo_status = QLabel("Not inspected")
+        self._repo_intake_case = None
+        page = QWidget()
+        outer = QVBoxLayout(page)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        body = QWidget()
+        layout = QVBoxLayout(body)
+        title = QLabel("Repository Intake")
+        title.setObjectName("panelTitle")
+        layout.addWidget(title)
+        description = QLabel("Tiếp nhận repo lạ trong quarantine, hoàn thiện hồ sơ, đăng ký Resource, tạo scaffold và kiểm thử contract trước khi phê duyệt.")
+        description.setWordWrap(True)
+        layout.addWidget(description)
+
+        source_row = QHBoxLayout()
+        self.repo_source = QLineEdit()
+        self.repo_source.setPlaceholderText("Thư mục / ZIP / đường dẫn repository")
+        choose_folder = QPushButton("Folder")
+        choose_folder.clicked.connect(self._repo_choose_folder)
+        choose_zip = QPushButton("ZIP")
+        choose_zip.clicked.connect(self._repo_choose_zip)
+        submit = QPushButton("Tiếp nhận")
+        submit.clicked.connect(self._repo_submit)
+        source_row.addWidget(self.repo_source, 1)
+        source_row.addWidget(choose_folder)
+        source_row.addWidget(choose_zip)
+        source_row.addWidget(submit)
+        layout.addLayout(source_row)
+        self.repo_status = QLabel("Chưa có hồ sơ")
         layout.addWidget(self.repo_status)
-        inspect = QPushButton("Inspect manifest")
-        inspect.clicked.connect(self._inspect_repo_intake)
-        layout.addWidget(inspect)
+
+        profile = QGroupBox("Hồ sơ Workshop")
+        profile_form = QFormLayout(profile)
+        self.repo_profile_fields: dict[str, QLineEdit] = {}
+        for key, label_text in (("workshop_id", "ID"), ("name", "Tên"), ("version", "Version"), ("description", "Mô tả"), ("author", "Tác giả"), ("license", "License"), ("source_url", "Source URL"), ("source_revision", "Commit / Tag"), ("entrypoint", "Entrypoint"), ("runtime", "Runtime JSON"), ("capabilities_required", "Capabilities bắt buộc CSV"), ("capabilities_optional", "Capabilities tùy chọn CSV"), ("io", "Input/Output JSON"), ("network", "Network"), ("offline", "Offline"), ("timeout_seconds", "Timeout giây"), ("cancel_supported", "Cancel"), ("notes", "Ghi chú")):
+            field = QLineEdit()
+            self.repo_profile_fields[key] = field
+            profile_form.addRow(label_text, field)
+        save_profile = QPushButton("Cấp / lưu hồ sơ")
+        save_profile.clicked.connect(self._repo_save_profile)
+        profile_form.addRow(save_profile)
+        layout.addWidget(profile)
+
+        plan_row = QHBoxLayout()
+        self.repo_plan = QComboBox()
+        for mode in IntegrationMode:
+            self.repo_plan.addItem(mode.value, mode)
+        plan_row.addWidget(QLabel("Integration plan"))
+        plan_row.addWidget(self.repo_plan)
+        for label_text, callback in (("Lưu phương án", self._repo_select_plan), ("Register Resources", self._repo_register_resources), ("Build Scaffold", self._repo_build_scaffold), ("Contract Test", self._repo_contract_test), ("Approve", self._repo_approve)):
+            button = QPushButton(label_text)
+            button.clicked.connect(callback)
+            plan_row.addWidget(button)
+        layout.addLayout(plan_row)
+        self.repo_report = QPlainTextEdit()
+        self.repo_report.setReadOnly(True)
+        self.repo_report.setPlainText("Chưa có intake report.")
+        layout.addWidget(self.repo_report, 1)
         layout.addStretch(1)
+        scroll.setWidget(body)
+        outer.addWidget(scroll)
         return page
 
     def _load_runtime_report(self) -> None:
@@ -1128,7 +1246,7 @@ class QtNaChanceWindow(QMainWindow):
             return
         panel = QtSidePanelWindow("Layout Preview", self)
         self._side_panel_windows["layout"] = panel
-        panel.destroyed.connect(lambda _=None: self._side_panel_windows.pop("layout", None))
+        panel.destroyed.connect(self._on_layout_panel_destroyed)
         canvas = getattr(self, "_layout_canvas", None)
         if canvas is not None:
             panel.set_pil_image(canvas)
@@ -1182,10 +1300,75 @@ class QtNaChanceWindow(QMainWindow):
             self._source_path = path
             self.photo_input_label.setText(path)
 
+    def _photo_options_qt(self) -> dict[str, Any]:
+        return {
+            "face_restore": self.photo_face_restore.isChecked(),
+            "face_restore_fidelity": self.photo_fidelity.value() / 100.0,
+            "upscale": self.photo_upscale.isChecked(),
+            "skin_smooth": self.photo_skin.isChecked(),
+            "skin_strength": self.photo_skin_strength.value() / 100.0,
+            "eye_enhance": self.photo_eye.isChecked(),
+            "eye_strength": 0.3,
+            "teeth_whiten": self.photo_teeth.isChecked(),
+            "teeth_strength": 0.3,
+            "remove_bg": self.photo_remove_bg.isChecked(),
+            "validate": self.photo_validate.isChecked(),
+            "preview": self.photo_preview_enabled.isChecked(),
+            "auto_rotate_detect": self.photo_auto_rotate.isChecked(),
+            "confirm_orientation": self.photo_confirm_orientation.isChecked(),
+            "shoulder_warp": self.photo_shoulder_warp.isChecked(),
+        }
+
+    def _photo_bg_color_qt(self) -> tuple[int, int, int]:
+        colors = {"Trắng": (255, 255, 255), "Xanh": (39, 114, 208), "Đỏ": (200, 50, 50)}
+        if self.photo_bg_mode.currentText() in colors:
+            return colors[self.photo_bg_mode.currentText()]
+        value = self.photo_bg_hex.text().strip().lstrip("#")
+        try:
+            return tuple(int(value[index:index + 2], 16) for index in (0, 2, 4))
+        except (TypeError, ValueError):
+            return colors["Xanh"]
+
+    def _on_photo_panel_destroyed(self) -> None:
+        self._side_panel_windows.pop("photo", None)
+        if hasattr(self, "photo_preview_button"):
+            self.photo_preview_button.setText("Open Preview")
+
+    def _on_layout_panel_destroyed(self) -> None:
+        self._side_panel_windows.pop("layout", None)
+        if hasattr(self, "layout_preview_button"):
+            self.layout_preview_button.setText("MỞ XEM TRƯỚC")
+
+    def _photo_preview_toggle_qt(self) -> None:
+        panel = self._side_panel_windows.get("photo")
+        if panel is not None and panel.isVisible():
+            panel.close()
+            self._side_panel_windows.pop("photo", None)
+            self.photo_preview_button.setText("Open Preview")
+            return
+        if not self._source_path:
+            QMessageBox.warning(self, "Photo Preview", "Choose a portrait first.")
+            return
+        panel = QtSidePanelWindow("Photo Preview", self)
+        panel.set_image(self._source_path)
+        self._side_panel_windows["photo"] = panel
+        panel.destroyed.connect(self._on_photo_panel_destroyed)
+        panel.show()
+        panel.raise_()
+        panel.activateWindow()
+        self.photo_preview_button.setText("Close Preview")
+
     def _run_photo(self) -> None:
         if not self._source_path:
             QMessageBox.warning(self, "Photo", "Choose a portrait first.")
             return
+        if self.photo_confirm_orientation.isChecked():
+            answer = QMessageBox.question(
+                self, "Confirm Orientation", "Xác nhận ảnh đang đúng chiều trước khi xử lý?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
         output, _ = QFileDialog.getSaveFileName(self, "Save processed portrait", "photo_result.jpg", "JPEG (*.jpg *.jpeg)")
         if not output:
             return
@@ -1201,6 +1384,8 @@ class QtNaChanceWindow(QMainWindow):
                 self._source_path,
                 output,
                 self.photo_preset.currentData(),
+                self._photo_options_qt(),
+                self._photo_bg_color_qt(),
             )
             self._photo_worker.moveToThread(self._photo_thread)
             self._photo_thread.started.connect(self._photo_worker.run)
@@ -1218,18 +1403,130 @@ class QtNaChanceWindow(QMainWindow):
     def _photo_finished(self, output: str, verdict: str) -> None:
         self.photo_status.setText(f"Photo completed: {verdict} — {output}")
         self.log.appendPlainText(f"Photo output: {output}")
+        panel = self._side_panel_windows.get("photo")
+        if panel is not None and panel.isVisible():
+            panel.setWindowTitle("NaChance — Photo Result")
+            panel.set_image(output)
 
     def _photo_failed(self, trace: str) -> None:
         self.photo_status.setText("Photo is not ready; see log for details.")
         self.log.appendPlainText(trace)
 
-    def _inspect_repo_intake(self) -> None:
-        manifest = PROJECT_ROOT / "workshops" / "repo_intake" / "manifest.json"
+    def _repo_choose_folder(self) -> None:
+        selected = QFileDialog.getExistingDirectory(self, "Chọn repository cần tiếp nhận")
+        if selected:
+            self.repo_source.setText(selected)
+
+    def _repo_choose_zip(self) -> None:
+        selected, _ = QFileDialog.getOpenFileName(self, "Chọn repository ZIP", "", "ZIP (*.zip);;All files (*.*)")
+        if selected:
+            self.repo_source.setText(selected)
+
+    def _repo_submit(self) -> None:
+        source = self.repo_source.text().strip()
+        if not source:
+            QMessageBox.warning(self, "Repo Intake", "Hãy chọn thư mục hoặc ZIP trước.")
+            return
         try:
-            data = json.loads(manifest.read_text(encoding="utf-8"))
-            self.repo_status.setText(f"{data.get('workshop_name', data.get('workshop_id'))} {data.get('version')} — discovered")
+            self._repo_intake_case = self._repo_intake_workflow.submit(source, source_label=source)
+            self._repo_load_profile(self._repo_intake_case.profile)
+            self._repo_refresh()
         except Exception as exc:
-            self.repo_status.setText(f"Repo Intake unavailable: {exc}")
+            QMessageBox.critical(self, "Không thể tiếp nhận repo", str(exc))
+
+    def _repo_load_profile(self, profile: Any) -> None:
+        if profile is None:
+            return
+        for key, field in self.repo_profile_fields.items():
+            value = getattr(profile, key, "")
+            if isinstance(value, (dict, list)):
+                value = json.dumps(value, ensure_ascii=False)
+            field.setText("" if value is None else str(value))
+
+    def _repo_profile_values(self) -> dict[str, Any]:
+        values = {key: field.text().strip() for key, field in self.repo_profile_fields.items()}
+        for key in ("runtime", "io"):
+            if values[key]:
+                values[key] = json.loads(values[key])
+        for key in ("capabilities_required", "capabilities_optional"):
+            values[key] = [item.strip() for item in values[key].split(",") if item.strip()]
+        values["timeout_seconds"] = int(values["timeout_seconds"]) if values["timeout_seconds"] else None
+        return values
+
+    def _repo_save_profile(self) -> None:
+        if self._repo_intake_case is None:
+            QMessageBox.warning(self, "Repo Intake", "Hãy tiếp nhận repo trước.")
+            return
+        try:
+            profile = self._repo_intake_workflow.complete_profile(self._repo_intake_case, self._repo_profile_values())
+            self._repo_load_profile(profile)
+            self._repo_refresh()
+        except Exception as exc:
+            QMessageBox.critical(self, "Hồ sơ chưa hợp lệ", str(exc))
+
+    def _repo_select_plan(self) -> None:
+        if self._repo_intake_case is None:
+            QMessageBox.warning(self, "Repo Intake", "Hãy tiếp nhận repo trước.")
+            return
+        try:
+            from core.review.models import IntegrationMode
+            self._repo_intake_workflow.select_plan(self._repo_intake_case, IntegrationMode(self.repo_plan.currentData().value if hasattr(self.repo_plan.currentData(), "value") else self.repo_plan.currentData()))
+            self._repo_refresh()
+        except Exception as exc:
+            QMessageBox.critical(self, "Không thể chọn phương án", str(exc))
+
+    def _repo_register_resources(self) -> None:
+        try:
+            self._repo_intake_workflow.register_resources(self._repo_intake_case)
+            self._repo_refresh()
+        except Exception as exc:
+            QMessageBox.critical(self, "Resource intake thất bại", str(exc))
+
+    def _repo_build_scaffold(self) -> None:
+        try:
+            self._repo_intake_workflow.build_scaffold(self._repo_intake_case)
+            self._repo_refresh()
+        except Exception as exc:
+            QMessageBox.critical(self, "Không tạo được scaffold", str(exc))
+
+    def _repo_contract_test(self) -> None:
+        try:
+            self._repo_intake_workflow.contract_test(self._repo_intake_case)
+            self._repo_refresh()
+        except Exception as exc:
+            QMessageBox.critical(self, "Contract test thất bại", str(exc))
+
+    def _repo_approve(self) -> None:
+        if self._repo_intake_case is None:
+            return
+        answer = QMessageBox.question(self, "Phê duyệt", "Phê duyệt hồ sơ này sau khi contract test đã đạt?")
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self._repo_intake_workflow.approve(self._repo_intake_case, approver="desktop-user")
+            self._repo_refresh()
+        except Exception as exc:
+            QMessageBox.critical(self, "Không thể phê duyệt", str(exc))
+
+    def _repo_refresh(self) -> None:
+        case = self._repo_intake_case
+        if case is None:
+            return
+        self.repo_status.setText(f"{case.state.value.upper()} • {case.case_id}")
+        payload: dict[str, Any] = {"case_id": case.case_id, "state": case.state.value, "quarantine_path": case.quarantine_path, "integration_mode": case.integration_mode.value if case.integration_mode else None, "contract_results": case.contract_results, "events": case.events}
+        if case.report:
+            from core.review.inspector import report_to_dict
+            payload["intake_report"] = report_to_dict(case.report)
+        if case.profile:
+            payload["profile"] = case.profile.to_dict()
+        if case.resource_registry_path:
+            payload["resource_registry"] = case.resource_registry_path
+        if case.adapter_path:
+            payload["adapter_path"] = case.adapter_path
+        self.repo_report.setPlainText(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
+
+    def _inspect_repo_intake(self) -> None:
+        self._repo_submit()
 
 
 __all__ = ["QtNaChanceWindow"]
