@@ -75,7 +75,7 @@
 | `WORKSHOPS — phiên hiện tại` | `app/main_ui.py` launcher | Có | Một phần | Dùng danh sách discovery/session thật |
 | Session order | `WorkshopWindowManager.session_workshops` | List cố định layout/photo/repo | Thiếu | Dùng order rebuild mỗi startup |
 | Numbered rows | launcher buttons | Có | Đủ về trình bày | Nhãn/version/state chính xác |
-| OPEN/CLOSE | `_refresh_workshop_launcher_buttons` | Có | Một phần | Đồng bộ khi window close bằng X/focus |
+| OPEN/CLOSE | `_refresh_workshop_launcher_buttons` | Đồng bộ qua native close signal và registry | Đủ | Đồng bộ khi window close bằng X/focus |
 | Active workshop | `active_index` | `_active_workshop_id` | Một phần | Một nguồn state duy nhất |
 | RUN enable state | `_refresh_title_run_state` | Chưa đủ | Thiếu | Theo `run_method` thật |
 | Workshop change status | `_show_workshop_change_status` | Chưa có | Thiếu | Watcher updates không phá session |
@@ -86,8 +86,8 @@
 |---|---|---|---|---|
 | Open | `app/window_manager.py:open` | Có | Một phần | Gọi Workshop open method thật |
 | Toggle | `WindowManager.toggle` | Có | Một phần | Nút và X dùng cùng state |
-| Close | `WorkshopWindow.close` | Có | Một phần | Manager được báo khi child đóng |
-| Focus/active | `mark_active`, FocusIn | Chưa đầy đủ | Thiếu | Focus child cập nhật host active |
+| Close | `WorkshopWindow.close` | Native `closeEvent` phát signal về host/manager | Đủ | Manager được báo khi child đóng |
+| Focus/active | `mark_active`, FocusIn | Qt `focusInEvent` cập nhật active Workshop và workspace label | Một phần | Thêm active context cho pipeline/text input |
 | Next/previous | manager navigation | Có helper | Một phần | Dùng session order thật |
 | Placement right/below/tile | `window_layout.py` | Có heuristic Qt | Một phần | Giữ cạnh host và fallback tile |
 | Workshop window chrome | `app/workshop_window.py` | Header/status Qt, đóng bằng native frame | Một phần | Không giả lập Close; chỉ giữ custom actions thật sự cần thiết |
@@ -184,7 +184,7 @@
 | Menu action parity | action-by-action test | Chưa kiểm |
 | Shortcut parity | QTest key events | Chưa kiểm |
 | Theme parity | load/switch/persist test | Chưa kiểm |
-| Multi-window lifecycle | open/close/focus/tile test | Chưa kiểm đầy đủ |
+| Multi-window lifecycle | open/close/focus/tile test | Native close/focus hierarchy test đã có; tile còn cần kiểm | Một phần | Hoàn tất placement và side-panel ownership |
 | Layout parity | multi-preset/output test | Đạt một phần |
 | Photo parity | full controls/output test | Chưa đạt |
 | Repo Intake parity | full intake flow test | Chưa đạt |

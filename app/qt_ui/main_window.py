@@ -152,6 +152,9 @@ class _LayoutWorker(QObject):
 class QtWorkshopWindow(QMainWindow):
     """Separate Qt window for one Workshop, mirroring main's CTkToplevel host."""
 
+    closed = Signal(str)
+    activated = Signal(str)
+
     def __init__(self, workshop_id: str, title: str, content: QWidget, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.workshop_id = workshop_id
@@ -192,6 +195,14 @@ class QtWorkshopWindow(QMainWindow):
             #presetTile { background: #374151; border: 1px solid #4b5563; border-radius: 6px; }
             #layoutPreview { background: #1f2937; border: 1px solid #4b5563; }
         """)
+
+    def closeEvent(self, event) -> None:
+        self.closed.emit(self.workshop_id)
+        super().closeEvent(event)
+
+    def focusInEvent(self, event) -> None:
+        self.activated.emit(self.workshop_id)
+        super().focusInEvent(event)
 
 
 class QtSidePanelWindow(QMainWindow):
@@ -684,12 +695,28 @@ class QtNaChanceWindow(QMainWindow):
             self._workshop_order.append(workshop_id)
         self._place_workshop_window(window)
         self._active_workshop_id = workshop_id
+        window.closed.connect(self._on_workshop_closed)
+        window.activated.connect(self._on_workshop_activated)
         window.destroyed.connect(lambda _=None, wid=workshop_id: self._workshop_windows.pop(wid, None))
         window.show()
         window.raise_()
         window.activateWindow()
         self._refresh_launcher_buttons()
         return window
+
+    def _on_workshop_closed(self, workshop_id: str) -> None:
+        self._workshop_windows.pop(workshop_id, None)
+        if self._active_workshop_id == workshop_id:
+            self._active_workshop_id = None
+            self.workspace_label.setText("CORE / HOME")
+            self.quick_run.setEnabled(False)
+        self._refresh_launcher_buttons()
+
+    def _on_workshop_activated(self, workshop_id: str) -> None:
+        self._active_workshop_id = workshop_id
+        self.workspace_label.setText(f"WORKSHOP / {workshop_id.upper()}")
+        self.quick_run.setEnabled(True)
+        self._refresh_launcher_buttons()
 
     def _place_workshop_window(self, window: QtWorkshopWindow) -> None:
         index = self._workshop_order.index(window.workshop_id) if window.workshop_id in self._workshop_order else 0

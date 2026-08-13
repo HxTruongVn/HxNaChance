@@ -30,8 +30,11 @@ def test_qt_window_exposes_main_workshop_tabs():
     assert window._workshop_launcher_buttons["layout"].text() == "CLOSE"
     assert "Discovered Workshops:" in window.workshop_label.text()
     layout_window.close()
+    app.processEvents()
+    assert "layout" not in window._workshop_windows
     window._refresh_launcher_buttons()
     assert window._workshop_launcher_buttons["layout"].text() == "OPEN"
+    assert window._active_workshop_id is None
     window.close()
     app.processEvents()
 
