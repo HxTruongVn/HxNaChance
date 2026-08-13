@@ -45,7 +45,7 @@ class WorkshopUI:
     workshop_name: str
     description: str
     about_path: Optional[Path]
-    mixin_class: Type
+    mixin_class: Optional[Type]
     build_method: str
     tab_title: str = ""
     tab_order: int = 999
@@ -57,7 +57,7 @@ class WorkshopUI:
     run_method: Optional[str] = None
 
 
-def _discover_one(manifest_path: Path) -> Optional[WorkshopUI]:
+def _discover_one(manifest_path: Path, load_ui: bool = True) -> Optional[WorkshopUI]:
     """Read one manifest, deriving identity/display name from its directory."""
     try:
         with open(manifest_path, encoding="utf-8") as f:
@@ -73,8 +73,10 @@ def _discover_one(manifest_path: Path) -> Optional[WorkshopUI]:
         workshop_id = identity.workshop_id
         workshop_name = identity.workshop_id
 
-        module = importlib.import_module(ui["module"])
-        mixin_class = getattr(module, ui["mixin_class"])
+        mixin_class = None
+        if load_ui:
+            module = importlib.import_module(ui["module"])
+            mixin_class = getattr(module, ui["mixin_class"])
 
         # Title/name are derived from the folder.  ``display_name`` is
         # deliberately not accepted here: the current contract is that the
@@ -101,7 +103,11 @@ def _discover_one(manifest_path: Path) -> Optional[WorkshopUI]:
         return None
 
 
-def discover_workshops(workshops_dir: Optional[Path] = None) -> List[WorkshopUI]:
+def discover_workshops(
+    workshops_dir: Optional[Path] = None,
+    *,
+    load_ui: bool = True,
+) -> List[WorkshopUI]:
     """Create a fresh Workshop session from the current disk contents.
 
     There is NO persisted Workshop navigation order and NO ``session_priority``
@@ -126,7 +132,7 @@ def discover_workshops(workshops_dir: Optional[Path] = None) -> List[WorkshopUI]
         workshops_dir.glob("*/manifest.json"),
         key=lambda p: p.parent.name.casefold(),
     ):
-        workshop = _discover_one(manifest_path)
+        workshop = _discover_one(manifest_path, load_ui=load_ui)
         if workshop is not None:
             found.append(workshop)
 

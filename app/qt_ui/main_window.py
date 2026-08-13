@@ -267,7 +267,7 @@ class QtNaChanceWindow(QMainWindow):
 
     def _load_runtime_report(self) -> None:
         try:
-            workshops = discover_workshops(PROJECT_ROOT / "workshops")
+            workshops = discover_workshops(PROJECT_ROOT / "workshops", load_ui=False)
             rows = [f"{item.workshop_id} {item.version}" for item in workshops]
             self.workshop_label.setText("Discovered Workshops: " + (", ".join(rows) or "none"))
             self.log.appendPlainText(f"Discovered {len(workshops)} Workshop(s).")

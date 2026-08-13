@@ -104,6 +104,11 @@ def _detect_runtime():
 
 try:
     RUNTIME_REPORT, WORKSHOP_PROBLEMS = _detect_runtime()
+    try:
+        from ui.core_shortcut_policy import install as _install_core_shortcut_policy
+        _install_core_shortcut_policy()
+    except Exception:
+        pass
     from app.main_ui import NaChanceApp
     import customtkinter as ctk
 except SystemExit:

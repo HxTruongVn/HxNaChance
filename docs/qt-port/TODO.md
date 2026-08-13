@@ -1,6 +1,8 @@
 # Qt-only port TODO
 
 - [x] Create clean branch from `origin/main`
+- [x] Make the branch's primary `NaChance.py` entrypoint launch PySide6
+- [x] Keep the original main Tk entrypoint available only as an explicit legacy fallback
 - [x] Keep main application logic and Workshop implementations unchanged
 - [x] Add optional PySide6 dependency and entrypoint
 - [x] Add Core/runtime/workshop discovery view

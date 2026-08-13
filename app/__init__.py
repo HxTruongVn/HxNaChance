@@ -1,14 +1,6 @@
-"""
-NaChance Application Core
+"""NaChance application package.
 
-Chứa entry point main.py, UI main_ui.py, và photo agent.
+Importing this package is intentionally side-effect free. The legacy Tk
+shortcut policy is installed explicitly by ``app.main`` before it imports the
+Tk UI, so the Qt frontend can reuse application services without importing Tk.
 """
-
-# Install Core keyboard/menu policy before app.main_ui imports MenuBarMixin.
-# The policy is isolated from Workshop business logic and keeps startup
-# compatible if the optional UI policy cannot load.
-try:
-    from ui.core_shortcut_policy import install as _install_core_shortcut_policy
-    _install_core_shortcut_policy()
-except Exception:
-    pass

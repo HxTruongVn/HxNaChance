@@ -8,17 +8,17 @@ The branch does not redesign Core, replace RuntimeManager, rewrite Workshop engi
 
 ## Current entrypoints
 
-The existing application remains the main entrypoint:
-
-```bash
-python NaChance.py
-```
-
-The optional Qt frontend is started separately:
+The Qt branch primary entrypoint is now:
 
 ```bash
 pip install -r setup/requirements-qt.txt
-python NaChanceQt.py
+python NaChance.py
+```
+
+The original Tk entrypoint is retained only as an explicit legacy fallback:
+
+```bash
+python NaChanceTk.py
 ```
 
 ## Current Qt slice
