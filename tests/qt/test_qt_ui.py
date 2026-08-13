@@ -8,7 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 PySide6 = pytest.importorskip("PySide6")
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QAbstractSpinBox, QGridLayout, QGroupBox, QHBoxLayout, QMenu, QPushButton, QScrollArea
+from PySide6.QtWidgets import QApplication, QAbstractSpinBox, QGridLayout, QGroupBox, QHBoxLayout, QMenu, QPushButton, QScrollArea, QWidget
 
 from app.qt_ui import QtNaChanceWindow
 
@@ -261,6 +261,10 @@ def test_qt_theme_propagates_to_workshop_and_side_panel():
     theme_names = list(window._themes)
     if len(theme_names) > 1:
         window._on_theme_change(theme_names[1])
+        assert workshop.styleSheet() == window.styleSheet()
+        assert panel.styleSheet() == window.styleSheet()
+        assert workshop.findChildren(QWidget)
+        assert panel.findChildren(QWidget)
         assert workshop.styleSheet() == window.styleSheet()
         assert panel.styleSheet() == window.styleSheet()
     window.close()

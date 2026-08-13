@@ -214,3 +214,11 @@
 - [ ] Let Workshops consume resolved Core resources after sync completes
 - [x] Add deterministic worker tests with mocked downloader and no-redownload assertions
 
+
+## Theme propagation to open Workshops
+
+- [x] Propagate Core theme changes to every open Workshop immediately
+- [x] Propagate the same theme and font scale to Workshop-owned Preview/Side Panel windows
+- [x] Preserve each Workshop's current state while applying the new stylesheet
+- [x] Add tests for idle and active Workshop theme updates
+

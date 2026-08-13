@@ -743,13 +743,21 @@ class QtNaChanceWindow(QMainWindow):
         except (OSError, TypeError, ValueError) as exc:
             self.log.appendPlainText(f"Không thể lưu theme: {exc}")
 
+    def _apply_theme_to_open_windows(self, stylesheet: str | None = None) -> None:
+        stylesheet = stylesheet or self._stylesheet()
+        for child in list(self._workshop_windows.values()) + list(self._side_panel_windows.values()):
+            apply_theme = getattr(child, "apply_theme", None)
+            if callable(apply_theme):
+                apply_theme(stylesheet)
+            else:
+                child.setStyleSheet(stylesheet)
+
     def _on_font_scale_change(self, scale: float) -> None:
         self._font_scale = max(0.9, min(1.5, float(scale)))
         self._save_theme_name()
         stylesheet = self._stylesheet()
         self.setStyleSheet(stylesheet)
-        for child in list(self._workshop_windows.values()) + list(self._side_panel_windows.values()):
-            child.setStyleSheet(stylesheet)
+        self._apply_theme_to_open_windows(stylesheet)
         self.status_bar.showMessage(f"Cỡ chữ: {round(self._font_scale * 100)}%", 2500)
 
     def _on_theme_change(self, theme_name: str) -> None:
@@ -764,11 +772,12 @@ class QtNaChanceWindow(QMainWindow):
         self._theme_name = theme_name
         self._theme = self._theme_palette(theme_name)
         self._save_theme_name()
-        self.setStyleSheet(self._stylesheet())
+        stylesheet = self._stylesheet()
+        self.setStyleSheet(stylesheet)
+        self._apply_theme_to_open_windows(stylesheet)
         for action_name, action in self._theme_actions.items():
             action.setChecked(action_name == theme_name)
-        for child in list(self._workshop_windows.values()) + list(self._side_panel_windows.values()):
-            child.setStyleSheet(self._stylesheet())
+        self._apply_theme_to_open_windows(self._stylesheet())
         self.status_bar.showMessage(f"Theme: {theme_name}", 3000)
 
     def _build_ui(self) -> None:
