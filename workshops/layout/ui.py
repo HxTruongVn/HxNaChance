@@ -74,8 +74,6 @@ class LayoutTabMixin:
         self.layout_preset_vars = {}
         preset_items = list(LAYOUT_PRESETS.items())
 
-        # Visual cards: still the original CheckBox + count controls, but
-        # arranged in a compact 2-column grid instead of a long vertical list.
         for idx, (key, preset) in enumerate(preset_items):
             r, c = divmod(idx, 2)
             tile = ctk.CTkFrame(fl, fg_color=self.COLORS['bg_hover'],
@@ -142,8 +140,6 @@ class LayoutTabMixin:
             spin.bind("<FocusOut>", lambda _e: self._commit_preview_interaction(), add="+")
             self.layout_preset_vars[key] = {"chk": var, "count": spin}
 
-        # Custom formula is an advanced option. The "custom" preset remains
-        # selectable in the same compact grid; only its formula field is hidden.
         custom_wrap = ctk.CTkFrame(tab, fg_color="transparent")
         custom_wrap.pack(fill="x", pady=(0, 2))
         custom_open = {"value": False}
@@ -174,9 +170,31 @@ class LayoutTabMixin:
             border_color=self.COLORS['border'])
         self.entry_custom_formula.pack(fill="x", padx=10, pady=10)
 
-        # 3. SIMPLE ADJUSTMENTS --------------------------------------------
-        section_title(tab, "🔧 ĐIỀU CHỈNH")
-        fc = card(tab)
+        # 3. ADVANCED (BAO GỒM ĐIỀU CHỈNH VÀ VÙNG IN BÊN TRONG) ------------
+        adv_wrap = ctk.CTkFrame(tab, fg_color="transparent")
+        adv_wrap.pack(fill="x", pady=(0, 5))
+        adv_open = {"value": False}
+        adv_body = ctk.CTkFrame(adv_wrap, fg_color="transparent")
+
+        def toggle_advanced():
+            adv_open["value"] = not adv_open["value"]
+            if adv_open["value"]:
+                adv_body.pack(fill="x", pady=(3, 0))
+                adv_btn.configure(text="▾  Cấu hình kỹ thuật nâng cao")
+            else:
+                adv_body.pack_forget()
+                adv_btn.configure(text="▸  Cấu hình kỹ thuật nâng cao")
+
+        adv_btn = ctk.CTkButton(
+            adv_wrap, text="▸  Cấu hình kỹ thuật nâng cao",
+            command=toggle_advanced, anchor="w", height=32,
+            fg_color="transparent", hover_color=self.COLORS['bg_hover'],
+            text_color=self.COLORS['text_secondary'])
+        adv_btn.pack(fill="x")
+
+        # --- ĐIỀU CHỈNH (ĐƯA VÀO TRONG NÂNG CAO) ---[cite: 3]
+        section_title(adv_body, "🔧 ĐIỀU CHỈNH")
+        fc = card(adv_body)
         ctk.CTkLabel(fc, text="Cách đặt ảnh", font=self.F_SMALL,
                      text_color=self.COLORS['text_secondary']).pack(
                          anchor="w", padx=10, pady=(8, 2))
@@ -214,33 +232,12 @@ class LayoutTabMixin:
             border_color=self.COLORS['border'])
         self.entry_stroke_color.insert(0, "686868")
         self.entry_stroke_color.pack(side="left")
+
         for entry in (self.entry_stroke_w, self.entry_stroke_color, self.entry_custom_formula):
             entry.bind("<Return>", lambda _e: self._commit_preview_interaction(), add="+")
             entry.bind("<FocusOut>", lambda _e: self._commit_preview_interaction(), add="+")
 
-        # 4. ADVANCED -------------------------------------------------------
-        adv_wrap = ctk.CTkFrame(tab, fg_color="transparent")
-        adv_wrap.pack(fill="x", pady=(0, 5))
-        adv_open = {"value": False}
-        adv_body = ctk.CTkFrame(adv_wrap, fg_color="transparent")
-
-        def toggle_advanced():
-            adv_open["value"] = not adv_open["value"]
-            if adv_open["value"]:
-                adv_body.pack(fill="x", pady=(3, 0))
-                adv_btn.configure(text="▾  Cấu hình kỹ thuật nâng cao")
-            else:
-                adv_body.pack_forget()
-                adv_btn.configure(text="▸  Cấu hình kỹ thuật nâng cao")
-
-        adv_btn = ctk.CTkButton(
-            adv_wrap, text="▸  Cấu hình kỹ thuật nâng cao",
-            command=toggle_advanced, anchor="w", height=32,
-            fg_color="transparent", hover_color=self.COLORS['bg_hover'],
-            text_color=self.COLORS['text_secondary'])
-        adv_btn.pack(fill="x")
-
-        # Print area is hidden by default.
+        # --- VÙNG IN (BÊN TRONG NÂNG CAO) ---[cite: 3]
         section_title(adv_body, "📏 VÙNG IN")
         fcfg = card(adv_body)
 
@@ -471,7 +468,6 @@ class LayoutTabMixin:
         self.side_panel_rotate_row.pack_forget()
         self.side_panel_extra_label.pack_forget()
 
-        # Fit to viewport width only; tall canvases remain vertically scrollable.
         self.side_panel.update_idletasks()
         viewport_w = max(240, self.side_panel.winfo_width() - 42)
         w, h = canvas.size
