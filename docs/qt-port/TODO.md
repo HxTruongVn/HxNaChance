@@ -153,3 +153,13 @@
 - [x] Route F2 through the active Workshop preview capability instead of Layout-only shortcut
 - [x] Add ownership, fallback geometry, lifecycle, and shared F2 tests
 
+
+## Core/Workshop state transition parity
+
+- [x] Extract main state-transition contract for Core, active Workshop, session order, focus, and close behavior
+- [x] Compare Qt active context/state machine against main transition semantics
+- [x] Restore Core home transition without incorrectly closing or losing Workshop session state
+- [x] Restore next/previous Workshop transitions, focus activation, and active marker semantics
+- [x] Restore Workshop close behavior and fallback active state exactly as main
+- [x] Add transition tests for Core → Workshop → Workshop → Core and closed-window edge cases
+

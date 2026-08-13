@@ -307,6 +307,7 @@ class QtNaChanceWindow(QMainWindow):
         self._side_panel_windows: dict[str, QtSidePanelWindow] = {}
         self._workshop_order: list[str] = []
         self._active_workshop_id: str | None = None
+        self._active_workshop_index = -1
         self._config_path = Path.home() / ".nachance_ai.json"
         self._font_scale = self._load_font_scale()
         self._themes = self._load_theme_catalog()
@@ -322,6 +323,8 @@ class QtNaChanceWindow(QMainWindow):
             PipelineCommandProvider(), WorkshopCommandProvider(), CoreCommandProvider()
         ])
         self._discovered_workshops = discover_workshops(PROJECT_ROOT / "workshops", load_ui=False)
+        self._session_order = [item.workshop_id for item in self._discovered_workshops if item.workshop_id in {"layout", "photo", "repo_intake"}]
+        self._active_workshop_index = 0 if self._session_order else -1
         from app.pipeline_store import PipelineStore
         self.pipeline_store = PipelineStore(PROJECT_ROOT / "data" / "pipelines.db")
         self._build_actions()
@@ -973,23 +976,22 @@ class QtNaChanceWindow(QMainWindow):
         self._refresh_context_action_state()
 
     def _session_workshop_ids(self) -> list[str]:
-        discovered_ids = [item.workshop_id for item in self._discovered_workshops if item.workshop_id in {"layout", "photo", "repo_intake"}]
-        opened_ids = [workshop_id for workshop_id in self._workshop_order if workshop_id in discovered_ids]
-        return opened_ids + [workshop_id for workshop_id in discovered_ids if workshop_id not in opened_ids]
+        """Return the immutable per-session order used by main's WindowManager."""
+        return list(self._session_order)
 
     def _next_workshop_qt(self) -> None:
         order = self._session_workshop_ids()
         if not order:
             return
-        current = order.index(self._active_workshop_id) if self._active_workshop_id in order else -1
-        self._open_workshop_window(order[(current + 1) % len(order)])
+        self._active_workshop_index = (self._active_workshop_index + 1) % len(order)
+        self._open_workshop_window(order[self._active_workshop_index])
 
     def _previous_workshop_qt(self) -> None:
         order = self._session_workshop_ids()
         if not order:
             return
-        current = order.index(self._active_workshop_id) if self._active_workshop_id in order else 0
-        self._open_workshop_window(order[(current - 1) % len(order)])
+        self._active_workshop_index = (self._active_workshop_index - 1) % len(order)
+        self._open_workshop_window(order[self._active_workshop_index])
 
     def _close_active_workshop_qt(self) -> None:
         if self._active_workshop_id:
@@ -1006,6 +1008,8 @@ class QtNaChanceWindow(QMainWindow):
         existing = self._workshop_windows.get(workshop_id)
         if existing is not None:
             self._active_workshop_id = workshop_id
+            if workshop_id in self._session_order:
+                self._active_workshop_index = self._session_order.index(workshop_id)
             existing.showNormal()
             existing.raise_()
             existing.activateWindow()
@@ -1025,6 +1029,8 @@ class QtNaChanceWindow(QMainWindow):
             self._workshop_order.append(workshop_id)
         self._place_workshop_window(window)
         self._active_workshop_id = workshop_id
+        if workshop_id in self._session_order:
+            self._active_workshop_index = self._session_order.index(workshop_id)
         window.closed.connect(self._on_workshop_closed)
         window.activated.connect(self._on_workshop_activated)
         window.destroyed.connect(lambda _=None, wid=workshop_id: self._workshop_windows.pop(wid, None))
@@ -1037,6 +1043,8 @@ class QtNaChanceWindow(QMainWindow):
 
     def _on_workshop_closed(self, workshop_id: str) -> None:
         self._workshop_windows.pop(workshop_id, None)
+        # Match main: closing a Workshop clears the active target but does not
+        # rewrite the session cursor. Next/Previous continue from that cursor.
         if self._active_workshop_id == workshop_id:
             self._active_workshop_id = None
             self.quick_run.setEnabled(False)
@@ -1045,6 +1053,8 @@ class QtNaChanceWindow(QMainWindow):
 
     def _on_workshop_activated(self, workshop_id: str) -> None:
         self._active_workshop_id = workshop_id
+        if workshop_id in self._session_order:
+            self._active_workshop_index = self._session_order.index(workshop_id)
         self.quick_run.setEnabled(True)
         self._update_workspace_state_qt()
         self._refresh_launcher_buttons()

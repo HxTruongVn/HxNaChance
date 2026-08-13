@@ -162,13 +162,33 @@ def test_qt_grave_shortcuts_change_workspace_state():
     assert [shortcut.key().toString() for shortcut in window._qt_shortcuts] == ["F2", "Ctrl+R", "Ctrl+`", "Ctrl+Shift+`", "Ctrl+Alt+`"]
     window._qt_shortcuts[2].activated.emit()
     app.processEvents()
-    assert window._active_workshop_id == "layout"
+    assert window._active_workshop_id == "photo"
     window._qt_shortcuts[3].activated.emit()
     app.processEvents()
-    assert window._active_workshop_id == "repo_intake"
+    assert window._active_workshop_id == "layout"
     window._qt_shortcuts[4].activated.emit()
     app.processEvents()
     assert window._active_workshop_id is None
+    window.close()
+    app.processEvents()
+
+
+def test_qt_core_workshop_transition_preserves_session_cursor_after_close():
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    assert window._active_workshop_index == 0
+    window._next_workshop_qt()
+    assert window._active_workshop_id == "photo"
+    assert window._active_workshop_index == window._session_order.index("photo")
+    window._close_workshop_by_id("photo")
+    app.processEvents()
+    assert window._active_workshop_id is None
+    assert window._active_workshop_index == window._session_order.index("photo")
+    window._next_workshop_qt()
+    assert window._active_workshop_id == "repo_intake"
+    window._return_to_core_qt()
+    assert window._active_workshop_id is None
+    assert window._active_workshop_index == window._session_order.index("repo_intake")
     window.close()
     app.processEvents()
 
