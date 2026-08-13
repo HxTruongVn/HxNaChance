@@ -258,6 +258,7 @@ class QtNaChanceWindow(QMainWindow):
         self._workshop_order: list[str] = []
         self._active_workshop_id: str | None = None
         self._config_path = Path.home() / ".nachance_ai.json"
+        self._font_scale = self._load_font_scale()
         self._themes = self._load_theme_catalog()
         self._theme_groups = self._group_themes()
         self._theme_name = self._load_theme_name()
@@ -388,6 +389,16 @@ class QtNaChanceWindow(QMainWindow):
         status_action.triggered.connect(lambda checked: self.status_label.setVisible(checked))
         view_menu.addAction(status_action)
         theme_menu = view_menu.addMenu("Theme")
+        font_menu = view_menu.addMenu("Font size")
+        font_group = QActionGroup(self)
+        font_group.setExclusive(True)
+        for percent in (90, 100, 110, 125, 150):
+            font_action = QAction(f"{percent}%", self)
+            font_action.setCheckable(True)
+            font_action.setChecked(round(self._font_scale * 100) == percent)
+            font_action.triggered.connect(lambda checked=False, value=percent / 100: self._on_font_scale_change(value))
+            font_group.addAction(font_action)
+            font_menu.addAction(font_action)
         theme_group = QActionGroup(self)
         theme_group.setExclusive(True)
         for category in sorted(self._theme_groups, key=str.casefold):
@@ -608,6 +619,14 @@ class QtNaChanceWindow(QMainWindow):
             names.sort(key=str.casefold)
         return groups
 
+    def _load_font_scale(self) -> float:
+        try:
+            config = json.loads(self._config_path.read_text(encoding="utf-8"))
+            value = float(config.get("font_scale", 1.0))
+            return max(0.9, min(1.5, value))
+        except (OSError, ValueError, TypeError):
+            return 1.0
+
     def _load_theme_name(self) -> str:
         try:
             config = json.loads(self._config_path.read_text(encoding="utf-8"))
@@ -635,9 +654,19 @@ class QtNaChanceWindow(QMainWindow):
                 if isinstance(loaded, dict):
                     config = loaded
             config["theme"] = self._theme_name
+            config["font_scale"] = self._font_scale
             self._config_path.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
         except (OSError, TypeError, ValueError) as exc:
             self.log.appendPlainText(f"Không thể lưu theme: {exc}")
+
+    def _on_font_scale_change(self, scale: float) -> None:
+        self._font_scale = max(0.9, min(1.5, float(scale)))
+        self._save_theme_name()
+        stylesheet = self._stylesheet()
+        self.setStyleSheet(stylesheet)
+        for child in list(self._workshop_windows.values()) + list(self._side_panel_windows.values()):
+            child.setStyleSheet(stylesheet)
+        self.status_bar.showMessage(f"Cỡ chữ: {round(self._font_scale * 100)}%", 2500)
 
     def _on_theme_change(self, theme_name: str) -> None:
         if theme_name not in self._themes or theme_name == self._theme_name:
@@ -798,15 +827,19 @@ class QtNaChanceWindow(QMainWindow):
 
     def _stylesheet(self) -> str:
         c = self._theme
+        base_font = round(13 * self._font_scale)
+        small_font = max(10, round(11 * self._font_scale))
+        brand_font = round(20 * self._font_scale)
+        panel_font = round(16 * self._font_scale)
         return f"""
-        QMainWindow, QWidget {{ background: {c['bg']}; color: {c['text']}; font-size: 13px; }}
+        QMainWindow, QWidget {{ background: {c['bg']}; color: {c['text']}; font-size: {base_font}px; }}
         QMenuBar {{ background: {c['surface']}; color: {c['text']}; padding: 4px 8px; border-bottom: 1px solid {c['border']}; }}
         QMenuBar::item:selected, QMenu::item:selected {{ background: {c['surface2']}; }}
         QMenu {{ background: {c['surface']}; color: {c['text']}; border: 1px solid {c['border']}; }}
         QMenu::item {{ padding: 7px 24px; }}
         #titleBar {{ background: {c['surface']}; border-bottom: 1px solid {c['border']}; }}
-        #brandLabel {{ color: {c['accent_hover']}; font-size: 20px; font-weight: 700; }}
-        #workspaceLabel, #sectionLabel {{ color: {c['muted']}; font-size: 11px; font-weight: 700; letter-spacing: 1px; }}
+        #brandLabel {{ color: {c['accent_hover']}; font-size: {brand_font}px; font-weight: 700; }}
+        #workspaceLabel, #sectionLabel {{ color: {c['muted']}; font-size: {small_font}px; font-weight: 700; letter-spacing: 1px; }}
         #navigationPanel, #inspectorPanel {{ background: {c['surface']}; border: 1px solid {c['border']}; }}
         #navButton {{ text-align: left; padding: 10px 12px; border: 1px solid transparent; border-radius: 6px; color: {c['text']}; }}
         #navButton:hover {{ background: {c['surface2']}; }}
@@ -817,7 +850,7 @@ class QtNaChanceWindow(QMainWindow):
         QLineEdit, QComboBox, QSpinBox, QPlainTextEdit {{ background: {c['bg']}; color: {c['text']}; border: 1px solid {c['border']}; border-radius: 5px; padding: 6px; }}
         QGroupBox {{ border: 1px solid {c['border']}; border-radius: 8px; margin-top: 12px; padding: 12px; }}
         QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 4px; color: {c['accent_hover']}; }}
-        #panelTitle {{ font-size: 16px; font-weight: 600; }}
+        #panelTitle {{ font-size: {panel_font}px; font-weight: 600; }}
         #mutedLabel {{ color: {c['muted']}; }}
         #modeBadge {{ color: {c['success']}; padding: 6px; border: 1px solid {c['success']}; border-radius: 5px; }}
         #statusLabel {{ background: {c['surface']}; color: {c['muted']}; padding: 5px 12px; border-top: 1px solid {c['border']}; }}
@@ -1253,18 +1286,32 @@ class QtNaChanceWindow(QMainWindow):
             check.setProperty("presetKey", key)
             count = QSpinBox()
             count.setRange(0, 999)
-            count.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
             count.setValue(1 if idx == 0 else 0)
-            count.setMinimumWidth(112)
-            count.setMaximumWidth(132)
+            count.setMinimumWidth(74)
+            count.setMaximumWidth(92)
             count.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            count.setToolTip("Chọn preset rồi dùng phím mũi tên hoặc nút native của ô số để tăng/giảm số lượng")
+            count.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+            count.setToolTip("Số lượng preset đang chọn")
             check.clicked.connect(lambda _checked=False, s=count, preset_key=key: self._select_layout_preset_qt(preset_key, s))
             check.toggled.connect(lambda checked, s=count: s.setValue(max(1, s.value()) if checked else 0))
             check.toggled.connect(self._layout_controls_changed)
             count.valueChanged.connect(lambda _=0: self._layout_controls_changed())
+            quantity = QWidget()
+            quantity_layout = QHBoxLayout(quantity)
+            quantity_layout.setContentsMargins(0, 0, 0, 0)
+            quantity_layout.setSpacing(3)
+            minus = QPushButton("−")
+            plus = QPushButton("+")
+            for button in (minus, plus):
+                button.setFixedSize(28, 28)
+                button.setToolTip("Giảm/tăng số lượng preset")
+            minus.clicked.connect(lambda _=False, s=count, c=check: self._adjust_layout_count(s, c, -1))
+            plus.clicked.connect(lambda _=False, s=count, c=check: self._adjust_layout_count(s, c, 1))
+            quantity_layout.addWidget(minus)
+            quantity_layout.addWidget(count)
+            quantity_layout.addWidget(plus)
             tile_layout.addWidget(check, 1)
-            tile_layout.addWidget(count)
+            tile_layout.addWidget(quantity)
             row, col = divmod(idx, 2)
             preset_grid.addWidget(tile, row, col)
             self.layout_preset_vars[key] = {"chk": check, "count": count}
@@ -1378,7 +1425,9 @@ class QtNaChanceWindow(QMainWindow):
         layout.addWidget(self.photo_preset)
 
         face_group = QGroupBox("Face")
-        face_form = QFormLayout(face_group)
+        face_grid = QGridLayout(face_group)
+        face_grid.setHorizontalSpacing(14)
+        face_grid.setVerticalSpacing(5)
         self.photo_face_restore = QCheckBox("Face Restore")
         self.photo_face_restore.setChecked(True)
         self.photo_fidelity = QSlider(Qt.Orientation.Horizontal)
@@ -1393,12 +1442,16 @@ class QtNaChanceWindow(QMainWindow):
         self.photo_eye.setChecked(True)
         self.photo_teeth = QCheckBox("Whiten Teeth")
         self.photo_teeth.setChecked(True)
-        face_form.addRow(self.photo_face_restore)
-        face_form.addRow("Restore fidelity", self.photo_fidelity)
-        face_form.addRow(self.photo_skin)
-        face_form.addRow("Skin strength", self.photo_skin_strength)
-        face_form.addRow(self.photo_eye)
-        face_form.addRow(self.photo_teeth)
+        face_grid.addWidget(self.photo_face_restore, 0, 0)
+        face_grid.addWidget(QLabel("Restore fidelity"), 1, 0)
+        face_grid.addWidget(self.photo_fidelity, 2, 0)
+        face_grid.addWidget(self.photo_skin, 0, 1)
+        face_grid.addWidget(QLabel("Skin strength"), 1, 1)
+        face_grid.addWidget(self.photo_skin_strength, 2, 1)
+        face_grid.addWidget(self.photo_eye, 3, 0)
+        face_grid.addWidget(self.photo_teeth, 3, 1)
+        face_grid.setColumnStretch(0, 1)
+        face_grid.setColumnStretch(1, 1)
         layout.addWidget(face_group)
 
         pose_group = QGroupBox("Pose & Alignment")
@@ -1413,27 +1466,36 @@ class QtNaChanceWindow(QMainWindow):
         layout.addWidget(pose_group)
 
         post_group = QGroupBox("Background & Post-processing")
-        post_layout = QFormLayout(post_group)
+        post_grid = QGridLayout(post_group)
+        post_grid.setHorizontalSpacing(14)
+        post_grid.setVerticalSpacing(5)
         self.photo_remove_bg = QCheckBox("ReBG — Remove background")
         self.photo_remove_bg.toggled.connect(self._toggle_photo_bg_qt)
         self.photo_upscale = QCheckBox("Upscale 2x")
         self.photo_validate = QCheckBox("Validate standard")
         self.photo_validate.setChecked(True)
         self.photo_preview_enabled = QCheckBox("Preview")
-        post_layout.addRow(self.photo_remove_bg)
-        post_layout.addRow(self.photo_upscale)
-        post_layout.addRow(self.photo_validate)
-        post_layout.addRow(self.photo_preview_enabled)
+        post_grid.addWidget(self.photo_remove_bg, 0, 0)
+        post_grid.addWidget(self.photo_upscale, 0, 1)
+        post_grid.addWidget(self.photo_validate, 1, 0)
+        post_grid.addWidget(self.photo_preview_enabled, 1, 1)
+        post_grid.setColumnStretch(0, 1)
+        post_grid.setColumnStretch(1, 1)
         layout.addWidget(post_group)
 
         self.photo_bg_container = QWidget()
-        bg_layout = QFormLayout(self.photo_bg_container)
+        bg_layout = QGridLayout(self.photo_bg_container)
+        bg_layout.setHorizontalSpacing(14)
         self.photo_bg_mode = QComboBox()
         self.photo_bg_mode.addItems(["Xanh", "Trắng", "Đỏ", "Tùy chỉnh"])
         self.photo_bg_mode.currentTextChanged.connect(self._toggle_photo_custom_bg_qt)
         self.photo_bg_hex = QLineEdit("2772D0")
-        bg_layout.addRow("Background", self.photo_bg_mode)
-        bg_layout.addRow("Custom HEX", self.photo_bg_hex)
+        bg_layout.addWidget(QLabel("Background"), 0, 0)
+        bg_layout.addWidget(self.photo_bg_mode, 0, 1)
+        bg_layout.addWidget(QLabel("Custom HEX"), 0, 2)
+        bg_layout.addWidget(self.photo_bg_hex, 0, 3)
+        bg_layout.setColumnStretch(1, 1)
+        bg_layout.setColumnStretch(3, 1)
         self.photo_bg_container.setVisible(False)
         layout.addWidget(self.photo_bg_container)
 

@@ -135,3 +135,12 @@
 - [x] Remove duplicate quantity interaction that is not present in main
 - [x] Add exhaustive key-event tests per context and selected preset
 
+
+## Latest UI refinement from visual review
+
+- [x] Restore Layout quantity cluster as visible minus/value/plus controls with readable value
+- [x] Arrange Photo Face options in a compact two-column group
+- [x] Arrange Photo Background and post-processing options in a compact two-column group
+- [x] Add persisted theme-wide font scale setting with safe bounds and layout reflow
+- [x] Add offscreen tests for quantity visibility, two-column groups, and font scaling
+

@@ -8,7 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 PySide6 = pytest.importorskip("PySide6")
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QAbstractSpinBox, QMenu, QPushButton, QScrollArea
+from PySide6.QtWidgets import QApplication, QAbstractSpinBox, QGridLayout, QMenu, QPushButton, QScrollArea
 
 from app.qt_ui import QtNaChanceWindow
 
@@ -129,8 +129,10 @@ def test_qt_core_layout_photo_controls_are_nonredundant_and_scrollable():
     assert window.layout_advanced_body.isVisible()
     for controls in window.layout_preset_vars.values():
         spin = controls["count"]
-        assert spin.minimumWidth() >= 112
+        assert spin.minimumWidth() >= 74
         assert spin.buttonSymbols() == QAbstractSpinBox.ButtonSymbols.NoButtons
+        quantity = spin.parentWidget()
+        assert len(quantity.findChildren(QPushButton)) == 2
     selected_key = next(iter(window.layout_preset_vars))
     selected = window.layout_preset_vars[selected_key]
     window._select_layout_preset_qt(selected_key, selected["count"])
@@ -145,6 +147,10 @@ def test_qt_core_layout_photo_controls_are_nonredundant_and_scrollable():
     assert window.photo_bg_hex.isVisible()
     window.photo_remove_bg.setChecked(False)
     assert not window.photo_bg_container.isVisible()
+    assert any(isinstance(grid, QGridLayout) and grid.columnCount() >= 2 for grid in photo_window.findChildren(QGridLayout))
+    window._on_font_scale_change(1.25)
+    assert window._font_scale == 1.25
+    assert 'font-size: 16px' in window.styleSheet()
     window.close()
     app.processEvents()
 
@@ -163,6 +169,16 @@ def test_qt_grave_shortcuts_change_workspace_state():
     window._qt_shortcuts[3].activated.emit()
     app.processEvents()
     assert window._active_workshop_id is None
+    window.close()
+    app.processEvents()
+
+
+def test_qt_font_scale_is_persisted_with_theme(tmp_path):
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    window._config_path = tmp_path / "nachance.json"
+    window._on_font_scale_change(1.1)
+    assert json.loads(window._config_path.read_text(encoding="utf-8"))["font_scale"] == 1.1
     window.close()
     app.processEvents()
 
