@@ -77,6 +77,20 @@ def test_qt_photo_controls_map_to_main_options():
     app.processEvents()
 
 
+def test_qt_state_payload_contains_shared_workshop_state():
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    window._open_workshop_window("photo")
+    window.photo_fidelity.setValue(64)
+    payload = window._state_payload_qt()
+    assert payload["version"] == 1
+    assert payload["theme"] == window._theme_name
+    assert payload["active_workshop"] == "photo"
+    assert payload["photo"]["options"]["face_restore_fidelity"] == 0.64
+    window.close()
+    app.processEvents()
+
+
 def test_qt_layout_preserves_multiple_presets_and_counts(tmp_path):
     from PIL import Image
     from workshops.layout.print_layout import build_layout_canvas

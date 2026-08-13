@@ -155,20 +155,20 @@
 | Environment report | `_show_environment_report` | Có text cơ bản | Một phần |
 | Resource compatibility | `_show_resource_compatibility` | Chưa port | Thiếu |
 | Workshop requirements | `_show_workshop_requirements` | Chưa port | Thiếu |
-| Pipeline Builder window | `_show_pipeline_builder` | Chưa port | Thiếu |
-| Pipeline node/edge UI | `ui/pipeline_mixin.py` | Chưa port | Thiếu |
-| Undo/Redo/Save context | command providers | Placeholder | Thiếu |
+| Pipeline Builder window | `_show_pipeline_builder` | Qt dialog chọn/thêm/xóa/sắp xếp Workshop và lưu PipelineStore | Một phần | Bổ sung edit pipeline, snapshot state và run pipeline execution |
+| Pipeline node/edge UI | `ui/pipeline_mixin.py` | Qt hiện là ordered-step builder; chưa có node/edge canvas | Một phần | Port phần trình bày node/edge nếu main dùng trực tiếp |
+| Undo/Redo/Save context | command providers | Save state thật; Undo/Redo gọi active Workshop nếu cung cấp document API | Một phần | Nối ContextCommandRouter đầy đủ và enablement động |
 | Workshop exchange | `_workshop_exchange_targets` | Chưa port | Thiếu |
 
 ## Tầng 12 — Persistence, watcher và state
 
 | Hạng mục | Nguồn main | Qt hiện tại | Trạng thái |
 |---|---|---|---|
-| Config load/save | `_load_config`, `_save_config` | Chưa nối đầy đủ | Thiếu |
+| Config load/save | `_load_config`, `_save_config` | Theme config dùng cùng `~/.nachance_ai.json`; state có file riêng | Một phần | Nạp đầy đủ save_dir và Workshop config |
 | Theme persistence | ThemeMixin | Chưa có | Thiếu |
 | Layout state persistence | Layout UI/config | Một phần | Thiếu |
 | Photo state persistence | Photo UI/config | Một phần | Thiếu |
-| Saved `.nachance-state` | `Document.save_state` | Chưa port | Thiếu |
+| Saved `.nachance-state` | `Document.save_state` | Qt state JSON lưu theme, active Workshop, Layout, Photo, Repo Intake | Một phần | Tương thích đầy đủ với Document format của main |
 | Watcher changes | `WorkshopWatcher` | Chưa port | Thiếu |
 | Missing Workshop notification | `_show_workshop_change_status` | Chưa port | Thiếu |
 | Worker cancellation | main workers/timers | Chưa đầy đủ | Thiếu |
@@ -183,7 +183,7 @@
 | Host screenshot parity | screenshot comparison | Chưa kiểm |
 | Menu action parity | action-by-action test | Chưa kiểm |
 | Shortcut parity | QTest key events | Chưa kiểm |
-| Theme parity | load/switch/persist test | Chưa kiểm |
+| Theme parity | load/switch/persist test | Qt theme test đã có | Một phần | Hoàn thiện child style injection và busy/orientation block |
 | Multi-window lifecycle | open/close/focus/tile test | Native close/focus hierarchy test đã có; tile còn cần kiểm | Một phần | Hoàn tất placement và side-panel ownership |
 | Layout parity | multi-preset/output test | Đạt một phần |
 | Photo parity | full controls/output test | Chưa đạt |

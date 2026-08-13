@@ -26,6 +26,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
     QLabel,
+    QListWidget,
+    QListWidgetItem,
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
@@ -255,6 +257,8 @@ class QtNaChanceWindow(QMainWindow):
         self._theme = self._theme_palette(self._theme_name)
         self._theme_actions: dict[str, QAction] = {}
         self._discovered_workshops = discover_workshops(PROJECT_ROOT / "workshops", load_ui=False)
+        from app.pipeline_store import PipelineStore
+        self.pipeline_store = PipelineStore(PROJECT_ROOT / "data" / "pipelines.db")
         self._build_actions()
         self._build_ui()
         self._load_runtime_report()
@@ -265,6 +269,10 @@ class QtNaChanceWindow(QMainWindow):
         open_action.setShortcut("Ctrl+O")
         open_action.triggered.connect(self._choose_photo_source)
         file_menu.addAction(open_action)
+        saved_state_action = QAction("Open Saved State…", self)
+        saved_state_action.setShortcut("Ctrl+Shift+O")
+        saved_state_action.triggered.connect(self._open_saved_state_qt)
+        file_menu.addAction(saved_state_action)
         file_menu.addSeparator()
         exit_action = QAction("Exit", self)
         exit_action.setShortcut("Ctrl+Q")
@@ -273,9 +281,9 @@ class QtNaChanceWindow(QMainWindow):
 
         edit_menu = self.menuBar().addMenu("Edit")
         for label, shortcut, handler in (
-            ("Undo", "Ctrl+Z", self._noop_context_action),
-            ("Redo", "Ctrl+Y", self._noop_context_action),
-            ("Save", "Ctrl+S", self._noop_context_action),
+            ("Undo", "Ctrl+Z", self._undo_qt),
+            ("Redo", "Ctrl+Y", self._redo_qt),
+            ("Save", "Ctrl+S", self._save_state_qt),
         ):
             action = QAction(label, self)
             action.setShortcut(shortcut)
@@ -290,7 +298,7 @@ class QtNaChanceWindow(QMainWindow):
         pipeline_menu = self.menuBar().addMenu("Pipeline")
         pipeline_open = QAction("Open Pipeline Builder", self)
         pipeline_open.setShortcut("Ctrl+P")
-        pipeline_open.triggered.connect(lambda: self._noop_context_action())
+        pipeline_open.triggered.connect(self._show_pipeline_builder_qt)
         pipeline_menu.addAction(pipeline_open)
         pipeline_run = QAction("Run active pipeline", self)
         pipeline_run.setShortcut("F9")
@@ -376,6 +384,63 @@ class QtNaChanceWindow(QMainWindow):
 
     def _noop_context_action(self) -> None:
         self.log.appendPlainText("Command is reserved for the active Core/Workshop context.")
+
+    def _undo_qt(self) -> None:
+        target = self._workshop_windows.get(self._active_workshop_id or "")
+        callback = getattr(target, "undo", None) or getattr(target, "_undo", None)
+        if callable(callback):
+            callback()
+        else:
+            self.log.appendPlainText("Undo: active Workshop chưa cung cấp document history.")
+
+    def _redo_qt(self) -> None:
+        target = self._workshop_windows.get(self._active_workshop_id or "")
+        callback = getattr(target, "redo", None) or getattr(target, "_redo", None)
+        if callable(callback):
+            callback()
+        else:
+            self.log.appendPlainText("Redo: active Workshop chưa cung cấp document history.")
+
+    def _state_payload_qt(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {"version": 1, "theme": self._theme_name, "active_workshop": self._active_workshop_id}
+        if hasattr(self, "layout_preset_vars"):
+            payload["layout"] = self._layout_config_qt()
+        if hasattr(self, "photo_preset"):
+            payload["photo"] = {"preset": self.photo_preset.currentData(), "options": self._photo_options_qt(), "background_mode": self.photo_bg_mode.currentText(), "background_hex": self.photo_bg_hex.text()}
+        if hasattr(self, "repo_source"):
+            payload["repo_intake"] = {"source": self.repo_source.text(), "profile": {key: field.text() for key, field in self.repo_profile_fields.items()}, "plan": self.repo_plan.currentData().value if hasattr(self.repo_plan.currentData(), "value") else self.repo_plan.currentData()}
+        return payload
+
+    def _save_state_qt(self) -> None:
+        path, _ = QFileDialog.getSaveFileName(self, "Save NaChance State", "nachance-state.json", "NaChance State (*.nachance-state *.json)")
+        if not path:
+            return
+        try:
+            Path(path).write_text(json.dumps(self._state_payload_qt(), ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+            self.status_bar.showMessage(f"Đã lưu state: {path}", 4000)
+        except OSError as exc:
+            QMessageBox.critical(self, "Save State", str(exc))
+
+    def _open_saved_state_qt(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(self, "Open Saved State", "", "NaChance State (*.nachance-state *.json)")
+        if not path:
+            return
+        try:
+            payload = json.loads(Path(path).read_text(encoding="utf-8"))
+            theme = payload.get("theme")
+            if theme in self._themes:
+                self._on_theme_change(theme)
+            photo = payload.get("photo", {})
+            if hasattr(self, "photo_preset") and photo.get("preset"):
+                index = self.photo_preset.findData(photo["preset"])
+                if index >= 0:
+                    self.photo_preset.setCurrentIndex(index)
+            if hasattr(self, "photo_bg_mode"):
+                self.photo_bg_mode.setCurrentText(photo.get("background_mode", self.photo_bg_mode.currentText()))
+                self.photo_bg_hex.setText(photo.get("background_hex", self.photo_bg_hex.text()))
+            self.status_bar.showMessage(f"Đã mở state: {path}", 4000)
+        except (OSError, ValueError, TypeError) as exc:
+            QMessageBox.critical(self, "Open State", str(exc))
 
     def _load_theme_catalog(self) -> dict[str, dict[str, str]]:
         path = PROJECT_ROOT / "config" / "presets" / "themes.json"
@@ -760,6 +825,73 @@ class QtNaChanceWindow(QMainWindow):
             "About NaChance",
             "NaChance — Qt desktop frontend\\n\\nLogic and Workshop engines are reused from the main application.",
         )
+
+    def _show_pipeline_builder_qt(self) -> None:
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Pipeline Builder")
+        dialog.resize(760, 560)
+        root = QVBoxLayout(dialog)
+        name = QLineEdit("Pipeline mới")
+        root.addWidget(QLabel("Tên Pipeline"))
+        root.addWidget(name)
+        row = QHBoxLayout()
+        available = QComboBox()
+        for item in self._discovered_workshops:
+            available.addItem(item.menu_label or item.workshop_name, item)
+        add = QPushButton("＋ Thêm bước")
+        remove = QPushButton("− Xóa bước")
+        up = QPushButton("↑")
+        down = QPushButton("↓")
+        row.addWidget(available, 1)
+        row.addWidget(add)
+        row.addWidget(remove)
+        row.addWidget(up)
+        row.addWidget(down)
+        root.addLayout(row)
+        steps = QListWidget()
+        root.addWidget(steps, 1)
+        def add_step() -> None:
+            item = available.currentData()
+            if item is None:
+                return
+            entry = QListWidgetItem(item.menu_label or item.workshop_name)
+            entry.setData(Qt.ItemDataRole.UserRole, item)
+            steps.addItem(entry)
+        def remove_step() -> None:
+            row_index = steps.currentRow()
+            if row_index >= 0:
+                steps.takeItem(row_index)
+        def move_step(delta: int) -> None:
+            row_index = steps.currentRow()
+            target = row_index + delta
+            if row_index < 0 or target < 0 or target >= steps.count():
+                return
+            item = steps.takeItem(row_index)
+            steps.insertItem(target, item)
+            steps.setCurrentRow(target)
+        add.clicked.connect(add_step)
+        remove.clicked.connect(remove_step)
+        up.clicked.connect(lambda: move_step(-1))
+        down.clicked.connect(lambda: move_step(1))
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        def save_pipeline() -> None:
+            if steps.count() == 0:
+                QMessageBox.warning(dialog, "Pipeline", "Pipeline phải có ít nhất một Workshop.")
+                return
+            pipeline_steps = []
+            for index in range(steps.count()):
+                item = steps.item(index).data(Qt.ItemDataRole.UserRole)
+                pipeline_steps.append({"workshop_id": item.workshop_id, "workshop_name": item.menu_label or item.workshop_name, "workshop_version": item.version, "state": {}})
+            try:
+                pipeline_id = self.pipeline_store.save(name.text(), pipeline_steps)
+                self.log.appendPlainText(f"Pipeline saved: {name.text()} ({pipeline_id})")
+                dialog.accept()
+            except Exception as exc:
+                QMessageBox.critical(dialog, "Pipeline", str(exc))
+        buttons.accepted.connect(save_pipeline)
+        buttons.rejected.connect(dialog.reject)
+        root.addWidget(buttons)
+        dialog.exec()
 
     def _show_text_dialog_qt(self, title: str, text: str, width: int = 720, height: int = 560) -> None:
         dialog = QDialog(self)
