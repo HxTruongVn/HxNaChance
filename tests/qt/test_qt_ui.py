@@ -109,6 +109,17 @@ def test_qt_menu_hierarchy_and_shortcuts_match_main():
     app.processEvents()
 
 
+def test_qt_edit_actions_follow_active_context():
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    assert window._context_actions["save"].isEnabled() is False
+    window._open_workshop_window("layout")
+    window._refresh_context_action_state()
+    assert window._context_actions["save"].isEnabled() is True
+    window.close()
+    app.processEvents()
+
+
 def test_qt_core_exchange_routes_output_to_photo(tmp_path):
     from PIL import Image
     app = QApplication.instance() or QApplication([])

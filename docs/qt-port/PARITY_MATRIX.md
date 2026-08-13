@@ -66,7 +66,7 @@
 | Ctrl+` / Ctrl+Shift+` | Workshop navigation | Có Next/Previous khác phím | Một phần | Giữ đúng phím main và session order |
 | Alt+menu key | menu bar custom | Native Qt mnemonic | Một phần | Kiểm tra parity trên Windows |
 | Context resolution | `ContextCommandRouter` | Qt router chọn PIPELINE/WORKSHOP/CORE context, metadata host | Một phần | Thêm TEXT_INPUT và focused widget |
-| Enable/disable command | providers | Dispatch kiểm tra `is_enabled`; menu action vẫn cần refresh động | Một phần | Recompute theo focus/active window |
+| Enable/disable command | providers | Qt giữ QAction references, resolve provider và refresh theo active Core/Workshop context | Một phần | Recompute theo focused widget/text input và active pipeline |
 
 ## Tầng 5 — Core host launcher/session
 
@@ -157,7 +157,7 @@
 | Workshop requirements | `_show_workshop_requirements` | Qt text dialog gọi `app.workshop_requirements.analyze` | Một phần | Bổ sung overlap sections và action links |
 | Pipeline Builder window | `_show_pipeline_builder` | Qt dialog chọn/thêm/xóa/sắp xếp Workshop và lưu PipelineStore | Một phần | Bổ sung edit pipeline, snapshot state và run pipeline execution |
 | Pipeline node/edge UI | `ui/pipeline_mixin.py` | Qt hiện là ordered-step builder; chưa có node/edge canvas | Một phần | Port phần trình bày node/edge nếu main dùng trực tiếp |
-| Undo/Redo/Save context | command providers | Save state thật; Undo/Redo gọi active Workshop nếu cung cấp document API | Một phần | Nối ContextCommandRouter đầy đủ và enablement động |
+| Undo/Redo/Save context | command providers | Qt route qua ContextCommandRouter, Save alias và active Workshop fallback; state enablement có test | Một phần | Route document/pipeline history thật |
 | Workshop exchange | `_workshop_exchange_targets` | Core host có target discovery từ manifest, latest output và route vào Photo input | Một phần | Thêm receiver contract cho mọi Workshop nhận image và temp-file lifecycle |
 
 ## Tầng 12 — Persistence, watcher và state

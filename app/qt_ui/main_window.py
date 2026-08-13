@@ -159,6 +159,7 @@ class QtWorkshopWindow(QMainWindow):
     def __init__(self, workshop_id: str, title: str, content: QWidget, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.workshop_id = workshop_id
+        self.current_document = object()
         self.setWindowTitle(f"NaChance — {title}")
         self.setWindowIcon(canonical_logo_icon())
         self.resize(980, 760)
@@ -269,6 +270,7 @@ class QtNaChanceWindow(QMainWindow):
         self._theme = self._theme_palette(self._theme_name)
         self._theme_actions: dict[str, QAction] = {}
         self._photo_menu_actions: dict[str, QAction] = {}
+        self._context_actions: dict[str, QAction] = {}
         self._managed_workshop_watcher = None
         self._workshop_change_pending = False
         self._command_router = ContextCommandRouter([
@@ -308,7 +310,9 @@ class QtNaChanceWindow(QMainWindow):
             action.setShortcut(shortcut)
             action.triggered.connect(handler)
             edit_menu.addAction(action)
+            self._context_actions[label.lower()] = action
         edit_menu.addSeparator()
+        self._refresh_context_action_state()
         refresh_action = QAction("Refresh runtime", self)
         refresh_action.setShortcut("F5")
         refresh_action.triggered.connect(self._load_runtime_report)
@@ -430,6 +434,13 @@ class QtNaChanceWindow(QMainWindow):
             return CommandContext(kind=kind, workspace_id=workshop_id, target=target, metadata={"host": self})
         return CommandContext(kind=WorkspaceKind.CORE, workspace_id="core", target=self, metadata={"host": self})
 
+    def _refresh_context_action_state(self) -> None:
+        context = self._current_command_context()
+        for label, action in self._context_actions.items():
+            command_id = {"undo": "edit.undo", "redo": "edit.redo", "save": "file.save"}.get(label)
+            command = self._command_router.resolve(command_id, context) if command_id else None
+            action.setEnabled(True if command is None else command.is_enabled())
+
     def _dispatch_context_command(self, command_id: str, fallback=None) -> None:
         context = self._current_command_context()
         command = self._command_router.resolve(command_id, context)
@@ -464,6 +475,12 @@ class QtNaChanceWindow(QMainWindow):
         if hasattr(self, "repo_source"):
             payload["repo_intake"] = {"source": self.repo_source.text(), "profile": {key: field.text() for key, field in self.repo_profile_fields.items()}, "plan": self.repo_plan.currentData().value if hasattr(self.repo_plan.currentData(), "value") else self.repo_plan.currentData()}
         return payload
+
+    def _save_current_state(self) -> None:
+        self._save_state_qt()
+
+    def save_workspace(self) -> None:
+        self._save_state_qt()
 
     def _save_state_qt(self) -> None:
         path, _ = QFileDialog.getSaveFileName(self, "Save NaChance State", "nachance-state.json", "NaChance State (*.nachance-state *.json)")
@@ -766,6 +783,9 @@ class QtNaChanceWindow(QMainWindow):
             button.setProperty("openState", is_open)
             button.style().unpolish(button)
             button.style().polish(button)
+
+    def _run_active_workshop(self) -> None:
+        self._run_active_workshop_qt()
 
     def _run_active_workshop_qt(self) -> None:
         if self._active_workshop_id:
