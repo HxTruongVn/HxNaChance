@@ -6,6 +6,8 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 PySide6 = pytest.importorskip("PySide6")
+from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QMenu, QPushButton
 
 from app.qt_ui import QtNaChanceWindow
@@ -16,7 +18,7 @@ def test_qt_window_exposes_main_workshop_tabs():
     window = QtNaChanceWindow()
     assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ["Core"]
     assert list(window._workshop_launcher_buttons) == ["layout", "photo", "repo_intake"]
-    assert [action.text() for action in window.menuBar().actions()] == [
+    assert [action.text().replace("&", "") for action in window.menuBar().actions()] == [
         "File", "Edit", "Pipeline", "Window", "View", "Tool", "Help"
     ]
     assert [button.text() for button in window._workshop_launcher_buttons.values()] == ["OPEN", "OPEN", "OPEN"]
@@ -103,8 +105,48 @@ def test_qt_menu_hierarchy_and_shortcuts_match_main():
     workshop_cascades = [action.text().replace("&", "") for action in window_menu.actions() if action.menu() is not None]
     assert any("layout" in text.lower() for text in workshop_cascades)
     shortcuts = {action.text().replace("&", ""): action.shortcut().toString() for action in window_menu.actions()}
-    assert shortcuts["Next Workshop"] == "Ctrl+Tab"
+    assert shortcuts["Next Workshop"] == "Ctrl+`"
+    assert shortcuts["Previous Workshop"] == "Ctrl+Shift+`"
     assert shortcuts["Close active Workshop"] == "Ctrl+W"
+    window.close()
+    app.processEvents()
+
+
+def test_qt_grave_shortcuts_change_workspace_state():
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    window.show()
+    assert [shortcut.key().toString() for shortcut in window._qt_shortcuts] == ["Ctrl+`", "Ctrl+Shift+`", "Ctrl+Alt+`"]
+    window._qt_shortcuts[0].activated.emit()
+    app.processEvents()
+    assert window._active_workshop_id == "layout"
+    window._qt_shortcuts[1].activated.emit()
+    app.processEvents()
+    assert window._active_workshop_id == "repo_intake"
+    window._qt_shortcuts[2].activated.emit()
+    app.processEvents()
+    assert window._active_workshop_id is None
+    window.close()
+    app.processEvents()
+
+
+def test_qt_theme_propagates_to_workshop_and_side_panel():
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    workshop = window._open_workshop_window("layout")
+    panel = window._side_panel_windows.get("layout")
+    if panel is None:
+        window._layout_preview_toggle_qt()
+        panel = window._side_panel_windows.get("layout")
+    assert workshop is not None
+    assert panel is not None
+    assert workshop.styleSheet() == window.styleSheet()
+    assert panel.styleSheet() == window.styleSheet()
+    theme_names = list(window._themes)
+    if len(theme_names) > 1:
+        window._on_theme_change(theme_names[1])
+        assert workshop.styleSheet() == window.styleSheet()
+        assert panel.styleSheet() == window.styleSheet()
     window.close()
     app.processEvents()
 

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QObject, QThread, QTimer, Signal, Qt
-from PySide6.QtGui import QAction, QActionGroup, QIcon, QImage, QPixmap
+from PySide6.QtGui import QAction, QActionGroup, QIcon, QImage, QPixmap, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -183,20 +183,12 @@ class QtWorkshopWindow(QMainWindow):
         status.setObjectName("workshopStatus")
         shell_layout.addWidget(status)
         self.setCentralWidget(shell)
-        self.setStyleSheet("""
-            QMainWindow, QWidget { background: #111827; color: #f9fafb; }
-            #workshopHeader { background: #1f2937; border-bottom: 1px solid #4b5563; }
-            #workshopTitle { color: #60a5fa; font-size: 17px; font-weight: 700; }
-            #workshopStatus { background: #1f2937; color: #9ca3af; padding: 5px 10px; border-top: 1px solid #4b5563; }
-            QPushButton { background: #3b82f6; color: white; border: none; border-radius: 5px; padding: 7px 12px; }
-            QPushButton:hover { background: #60a5fa; }
-            QGroupBox { border: 1px solid #4b5563; border-radius: 8px; margin-top: 12px; padding: 10px; }
-            QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; color: #60a5fa; }
-            QLineEdit, QComboBox, QSpinBox, QPlainTextEdit { background: #111827; color: #f9fafb; border: 1px solid #4b5563; border-radius: 5px; padding: 5px; }
-            QScrollArea { border: none; }
-            #presetTile { background: #374151; border: 1px solid #4b5563; border-radius: 6px; }
-            #layoutPreview { background: #1f2937; border: 1px solid #4b5563; }
-        """)
+        self.setStyleSheet("")
+
+    def apply_theme(self, stylesheet: str) -> None:
+        self.setStyleSheet(stylesheet)
+        for widget in self.findChildren(QWidget):
+            widget.setStyleSheet(stylesheet)
 
     def closeEvent(self, event) -> None:
         self.closed.emit(self.workshop_id)
@@ -225,12 +217,12 @@ class QtSidePanelWindow(QMainWindow):
         layout.addWidget(self.preview, 1)
         layout.addLayout(self.action_row)
         self.setCentralWidget(body)
-        self.setStyleSheet("""
-            QMainWindow, QWidget { background: #111827; color: #f9fafb; }
-            #sidePreview { background: #1f2937; border: 1px solid #4b5563; }
-            QPushButton { background: #3b82f6; color: white; border: none; border-radius: 5px; padding: 8px 12px; }
-            QPushButton:hover { background: #60a5fa; }
-        """)
+        self.setStyleSheet("")
+
+    def apply_theme(self, stylesheet: str) -> None:
+        self.setStyleSheet(stylesheet)
+        for widget in self.findChildren(QWidget):
+            widget.setStyleSheet(stylesheet)
 
     def set_image(self, image_path: str) -> None:
         image = QImage(image_path)
@@ -281,11 +273,12 @@ class QtNaChanceWindow(QMainWindow):
         self.pipeline_store = PipelineStore(PROJECT_ROOT / "data" / "pipelines.db")
         self._build_actions()
         self._build_ui()
+        self._install_core_shortcuts_qt()
         self._load_runtime_report()
         self._start_workshop_watcher_qt()
 
     def _build_actions(self) -> None:
-        file_menu = self.menuBar().addMenu("File")
+        file_menu = self.menuBar().addMenu("&File")
         open_action = QAction("Open image…", self)
         open_action.setShortcut("Ctrl+O")
         open_action.triggered.connect(self._choose_photo_source)
@@ -300,7 +293,7 @@ class QtNaChanceWindow(QMainWindow):
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
-        edit_menu = self.menuBar().addMenu("Edit")
+        edit_menu = self.menuBar().addMenu("&Edit")
         for label, shortcut, handler in (
             ("Undo", "Ctrl+Z", lambda: self._dispatch_context_command("edit.undo", self._undo_qt)),
             ("Redo", "Ctrl+Y", lambda: self._dispatch_context_command("edit.redo", self._redo_qt)),
@@ -318,7 +311,7 @@ class QtNaChanceWindow(QMainWindow):
         refresh_action.triggered.connect(self._load_runtime_report)
         edit_menu.addAction(refresh_action)
 
-        pipeline_menu = self.menuBar().addMenu("Pipeline")
+        pipeline_menu = self.menuBar().addMenu("&Pipeline")
         pipeline_open = QAction("Open Pipeline Builder", self)
         pipeline_open.setShortcut("Ctrl+P")
         pipeline_open.triggered.connect(self._show_pipeline_builder_qt)
@@ -328,7 +321,7 @@ class QtNaChanceWindow(QMainWindow):
         pipeline_run.triggered.connect(self._run_active_workshop_qt)
         pipeline_menu.addAction(pipeline_run)
 
-        window_menu = self.menuBar().addMenu("Window")
+        window_menu = self.menuBar().addMenu("&Window")
         core_action = QAction("Core", self)
         core_action.triggered.connect(lambda: self._select_tab(0))
         window_menu.addAction(core_action)
@@ -368,11 +361,11 @@ class QtNaChanceWindow(QMainWindow):
                 workshop_menu.addAction("Inspect / Intake", self._repo_submit)
         window_menu.addSeparator()
         next_action = QAction("Next Workshop", self)
-        next_action.setShortcut("Ctrl+Tab")
+        next_action.setShortcut("Ctrl+`")
         next_action.triggered.connect(self._next_workshop_qt)
         window_menu.addAction(next_action)
         previous_action = QAction("Previous Workshop", self)
-        previous_action.setShortcut("Ctrl+Shift+Tab")
+        previous_action.setShortcut("Ctrl+Shift+`")
         previous_action.triggered.connect(self._previous_workshop_qt)
         window_menu.addAction(previous_action)
         close_active = QAction("Close active Workshop", self)
@@ -380,7 +373,7 @@ class QtNaChanceWindow(QMainWindow):
         close_active.triggered.connect(self._close_active_workshop_qt)
         window_menu.addAction(close_active)
 
-        view_menu = self.menuBar().addMenu("View")
+        view_menu = self.menuBar().addMenu("&View")
         view_menu.addAction("Mini", lambda: self._set_display_mode_qt("mini"))
         view_menu.addAction("Full Screen", lambda: self._set_display_mode_qt("full"))
         view_menu.addAction("Half Screen", lambda: self._set_display_mode_qt("half"))
@@ -409,7 +402,7 @@ class QtNaChanceWindow(QMainWindow):
                 category_menu.addAction(theme_action)
                 self._theme_actions[theme_name] = theme_action
 
-        tool_menu = self.menuBar().addMenu("Tool")
+        tool_menu = self.menuBar().addMenu("&Tool")
         runtime_menu = tool_menu.addMenu("Runtime")
         runtime_menu.addAction("Open Runtime", self._load_runtime_report)
         runtime_menu.addAction("Workshop Requirements & Overlap…", self._show_workshop_requirements_qt)
@@ -418,7 +411,7 @@ class QtNaChanceWindow(QMainWindow):
         system_tools.addAction("Show Environment Report", self._show_environment_report_qt)
         system_tools.addAction("Reload Workshop manifests", self._load_runtime_report)
 
-        help_menu = self.menuBar().addMenu("Help")
+        help_menu = self.menuBar().addMenu("&Help")
         about_action = QAction("About NaChance", self)
         about_action.triggered.connect(self._show_about)
         help_menu.addAction(about_action)
@@ -436,6 +429,28 @@ class QtNaChanceWindow(QMainWindow):
             kind = WorkspaceKind.PIPELINE if workshop_id == "pipeline" else WorkspaceKind.WORKSHOP
             return CommandContext(kind=kind, workspace_id=workshop_id, target=target, metadata={"host": self})
         return CommandContext(kind=WorkspaceKind.CORE, workspace_id="core", target=self, metadata={"host": self})
+
+    def _install_core_shortcuts_qt(self) -> None:
+        self._qt_shortcuts = []
+        shortcuts = (
+            (QKeySequence(Qt.KeyboardModifier.ControlModifier | Qt.Key.Key_QuoteLeft), self._next_workshop_qt),
+            (QKeySequence(Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier | Qt.Key.Key_QuoteLeft), self._previous_workshop_qt),
+            (QKeySequence(Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.AltModifier | Qt.Key.Key_QuoteLeft), self._return_to_core_qt),
+        )
+        for sequence, callback in shortcuts:
+            shortcut = QShortcut(sequence, self)
+            shortcut.activated.connect(callback)
+            self._qt_shortcuts.append(shortcut)
+
+    def _return_to_core_qt(self) -> None:
+        for workshop_id in list(self._workshop_windows):
+            self._close_workshop_by_id(workshop_id)
+        self._active_workshop_id = None
+        self.workspace_label.setText("CORE / HOME")
+        self.quick_run.setEnabled(False)
+        self._refresh_context_action_state()
+        self.raise_()
+        self.activateWindow()
 
     def _refresh_context_action_state(self) -> None:
         context = self._current_command_context()
@@ -883,6 +898,7 @@ class QtNaChanceWindow(QMainWindow):
         }
         title, builder = builders[workshop_id]
         window = QtWorkshopWindow(workshop_id, title, builder(), self)
+        window.apply_theme(self._stylesheet())
         self._workshop_windows[workshop_id] = window
         if workshop_id not in self._workshop_order:
             self._workshop_order.append(workshop_id)
@@ -1676,6 +1692,7 @@ class QtNaChanceWindow(QMainWindow):
             self.layout_preview_button.setText("MỞ XEM TRƯỚC")
             return
         panel = QtSidePanelWindow("Layout Preview", self)
+        panel.apply_theme(self._stylesheet())
         self._side_panel_windows["layout"] = panel
         panel.destroyed.connect(self._on_layout_panel_destroyed)
         canvas = getattr(self, "_layout_canvas", None)
@@ -1802,6 +1819,7 @@ class QtNaChanceWindow(QMainWindow):
             QMessageBox.warning(self, "Photo Preview", "Choose a portrait first.")
             return
         panel = QtSidePanelWindow("Photo Preview", self)
+        panel.apply_theme(self._stylesheet())
         panel.set_image(self._source_path)
         self._side_panel_windows["photo"] = panel
         panel.destroyed.connect(self._on_photo_panel_destroyed)

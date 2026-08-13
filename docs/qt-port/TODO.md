@@ -96,3 +96,15 @@
 - [x] Implement config/state persistence, watcher updates, missing-workshop notices, and cancellation
 - [ ] Add action-level, shortcut-level, theme, hierarchy, and full-workshop parity tests
 
+
+## Keyboard and theme parity correction
+
+- [x] Inject the active Core theme palette into every Workshop content widget, native Workshop window, and side panel
+- [x] Remove Workshop-local hardcoded colors that override the active Core theme
+- [x] Port Ctrl+` active-state/workspace transition exactly as defined by main
+- [x] Port Ctrl+Shift+` reverse transition and all Workshop navigation combinations from main
+- [ ] Port state transition feedback, active marker, and status updates for keyboard navigation
+- [x] Port Alt+key menu mnemonics and menu focus/open behavior from main
+- [x] Test theme propagation across host, Workshop, and side panel
+- [x] Test Ctrl backtick, reverse transition, navigation combinations, and Alt-menu keys with Qt key events
+

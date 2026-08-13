@@ -34,10 +34,10 @@
 | Theme name | `ThemeMixin._load_theme_name` | Qt đọc `~/.nachance_ai.json` và fallback cùng nguyên tắc | Đủ | Dùng cùng config path và default |
 | Theme groups/category | `THEME_GROUPS` | Qt nhóm category động thành submenu | Đủ | Hiển thị nhóm theme động |
 | View → Theme submenu | `ui/menu_bar_mixin.py:_menu_view` | Có View → Theme, QActionGroup và check state | Đủ | Mỗi theme có radio/check state |
-| Apply theme live | `ThemeMixin._on_theme_change` | Đổi palette live cho host, Workshop và side panels | Một phần | Còn cần loại bỏ stylesheet hardcode riêng của Workshop |
+| Apply theme live | `ThemeMixin._on_theme_change` | Qt đổi stylesheet live cho host, Workshop và side panels qua `apply_theme()`; có propagation test | Một phần | Đồng bộ block busy/orientation và custom palette colors |
 | Block theme switch while busy/orient | ThemeMixin lines 74–89 | Qt chặn khi Layout/Photo worker đang chạy; orientation dialog là modal | Một phần | Đồng bộ block state với orientation queue non-blocking |
 | Persist selected theme | `_save_config` | Ghi trường `theme` vào `~/.nachance_ai.json` | Đủ | Theme giữ lại sau restart |
-| Workshop theme injection | `WorkshopWindow`/`SidePanelMixin` | Qt có stylesheet riêng | Một phần | Dùng palette/theme chung, không hardcode riêng |
+| Workshop theme injection | `WorkshopWindow`/`SidePanelMixin` | Qt bỏ stylesheet riêng hardcode; Workshop/SidePanel nhận stylesheet Core lúc mở và đổi theme | Một phần | Xử lý mọi custom widget palette override |
 | Theme after rebuild order | ThemeMixin lines 105–123 | Qt áp stylesheet trực tiếp, không rebuild thứ tự widget | Một phần | Kiểm tra screenshot và child style parity |
 
 ## Tầng 3 — Menu bar và command context
@@ -63,8 +63,8 @@
 | Ctrl+S | `_shortcut_save_state` | Save state thật qua `_save_state_qt` và ContextCommandRouter fallback | Một phần | Không chặn text input và tương thích format main |
 | Ctrl+Z/Ctrl+Y | `_shortcut_undo/redo` | ContextCommandRouter + active Workshop fallback | Một phần | Route document/pipeline history thật |
 | Ctrl+R | `_shortcut_run` | Qt host RUN/Workshop run route | Một phần | Route `pipeline.run` hoặc `workshop.run` theo context |
-| Ctrl+` / Ctrl+Shift+` | Workshop navigation | Có Next/Previous khác phím | Một phần | Giữ đúng phím main và session order |
-| Alt+menu key | menu bar custom | Native Qt mnemonic | Một phần | Kiểm tra parity trên Windows |
+| Ctrl+` / Ctrl+Shift+` | Workshop navigation | Qt QShortcut và Window menu dùng đúng Ctrl+grave/Ctrl+Shift+grave, discovery session order | Một phần | Test key event chuyển trạng thái thật trên nhiều cửa sổ |
+| Alt+menu key | menu bar custom + `core_shortcut_policy.py` | Top-level Qt menu dùng `&File/&Edit/&Pipeline/&Window/&View/&Tool/&Help` để native Alt+key mở menu | Một phần | Test QTest key events trên Windows/Linux và submenu mnemonics |
 | Context resolution | `ContextCommandRouter` | Qt router chọn TEXT_INPUT khi focus QLineEdit/QPlainTextEdit, ngoài PIPELINE/WORKSHOP/CORE | Một phần | Thêm focused widget rules cho mọi native editor |
 | Enable/disable command | providers | Qt refresh QAction theo Core/Workshop; TEXT_INPUT để native editor xử lý | Một phần | Recompute pipeline/focus cho mọi menu group |
 
