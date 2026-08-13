@@ -65,8 +65,8 @@
 | Ctrl+R | `_shortcut_run` | Qt host RUN/Workshop run route | Một phần | Route `pipeline.run` hoặc `workshop.run` theo context |
 | Ctrl+` / Ctrl+Shift+` | Workshop navigation | Có Next/Previous khác phím | Một phần | Giữ đúng phím main và session order |
 | Alt+menu key | menu bar custom | Native Qt mnemonic | Một phần | Kiểm tra parity trên Windows |
-| Context resolution | `ContextCommandRouter` | Qt router chọn PIPELINE/WORKSHOP/CORE context, metadata host | Một phần | Thêm TEXT_INPUT và focused widget |
-| Enable/disable command | providers | Qt giữ QAction references, resolve provider và refresh theo active Core/Workshop context | Một phần | Recompute theo focused widget/text input và active pipeline |
+| Context resolution | `ContextCommandRouter` | Qt router chọn TEXT_INPUT khi focus QLineEdit/QPlainTextEdit, ngoài PIPELINE/WORKSHOP/CORE | Một phần | Thêm focused widget rules cho mọi native editor |
+| Enable/disable command | providers | Qt refresh QAction theo Core/Workshop; TEXT_INPUT để native editor xử lý | Một phần | Recompute pipeline/focus cho mọi menu group |
 
 ## Tầng 5 — Core host launcher/session
 

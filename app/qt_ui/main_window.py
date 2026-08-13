@@ -427,6 +427,9 @@ class QtNaChanceWindow(QMainWindow):
         self.log.appendPlainText("Command is reserved for the active Core/Workshop context.")
 
     def _current_command_context(self) -> CommandContext:
+        focused = QApplication.focusWidget()
+        if isinstance(focused, (QLineEdit, QPlainTextEdit)):
+            return CommandContext(kind=WorkspaceKind.TEXT_INPUT, workspace_id="text-input", target=focused, focused_widget=focused, metadata={"host": self})
         workshop_id = self._active_workshop_id
         target = self._workshop_windows.get(workshop_id or "")
         if workshop_id:
@@ -446,6 +449,8 @@ class QtNaChanceWindow(QMainWindow):
         command = self._command_router.resolve(command_id, context)
         if command is not None and command.is_enabled():
             command.execute()
+            return
+        if context.kind is WorkspaceKind.TEXT_INPUT:
             return
         if callable(fallback):
             fallback()
