@@ -196,3 +196,11 @@
 - [x] Treat missing file or hash mismatch as an explicit Core resource conflict/missing state
 - [x] Add tests proving the downloader is not called for valid existing weights
 
+
+## Checksum required on every Core weight intake path
+
+- [x] Require expected SHA-256 for Shop-submitted weight files
+- [x] Require expected SHA-256 for every Core-downloaded weight
+- [x] Reject missing, malformed, or mismatched checksum before canonical registration
+- [x] Add tests for valid, missing, malformed, and mismatched download checksums
+

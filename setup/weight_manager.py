@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,6 +18,10 @@ from typing import Any, Callable, Iterable
 
 class WeightConflictError(RuntimeError):
     """A canonical Core weight exists but does not match its registered hash."""
+
+
+class WeightChecksumRequiredError(ValueError):
+    """A downloaded resource has no valid expected SHA-256 metadata."""
 
 
 @dataclass(frozen=True)
@@ -132,9 +137,19 @@ class CoreWeightManager:
         self._save_inventory(inventory)
         return record
 
-    def register_existing(self, path: str | Path, resource_id: str) -> WeightRecord:
+    def register_existing(
+        self,
+        path: str | Path,
+        resource_id: str,
+        *,
+        expected_sha256: str | None = None,
+    ) -> WeightRecord:
         """Hash an already-present Core file and add it to the inventory."""
-        return self.intake_file(path, resource_id=resource_id)
+        return self.intake_file(
+            path,
+            resource_id=resource_id,
+            expected_sha256=expected_sha256,
+        )
 
     def resolve(self, resource_id: str) -> Path | None:
         record = self.inventory().get(resource_id)
@@ -182,6 +197,7 @@ class CoreWeightManager:
             if self.resolve(resource_id) is not None:
                 continue
             target = self.weights_dir / resource_id.split("::", 1)[-1]
+            expected = str(metadata.get("sha256", "")).strip().lower()
             registered = self.inventory().get(resource_id)
             if isinstance(registered, dict) and target.is_file():
                 expected = str(registered.get("sha256", ""))
@@ -198,6 +214,10 @@ class CoreWeightManager:
             if target.is_file():
                 self.register_existing(target, resource_id)
                 continue
+            if not re.fullmatch(r"[0-9a-f]{64}", expected):
+                raise WeightChecksumRequiredError(
+                    f"Core refuses to download {resource_id}: missing or invalid sha256 metadata"
+                )
             item = dict(metadata)
             item["_weights_dir"] = str(self.weights_dir)
             if not downloader(resource_id, item):
@@ -206,7 +226,11 @@ class CoreWeightManager:
             filename = resource_id.split("::", 1)[-1]
             downloaded = self.weights_dir / filename
             if downloaded.is_file():
-                self.register_existing(downloaded, resource_id)
+                self.register_existing(
+                    downloaded,
+                    resource_id,
+                    expected_sha256=expected,
+                )
             else:
                 failed.append(resource_id)
         return failed
