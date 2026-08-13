@@ -1,5 +1,18 @@
 # Qt-only port TODO
 
+## Parity matrix required before more porting
+
+- [x] Inventory host chrome and title-bar actions
+- [x] Inventory theme system: themes, theme groups, switching, persistence, injection
+- [x] Inventory all menu groups and every menu action
+- [x] Inventory all shortcuts and context-dependent enable/disable rules
+- [x] Inventory Workshop launcher and session ordering
+- [x] Inventory WindowManager open/close/toggle/focus/placement behavior
+- [x] Inventory each Workshop window's nested panels and dialogs
+- [x] Inventory input/output/state persistence and error/loading states
+- [x] Record each item in `docs/qt-port/PARITY_MATRIX.md` before implementation
+
+
 ## Main screenshot parity requirements
 
 - [x] Reproduce host title/menu strip: brand, RUN, info, menu and close actions
