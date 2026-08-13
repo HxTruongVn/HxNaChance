@@ -5,7 +5,7 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 PySide6 = pytest.importorskip("PySide6")
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QPushButton
 
 from app.qt_ui import QtNaChanceWindow
 
@@ -19,9 +19,13 @@ def test_qt_window_exposes_main_workshop_tabs():
         "File", "Edit", "Pipeline", "Window", "View", "Tool", "System", "Help"
     ]
     assert [button.text() for button in window._workshop_launcher_buttons.values()] == ["OPEN", "OPEN", "OPEN"]
+    assert not window.windowIcon().isNull()
+    assert not window.findChild(QPushButton, "titleCloseButton")
     layout_window = window._open_workshop_window("layout")
     assert layout_window.workshop_id == "layout"
     assert "Layout Workshop" in layout_window.windowTitle()
+    assert not layout_window.windowIcon().isNull()
+    assert not layout_window.findChild(QPushButton, "workshopCloseButton")
     assert window._workshop_launcher_buttons["layout"].text() == "CLOSE"
     assert "Discovered Workshops:" in window.workshop_label.text()
     layout_window.close()

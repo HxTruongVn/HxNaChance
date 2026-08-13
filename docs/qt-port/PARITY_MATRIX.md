@@ -18,11 +18,11 @@
 
 | Hạng mục | Nguồn main | Qt hiện tại | Trạng thái | Điều kiện đạt |
 |---|---|---|---|---|
-| Logo/brand | `app/main_ui.py:_build_title_bar` | NC + NaChance | Một phần | Giữ logo/assets và tỷ lệ hiển thị main |
+| Logo/brand | `app/main_ui.py:_build_title_bar` | Dùng `assets/icons/logo (3).ico` cho title logo và `logo (1).ico` cho app icon | Một phần | Giữ logo canonical, không thay bằng chữ NC giả |
 | RUN button | `_refresh_title_run_state`, `_run_active_workshop` | Có nút RUN | Một phần | Enable theo active context và gọi run method thật |
 | Info/About | `_show_about` | Có dialog cơ bản | Một phần | Giữ đầy đủ nội dung About |
 | Menu button | `_build_title_bar` | Có ẩn/hiện native menu | Một phần | Trình bày và trạng thái giống main |
-| Close | `_on_close` | Có đóng host | Một phần | Đóng cascade toàn bộ child windows |
+| Close | Native Qt window frame + `_on_close` lifecycle | Dùng nút X native; không thêm nút X trong title strip | Một phần | Native close gọi cleanup WindowManager/child windows đúng main |
 | Workspace label | active Workshop/WindowManager | Có | Một phần | Cập nhật theo active window thật |
 | Resize grip/title behavior | `_build_resize_grip`, custom title bar | Qt native resize | Thiếu | Không bắt buộc giống kỹ thuật nhưng phải giữ hành vi |
 
@@ -90,8 +90,8 @@
 | Focus/active | `mark_active`, FocusIn | Chưa đầy đủ | Thiếu | Focus child cập nhật host active |
 | Next/previous | manager navigation | Có helper | Một phần | Dùng session order thật |
 | Placement right/below/tile | `window_layout.py` | Có heuristic Qt | Một phần | Giữ cạnh host và fallback tile |
-| Workshop window chrome | `app/workshop_window.py` | Có header/status | Một phần | Port full title/status/close/double-click |
-| Independent side panel ownership | `SidePanelMixin` | Layout preview only | Thiếu | Mỗi Workshop có panel riêng |
+| Workshop window chrome | `app/workshop_window.py` | Header/status Qt, đóng bằng native frame | Một phần | Không giả lập Close; chỉ giữ custom actions thật sự cần thiết |
+| Independent side panel ownership | `SidePanelMixin` | Layout preview only; native side-panel close | Thiếu | Mỗi Workshop có panel riêng và dùng native X |
 | No duplicate window | manager `windows` map | Có | Đủ | Có test open twice |
 
 ## Tầng 7 — Workshop common presentation contract

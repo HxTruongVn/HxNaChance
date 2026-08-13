@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QObject, QThread, Signal, Qt
-from PySide6.QtGui import QAction, QImage, QPixmap
+from PySide6.QtGui import QAction, QIcon, QImage, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -49,6 +49,18 @@ from workshops.layout.print_layout import (
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+APP_ICON_PATH = PROJECT_ROOT / "assets" / "icons" / "logo (1).ico"
+TITLE_LOGO_PATH = PROJECT_ROOT / "assets" / "icons" / "logo (3).ico"
+
+
+def canonical_logo_icon() -> QIcon:
+    """Return the canonical NaChance icon from the repository assets."""
+    return QIcon(str(APP_ICON_PATH)) if APP_ICON_PATH.exists() else QIcon()
+
+
+def canonical_title_logo() -> QIcon:
+    """Return the title-bar logo used by the legacy main UI."""
+    return QIcon(str(TITLE_LOGO_PATH)) if TITLE_LOGO_PATH.exists() else canonical_logo_icon()
 
 
 def number_from_text(value: str, default: float = 0.0) -> float:
@@ -141,6 +153,7 @@ class QtWorkshopWindow(QMainWindow):
         super().__init__(parent)
         self.workshop_id = workshop_id
         self.setWindowTitle(f"NaChance — {title}")
+        self.setWindowIcon(canonical_logo_icon())
         self.resize(980, 760)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         shell = QWidget(self)
@@ -154,10 +167,8 @@ class QtWorkshopWindow(QMainWindow):
         title_label.setObjectName("workshopTitle")
         header_layout.addWidget(title_label)
         header_layout.addStretch(1)
-        close_button = QPushButton("×")
-        close_button.setFixedSize(32, 28)
-        close_button.clicked.connect(self.close)
-        header_layout.addWidget(close_button)
+        # QMainWindow already exposes the native close button. Do not add a
+        # second, simulated close control inside the Workshop header.
         shell_layout.addWidget(header)
         shell_layout.addWidget(content, 1)
         status = QLabel("Sẵn sàng")
@@ -186,6 +197,7 @@ class QtSidePanelWindow(QMainWindow):
     def __init__(self, title: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle(f"NaChance — {title}")
+        self.setWindowIcon(canonical_logo_icon())
         self.resize(420, 680)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         self.preview = QLabel("Chưa có preview")
@@ -223,6 +235,7 @@ class QtNaChanceWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("NaChance")
+        self.setWindowIcon(canonical_logo_icon())
         self.resize(1180, 760)
         self._layout_thread: QThread | None = None
         self._layout_worker: _LayoutWorker | None = None
@@ -373,8 +386,14 @@ class QtNaChanceWindow(QMainWindow):
         row = QHBoxLayout(bar)
         row.setContentsMargins(10, 5, 8, 5)
         row.setSpacing(8)
-        logo = QLabel("NC")
+        logo = QLabel()
         logo.setObjectName("logoBadge")
+        title_icon = canonical_title_logo().pixmap(28, 28)
+        if not title_icon.isNull():
+            logo.setPixmap(title_icon)
+        else:
+            logo.setText("NC")
+        logo.setToolTip("NaChance")
         row.addWidget(logo)
         brand = QLabel("NaChance")
         brand.setObjectName("brandLabel")
@@ -398,11 +417,8 @@ class QtNaChanceWindow(QMainWindow):
         menu_button.setFixedSize(30, 28)
         menu_button.clicked.connect(lambda: self.menuBar().setVisible(not self.menuBar().isVisible()))
         row.addWidget(menu_button)
-        close_button = QPushButton("×")
-        close_button.setObjectName("titleCloseButton")
-        close_button.setFixedSize(30, 28)
-        close_button.clicked.connect(self.close)
-        row.addWidget(close_button)
+        # The native QMainWindow frame already owns the close button.
+        # Keep this custom strip limited to NaChance actions only.
         return bar
 
     def _build_navigation(self) -> QWidget:

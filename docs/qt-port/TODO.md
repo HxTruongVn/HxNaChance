@@ -71,3 +71,12 @@
 - [ ] Port adaptive menus and shortcuts with main behavior parity
 - [ ] Port orientation preview, side panels and saved-state dialogs
 - [ ] Validate full desktop flows on Windows/Linux with PySide6
+
+## Native Qt and asset fidelity correction
+
+- [x] Verify every Qt logo/icon source against the canonical logo asset in the repository
+- [x] Remove duplicated/fake Close buttons from Qt windows that already use native window controls
+- [x] Keep only custom window actions that provide behavior not supplied by native Qt
+- [x] Test native close, focus, active-window state, and WindowManager cleanup after closing
+- [x] Document intentional differences between main's custom Tk title bar and Qt native chrome
+
