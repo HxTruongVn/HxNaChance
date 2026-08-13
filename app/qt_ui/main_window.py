@@ -446,7 +446,7 @@ class QtNaChanceWindow(QMainWindow):
         for workshop_id in list(self._workshop_windows):
             self._close_workshop_by_id(workshop_id)
         self._active_workshop_id = None
-        self.workspace_label.setText("CORE / HOME")
+        self._update_workspace_state_qt()
         self.quick_run.setEnabled(False)
         self._refresh_context_action_state()
         self.raise_()
@@ -852,6 +852,20 @@ class QtNaChanceWindow(QMainWindow):
             return
         self.log.appendPlainText("Chưa có Workshop active để RUN.")
 
+    def _update_workspace_state_qt(self) -> None:
+        active = self._active_workshop_id
+        if active:
+            self.workspace_label.setText(f"WORKSHOP / {active.upper()}")
+            self.status_bar.showMessage(f"Active Workshop: {active}", 2500)
+        else:
+            self.workspace_label.setText("CORE / HOME")
+            self.status_bar.showMessage("Active context: Core", 2500)
+        for workshop_id, button in self._workshop_launcher_buttons.items():
+            button.setProperty("activeState", workshop_id == active)
+            button.style().unpolish(button)
+            button.style().polish(button)
+        self._refresh_context_action_state()
+
     def _session_workshop_ids(self) -> list[str]:
         discovered_ids = [item.workshop_id for item in self._discovered_workshops if item.workshop_id in {"layout", "photo", "repo_intake"}]
         opened_ids = [workshop_id for workshop_id in self._workshop_order if workshop_id in discovered_ids]
@@ -890,6 +904,7 @@ class QtNaChanceWindow(QMainWindow):
             existing.raise_()
             existing.activateWindow()
             self._refresh_launcher_buttons()
+            self._update_workspace_state_qt()
             return existing
         builders = {
             "layout": ("Layout Workshop", self._build_layout_tab),
@@ -911,20 +926,21 @@ class QtNaChanceWindow(QMainWindow):
         window.raise_()
         window.activateWindow()
         self._refresh_launcher_buttons()
+        self._update_workspace_state_qt()
         return window
 
     def _on_workshop_closed(self, workshop_id: str) -> None:
         self._workshop_windows.pop(workshop_id, None)
         if self._active_workshop_id == workshop_id:
             self._active_workshop_id = None
-            self.workspace_label.setText("CORE / HOME")
             self.quick_run.setEnabled(False)
         self._refresh_launcher_buttons()
+        self._update_workspace_state_qt()
 
     def _on_workshop_activated(self, workshop_id: str) -> None:
         self._active_workshop_id = workshop_id
-        self.workspace_label.setText(f"WORKSHOP / {workshop_id.upper()}")
         self.quick_run.setEnabled(True)
+        self._update_workspace_state_qt()
         self._refresh_launcher_buttons()
 
     def _place_workshop_window(self, window: QtWorkshopWindow) -> None:
