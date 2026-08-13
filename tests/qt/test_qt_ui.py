@@ -13,13 +13,15 @@ from app.qt_ui import QtNaChanceWindow
 def test_qt_window_exposes_main_workshop_tabs():
     app = QApplication.instance() or QApplication([])
     window = QtNaChanceWindow()
-    assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == [
-        "Core",
-        "Layout",
-        "Photo",
-        "Repo Intake",
+    assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ["Core"]
+    assert [button.text() for button in window.nav_buttons] == [
+        "Core Home", "Layout Workshop", "Photo Workshop", "Repo Intake"
     ]
+    layout_window = window._open_workshop_window("layout")
+    assert layout_window.workshop_id == "layout"
+    assert "Layout Workshop" in layout_window.windowTitle()
     assert "Discovered Workshops:" in window.workshop_label.text()
+    layout_window.close()
     window.close()
     app.processEvents()
 
@@ -32,6 +34,7 @@ def test_qt_layout_preserves_multiple_presets_and_counts(tmp_path):
     source = tmp_path / "layout-source.png"
     Image.new("RGB", (240, 320), (30, 120, 200)).save(source)
     window = QtNaChanceWindow()
+    window._open_workshop_window("layout")
     window.layout_sources = [str(source)]
     keys = list(window.layout_preset_vars)
     window.layout_preset_vars[keys[0]]["chk"].setChecked(True)

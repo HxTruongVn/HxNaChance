@@ -134,6 +134,89 @@ class _LayoutWorker(QObject):
             self.failed.emit(traceback.format_exc())
 
 
+class QtWorkshopWindow(QMainWindow):
+    """Separate Qt window for one Workshop, mirroring main's CTkToplevel host."""
+
+    def __init__(self, workshop_id: str, title: str, content: QWidget, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.workshop_id = workshop_id
+        self.setWindowTitle(f"NaChance — {title}")
+        self.resize(980, 760)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        shell = QWidget(self)
+        shell_layout = QVBoxLayout(shell)
+        shell_layout.setContentsMargins(0, 0, 0, 0)
+        header = QFrame()
+        header.setObjectName("workshopHeader")
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(14, 8, 10, 8)
+        title_label = QLabel(title)
+        title_label.setObjectName("workshopTitle")
+        header_layout.addWidget(title_label)
+        header_layout.addStretch(1)
+        close_button = QPushButton("×")
+        close_button.setFixedSize(32, 28)
+        close_button.clicked.connect(self.close)
+        header_layout.addWidget(close_button)
+        shell_layout.addWidget(header)
+        shell_layout.addWidget(content, 1)
+        status = QLabel("Sẵn sàng")
+        status.setObjectName("workshopStatus")
+        shell_layout.addWidget(status)
+        self.setCentralWidget(shell)
+        self.setStyleSheet("""
+            QMainWindow, QWidget { background: #111827; color: #f9fafb; }
+            #workshopHeader { background: #1f2937; border-bottom: 1px solid #4b5563; }
+            #workshopTitle { color: #60a5fa; font-size: 17px; font-weight: 700; }
+            #workshopStatus { background: #1f2937; color: #9ca3af; padding: 5px 10px; border-top: 1px solid #4b5563; }
+            QPushButton { background: #3b82f6; color: white; border: none; border-radius: 5px; padding: 7px 12px; }
+            QPushButton:hover { background: #60a5fa; }
+            QGroupBox { border: 1px solid #4b5563; border-radius: 8px; margin-top: 12px; padding: 10px; }
+            QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; color: #60a5fa; }
+            QLineEdit, QComboBox, QSpinBox, QPlainTextEdit { background: #111827; color: #f9fafb; border: 1px solid #4b5563; border-radius: 5px; padding: 5px; }
+            QScrollArea { border: none; }
+            #presetTile { background: #374151; border: 1px solid #4b5563; border-radius: 6px; }
+            #layoutPreview { background: #1f2937; border: 1px solid #4b5563; }
+        """)
+
+
+class QtSidePanelWindow(QMainWindow):
+    """Nested preview/result panel mirroring main's separate side panel."""
+
+    def __init__(self, title: str, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(f"NaChance — {title}")
+        self.resize(420, 680)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        self.preview = QLabel("Chưa có preview")
+        self.preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.preview.setObjectName("sidePreview")
+        self.action_row = QHBoxLayout()
+        body = QWidget(self)
+        layout = QVBoxLayout(body)
+        layout.addWidget(self.preview, 1)
+        layout.addLayout(self.action_row)
+        self.setCentralWidget(body)
+        self.setStyleSheet("""
+            QMainWindow, QWidget { background: #111827; color: #f9fafb; }
+            #sidePreview { background: #1f2937; border: 1px solid #4b5563; }
+            QPushButton { background: #3b82f6; color: white; border: none; border-radius: 5px; padding: 8px 12px; }
+            QPushButton:hover { background: #60a5fa; }
+        """)
+
+    def set_image(self, image_path: str) -> None:
+        image = QImage(image_path)
+        self.preview.setPixmap(QPixmap.fromImage(image).scaled(
+            380, 570, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+        ))
+
+    def set_pil_image(self, canvas: Any) -> None:
+        from PIL.ImageQt import ImageQt
+        self.preview.setPixmap(QPixmap.fromImage(QImage(ImageQt(canvas))).scaled(
+            380, 570, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+        ))
+
+
 class QtNaChanceWindow(QMainWindow):
     """Qt presentation for the current NaChance runtime and Workshops."""
 
@@ -147,6 +230,10 @@ class QtNaChanceWindow(QMainWindow):
         self._photo_thread: QThread | None = None
         self._photo_worker: _PhotoWorker | None = None
         self._source_path = ""
+        self._workshop_windows: dict[str, QtWorkshopWindow] = {}
+        self._side_panel_windows: dict[str, QtSidePanelWindow] = {}
+        self._workshop_order: list[str] = []
+        self._active_workshop_id: str | None = None
         self._theme = {
             "bg": "#111827",
             "surface": "#1f2937",
@@ -219,9 +306,6 @@ class QtNaChanceWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.tabs.tabBar().hide()
         self.tabs.addTab(self._build_home_tab(), "Core")
-        self.tabs.addTab(self._build_layout_tab(), "Layout")
-        self.tabs.addTab(self._build_photo_tab(), "Photo")
-        self.tabs.addTab(self._build_repo_intake_tab(), "Repo Intake")
 
         splitter = QSplitter()
         splitter.setObjectName("mainSplitter")
@@ -343,11 +427,39 @@ class QtNaChanceWindow(QMainWindow):
         """
 
     def _select_tab(self, index: int) -> None:
-        self.tabs.setCurrentIndex(index)
+        if index == 0:
+            self.tabs.setCurrentIndex(0)
+            for i, button in enumerate(self.nav_buttons):
+                button.setChecked(i == 0)
+            self.workspace_label.setText("CORE / HOME")
+            return
+        workshop_id = ("layout", "photo", "repo_intake")[index - 1]
+        self._open_workshop_window(workshop_id)
         for i, button in enumerate(self.nav_buttons):
             button.setChecked(i == index)
-        labels = ("CORE / HOME", "WORKSHOP / LAYOUT", "WORKSHOP / PHOTO", "WORKSHOP / REPO INTAKE")
-        self.workspace_label.setText(labels[index])
+        self.workspace_label.setText(f"WORKSHOP / {workshop_id.upper()}")
+
+    def _open_workshop_window(self, workshop_id: str) -> QtWorkshopWindow:
+        existing = self._workshop_windows.get(workshop_id)
+        if existing is not None:
+            existing.showNormal()
+            existing.raise_()
+            existing.activateWindow()
+            return existing
+        builders = {
+            "layout": ("Layout Workshop", self._build_layout_tab),
+            "photo": ("Photo Workshop", self._build_photo_tab),
+            "repo_intake": ("Repo Intake Workshop", self._build_repo_intake_tab),
+        }
+        title, builder = builders[workshop_id]
+        window = QtWorkshopWindow(workshop_id, title, builder(), self)
+        self._workshop_windows[workshop_id] = window
+        if workshop_id not in self._workshop_order:
+            self._workshop_order.append(workshop_id)
+        self._active_workshop_id = workshop_id
+        window.destroyed.connect(lambda _=None, wid=workshop_id: self._workshop_windows.pop(wid, None))
+        window.show()
+        return window
 
     def _toggle_inspector(self, checked: bool) -> None:
         self.inspector_panel.setVisible(checked)
@@ -650,7 +762,23 @@ class QtNaChanceWindow(QMainWindow):
 
     def _layout_preview_toggle_qt(self) -> None:
         self._layout_live_preview_qt()
-        self.layout_preview_button.setText("CẬP NHẬT XEM TRƯỚC")
+        panel = self._side_panel_windows.get("layout")
+        if panel is not None:
+            panel.close()
+            self._side_panel_windows.pop("layout", None)
+            self.layout_preview_button.setText("MỞ XEM TRƯỚC")
+            return
+        panel = QtSidePanelWindow("Layout Preview", self)
+        self._side_panel_windows["layout"] = panel
+        panel.destroyed.connect(lambda _=None: self._side_panel_windows.pop("layout", None))
+        canvas = getattr(self, "_layout_canvas", None)
+        if canvas is not None:
+            panel.set_pil_image(canvas)
+        save = QPushButton("Lưu bản in")
+        save.clicked.connect(self._run_layout)
+        panel.action_row.addWidget(save)
+        panel.show()
+        self.layout_preview_button.setText("ĐÓNG XEM TRƯỚC")
 
     def _run_layout(self) -> None:
         sources = [p for p in self.layout_sources if Path(p).is_file()]

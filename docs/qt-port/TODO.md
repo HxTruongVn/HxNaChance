@@ -1,5 +1,16 @@
 # Qt-only port TODO
 
+## Multi-level UI parity correction
+
+- [x] Preserve Core host versus Workshop window hierarchy
+- [x] Port Workshop launcher buttons and open/close/toggle behavior
+- [x] Port separate Workshop windows instead of flattening all UI into host tabs
+- [x] Port nested side panels for orientation, result and Layout preview
+- [ ] Preserve active workspace/window state and session ordering
+- [ ] Port context-sensitive menu/shortcut behavior at each display level
+- [ ] Port multi-level dialogs and About/Environment/Resource panels
+- [ ] Add hierarchy tests for host, Workshop windows and side panels
+
 ## Layout parity correction
 
 - [x] Port every Layout preset from `layout_presets.json`
