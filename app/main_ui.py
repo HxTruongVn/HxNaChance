@@ -155,7 +155,7 @@ class NaChanceApp(
             self._start_background_weight_download()
 
         # Verify (setup/runtime_manager.py::verify_workshop_environment)
-        # đã chạy TRƯỚC khi tới đây (app/main.py::_detect_runtime()) —
+        # đã chạy TRƯỚC khi tới đây (legacy Tk runtime detection) —
         # RAM/Python quá thấp so với 1 Workshop nào đó KHÔNG tự sửa được
         # bằng code (không thể tự thêm RAM vào máy). "Resolve" ở đây là
         # cảnh báo rõ 1 LẦN ngay khi mở app — không để người dùng tự
@@ -263,8 +263,8 @@ class NaChanceApp(
         có sẵn (setup/setup_models.py — tự thử lần lượt hết source, có
         resume khi đứt giữa chừng) thay vì viết lại logic tải.
 
-        Chạy trong 1 thread daemon CÙNG process với UI (app/main.py chạy
-        UI trực tiếp trong process, khác NaChance.py chạy app/main.py
+        Chạy trong 1 thread daemon CÙNG process với UI (legacy Tk process chạy
+        UI trực tiếp trong process, khác NaChance.py chạy app/qt_main.py
         như subprocess con) — nhờ vậy tải xong có thể cập nhật thẳng UI.
         Widget Tkinter không thread-safe: cập nhật self.status từ thread
         nền phải qua self.after(0, ...), đúng pattern đã dùng trong
@@ -1520,7 +1520,7 @@ class NaChanceApp(
 if __name__ == "__main__":
     # Chạy trực tiếp file này (không qua main.py) vẫn hoạt động — tự dò
     # môi trường qua RuntimeManager trước khi mở UI. Cách chạy khuyến nghị
-    # vẫn là `python main.py` vì nó in báo cáo môi trường ra console trước.
+    # vẫn là `python NaChance.py` vì nó in báo cáo môi trường ra console trước.
     from runtime_manager import RuntimeManager
     _report = RuntimeManager(weights_dir="weights").detect()
     ctk.set_appearance_mode("dark")

@@ -3,16 +3,16 @@ Cơ chế virtualenv DÙNG CHUNG cho mọi entry point (main.py, setup_models.py
 runtime_manager.py, debug.py).
 
 Vấn đề trước đây: chỉ setup_models.py biết về .venv/ (tự tạo + tự cài
-vào đó). main.py/runtime_manager.py/debug.py hoàn toàn không biết
+vào đó). NaChance.py/runtime_manager.py/debug.py hoàn toàn không biết
 .venv/ tồn tại — nếu người dùng quên `activate` trước khi chạy
-`python main.py`, app chạy bằng Python hệ thống, thiếu sạch package vừa
+`python NaChance.py`, app chạy bằng Python hệ thống, thiếu sạch package vừa
 cài vào .venv. Gom logic vào đây để cả 4 file luôn nhất quán.
 
 2 hàm tách biệt có chủ đích:
 - ensure_venv_and_reexec(): TẠO .venv nếu chưa có rồi re-exec vào đó —
   chỉ setup_models.py dùng (đúng vai trò "cài đặt lần đầu").
 - reexec_into_venv_if_exists(): CHỈ re-exec nếu .venv đã tồn tại sẵn,
-  KHÔNG tự tạo — main.py/runtime_manager.py/debug.py dùng. Nếu chưa có
+  KHÔNG tự tạo — NaChance.py/runtime_manager.py/debug.py dùng. Nếu chưa có
   .venv (nghĩa là chưa chạy setup lần nào), tiếp tục chạy bằng Python
   hiện tại thay vì tạo ra 1 venv rỗng chưa cài gì, sẽ làm tình huống
   tệ hơn (từ "thiếu package trong Python hệ thống" thành "thiếu sạch
@@ -38,7 +38,7 @@ def venv_python() -> Path:
 
 
 def reexec_into_venv_if_exists(script_path: str):
-    """Gọi ở ĐẦU main.py/runtime_manager.py/debug.py, trước mọi import
+    """Gọi ở ĐẦU NaChance.py/runtime_manager.py/debug.py, trước mọi import
     khác. Nếu .venv/ đã tồn tại (do setup_models.py tạo trước đó) và
     tiến trình hiện tại KHÔNG chạy bên trong nó, tự re-exec vào đúng
     Python trong .venv đó — người dùng không cần nhớ activate thủ công

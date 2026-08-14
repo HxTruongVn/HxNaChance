@@ -23,7 +23,7 @@ User
 NaChance.py
  ↓
 RuntimeManager.detect()
- ├── READY ───────────────► app.main
+ ├── READY ───────────────► app.qt_main
  │
  └── NOT READY
        ↓
@@ -31,7 +31,7 @@ RuntimeManager.detect()
        ↓
    verify again
        ↓
-   app.main
+   app.qt_main
 ```
 
 ## Bootstrap không làm gì

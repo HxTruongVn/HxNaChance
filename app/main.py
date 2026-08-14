@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 NaChance
-Chạy: python main.py
+Legacy CustomTkinter module; use: python NaChance.py
 
 Kiến trúc:
     RuntimeManager  → dò máy (Python/GPU/package/model) MỘT LẦN
@@ -38,7 +38,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 # FIX: main.py trước đây hoàn toàn không biết .venv/ tồn tại — nếu
 # người dùng chạy setup_models.py (tạo + cài vào .venv/) rồi sau đó
-# chạy `python main.py` mà quên activate, app chạy bằng Python hệ
+# chạy `python NaChance.py` mà quên activate, app chạy bằng Python hệ
 # thống, thiếu sạch package vừa cài. Tự chuyển vào .venv/ nếu đã có,
 # TRƯỚC khi import bất kỳ package nào cần cài (customtkinter, torch...).
 from setup.venv_bootstrap import reexec_into_venv_if_exists

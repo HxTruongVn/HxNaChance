@@ -9,8 +9,8 @@
 | Hạng mục main | Nguồn main | Qt hiện tại | Trạng thái | Điều kiện đạt |
 |---|---|---|---|---|
 | Launcher chính | `NaChance.py` | `NaChance.py` mở PySide6 | Một phần | Qt khởi động và truyền đúng lifecycle |
-| Tk fallback | `NaChanceTk.py`/`app/main.py` | Giữ riêng | Đủ | Không ảnh hưởng Qt |
-| Lite mode khi thiếu AI runtime | `app/main.py`, `RuntimeManager` | Qt đọc report | Một phần | Không block startup, hiển thị đúng cảnh báo |
+| Tk fallback | `NaChance.py`/`app/qt_main.py` | Giữ riêng | Đủ | Không ảnh hưởng Qt |
+| Lite mode khi thiếu AI runtime | `app/qt_main.py`, `RuntimeManager` | Qt đọc report | Một phần | Không block startup, hiển thị đúng cảnh báo |
 | Shutdown/close toàn bộ cửa sổ | `NaChanceApp._on_close` | Chưa tương đương | Thiếu | Đóng host, Shop windows, side panels và worker sạch |
 | Error/traceback boundary | `main.py` | Có log cơ bản | Một phần | Không nuốt lỗi và không làm mất UI state |
 

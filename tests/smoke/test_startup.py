@@ -63,13 +63,13 @@ def test_bootstrap_handoff_is_qt_only():
 
     project_root = NaChance.locate_project_root()
     qt_entry = project_root / "app" / "qt_main.py"
-    legacy_tk_entry = project_root / "app" / "main.py"
+    legacy_tk_entry = project_root / "NaChanceTk.py"
     source = NaChance.run_main.__doc__ or ""
 
     assert qt_entry.is_file()
     assert "PySide6" in source
-    assert "app/main.py" in source  # documented as legacy only
-    assert legacy_tk_entry.is_file()  # retained, but not a bootstrap target
+    assert "CustomTkinter" in source  # legacy boundary is documented
+    assert not legacy_tk_entry.exists()
 
 
 def test_bootstrap_propagates_qt_entry_exit_code(monkeypatch):

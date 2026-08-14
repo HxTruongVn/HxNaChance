@@ -10,7 +10,7 @@ Hãy dùng Python 3.10 trở lên được cài kèm tùy chọn **tcl/tk**. T�
 
 ```text
 python -m pip install -r setup/core_requirements.txt
-python app/main.py
+python NaChance.py
 ```
 
 Nếu muốn dùng Photo Workshop đầy đủ, cài thêm dependency riêng của nó:
@@ -28,7 +28,7 @@ Ngoài package Python, hệ thống cần Tkinter, thường cài bằng package
 ```text
 sudo apt install python3-tk
 python3 -m pip install -r setup/core_requirements.txt
-python3 app/main.py
+python3 NaChance.py
 ```
 
 Môi trường không có display đồ họa vẫn có thể chạy Runtime smoke check nhưng không thể mở cửa sổ CustomTkinter.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Debug script — kiểm tra môi trường trước khi chạy main.py
+Debug script — kiểm tra môi trường trước khi chạy NaChance.py
 Chạy: python debug.py
 
 File này giờ chỉ là một lớp vỏ mỏng gọi RuntimeManager — cùng logic
@@ -48,5 +48,5 @@ elif not report.can_run_full_ai:
     print("Chạy được ở Lite Mode. Để bật Full AI, tải model qua:")
     print("  python setup_models.py")
 else:
-    print("Sẵn sàng chạy Full AI — chạy: python main.py")
+    print("Sẵn sàng chạy Full AI — chạy: python NaChance.py")
 print("=" * 60)

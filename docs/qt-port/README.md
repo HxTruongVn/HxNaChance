@@ -18,7 +18,7 @@ python NaChance.py
 The original Tk entrypoint is retained only as an explicit legacy fallback:
 
 ```bash
-python NaChanceTk.py
+python NaChance.py
 ```
 
 ## Current Qt slice

@@ -9,7 +9,7 @@ Nhiệm vụ:
 - Return trạng thái success/fail cho bootstrap
 
 File này gọi bởi NaChance.py khi môi trường chưa sẵn sàng.
-Sau khi hoàn tất, bootstrap sẽ re-run để kiểm tra lại + chạy main.py.
+Sau khi hoàn tất, bootstrap sẽ re-run để kiểm tra lại + chạy NaChance.py.
 """
 
 import sys

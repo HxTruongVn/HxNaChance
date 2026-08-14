@@ -4,7 +4,7 @@ NaChance.py là điểm khởi động duy nhất của toàn bộ dự án.
 Người dùng chỉ chạy NaChance.py. Bootstrap sẽ tự quyết định:
 Dự án đã sẵn sàng để chạy chưa.
 Nếu chưa thì gọi hệ thống Setup.
-Nếu đã sẵn sàng thì chạy main.py.
+Nếu đã sẵn sàng thì chạy NaChance.py.
 Bootstrap không chứa logic cài đặt, chỉ làm nhiệm vụ điều phối (Dispatcher).
 Luồng hoạt động
 User
@@ -21,7 +21,7 @@ Environment Health Check
  ├── Environment Ready
  │       │
  │       ▼
- │    Run main.py
+ │    Run Qt Main UI
  │
  └── Environment Not Ready
          │
@@ -32,7 +32,7 @@ Environment Health Check
    Verify Again
          │
          ▼
-      Run main.py
+      Run Qt Main UI
 Nhiệm vụ của Bootstrap
 Xác định thư mục gốc của Repository.
 Đọc thông tin hệ điều hành.

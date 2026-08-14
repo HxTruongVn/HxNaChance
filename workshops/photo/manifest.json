@@ -5,7 +5,7 @@
   "resource_contract_version": 1,
   "description": "Nhận ảnh chân dung gốc, phục hồi/làm đẹp khuôn mặt đúng vùng, căn chỉnh chuẩn ảnh thẻ, tách nền.",
   "environment": {
-    "_comment": "ĐÃ có Bootstrap Controller đọc/enforce khối này — setup/runtime_manager.py::verify_workshop_environment(), nối vào NaChance.py + app/main.py. min_ram_gb/python_version được so sánh thật với máy, KHÔNG tự sửa được (không thể tự thêm RAM) nên chỉ cảnh báo, không chặn.",
+    "_comment": "ĐÃ có Bootstrap Controller đọc/enforce khối này — setup/runtime_manager.py::verify_workshop_environment(), nối vào NaChance.py + app/qt_main.py. min_ram_gb/python_version được so sánh thật với máy, KHÔNG tự sửa được (không thể tự thêm RAM) nên chỉ cảnh báo, không chặn.",
     "python_version": ">=3.10",
     "device_preference": "auto",
     "min_ram_gb": 8

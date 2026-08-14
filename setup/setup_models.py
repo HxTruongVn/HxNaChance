@@ -31,7 +31,7 @@ from pathlib import Path
 # — lúc đó Python không có "parent package", import tương đối crash
 # ngay dòng đầu (ImportError: attempted relative import with no known
 # parent package). Thêm project root vào sys.path rồi dùng import
-# tuyệt đối, đúng pattern đã dùng ở app/main.py.
+# tuyệt đối, đúng pattern đã dùng ở app/qt_main.py.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from setup.venv_bootstrap import PROJECT_ROOT, VENV_DIR, in_venv, ensure_venv_and_reexec
 
@@ -397,7 +397,7 @@ def setup_weights(cpu_only: bool = False):
     if failed:
         print(f"⚠ Setup xong nhưng còn {len(failed)} weight chưa tải được — xem link thủ công ở trên.")
     else:
-        print("Setup hoàn tất! Chạy: python main.py")
+        print("Setup hoàn tất! Chạy: python NaChance.py")
     if in_venv():
         print(f"   (nhớ activate virtualenv trước mỗi lần chạy: {VENV_DIR})")
     print("=" * 60)

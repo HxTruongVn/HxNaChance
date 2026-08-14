@@ -20,9 +20,9 @@ app/qt_ui/main_window.py::QtNaChanceWindow
 
 ## Legacy boundary
 
-`app/main.py`, `app/main_ui.py`, `app/workshop_window.py` và các module `customtkinter` được giữ lại chỉ để phục vụ compatibility/legacy hoặc Workshop chưa chuyển đổi. Chúng **không được import hoặc gọi từ `NaChance.py` trên nhánh Qt-primary**.
+Các module Tk cũ như `app/main.py`, `app/main_ui.py`, `app/workshop_window.py`, `ui/*_mixin.py` và các module `customtkinter` vẫn có thể tồn tại để phục vụ compatibility hoặc quá trình chuyển đổi Workshop, nhưng **không được import hoặc gọi từ `NaChance.py` trên nhánh Qt-primary**. Launcher `NaChanceTk.py` đã bị xóa.
 
-Không dùng sự tồn tại của `app/main.py` để kết luận Qt startup hợp lệ. Startup contract được khóa bằng test `tests/smoke/test_startup.py`, trong đó bootstrap phải trỏ tới `app/qt_main.py` và phải truyền exit code khác không của Qt process ra ngoài.
+Không dùng sự tồn tại của các module legacy để kết luận Qt startup hợp lệ. Startup contract được khóa bằng test `tests/smoke/test_startup.py`: bootstrap phải trỏ tới `app/qt_main.py`, launcher Tk không được tồn tại, và exit code khác không của Qt process phải được truyền ra ngoài.
 
 ## Core gate
 
@@ -30,4 +30,4 @@ Core readiness vẫn là điều kiện trước khi mở UI. Workshop có thể
 
 ## Acceptance criteria
 
-Một thay đổi chỉ được coi là hợp lệ trên Qt-primary khi `NaChance.py` không handoff tới `app/main.py`, Qt entry point import được với PySide6, exit code của Qt process không bị nuốt, và toàn bộ Core/integration/smoke/contract/Qt regression suite đạt.
+Một thay đổi chỉ được coi là hợp lệ trên Qt-primary khi `NaChance.py` handoff tới `app/qt_main.py`, Qt entry point import được với PySide6, exit code của Qt process không bị nuốt, launcher Tk không tồn tại, và toàn bộ Core/integration/smoke/contract/Qt regression suite đạt.

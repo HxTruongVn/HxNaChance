@@ -15,7 +15,7 @@ NaChance/
 │
 ├── NaChance.py                    # Entry point duy nhất cho người dùng —
 │                                   # Bootstrap: dò môi trường → gọi setup
-│                                   # nếu cần → khởi động app/main.py
+│                                   # nếu cần → khởi động app/qt_main.py
 │
 ├── app/                           # Reception + lõi app (xem meta_architecture.md)
 │   ├── main.py                    # Dò môi trường (RuntimeManager) rồi mở UI —
@@ -112,7 +112,7 @@ NaChance/
 
 **Không còn tồn tại** (đã xoá/dời trong đợt tái cấu trúc, tránh nhầm khi
 đọc code/doc cũ nhắc tới): `main.py` ở root (nay là `NaChance.py` +
-`app/main.py`), `main_ui.py`/`photo_engine.py`/`runtime_manager.py`/
+`app/qt_main.py`), `main_ui.py`/`photo_engine.py`/`runtime_manager.py`/
 `print_layout.py`/`setup_models.py`/`debug.py` ở root (đã dời vào
 `app/`/`workshops/photo/`/`setup/`/`workshops/layout/`), `presets/` ở
 root (nay `config/presets/`), `bootstrap.py` (đổi tên thành

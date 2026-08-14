@@ -15,7 +15,7 @@ NaChance.py
   ├── setup logging
   ├── RuntimeManager.detect()
   │
-  ├── ready ───────────────► app.main
+  ├── ready ───────────────► app.qt_main
   │
   └── not ready ───────────► setup/installer.py
                                   │
@@ -63,7 +63,7 @@ phân tán giữa metadata và setup/model code.
 ## 4. Reception / UI
 
 ```text
-app/main.py
+app/qt_main.py
     ↓
 app/main_ui.py
     ↓

@@ -195,7 +195,7 @@ def run_setup() -> bool:
 def run_main():
     """Chạy canonical PySide6 Qt Main UI trong process con.
 
-    ``app/main.py`` là legacy CustomTkinter entry point và không được dùng
+    legacy CustomTkinter entry point và không được dùng
     bởi Qt-primary bootstrap.
     """
     try:

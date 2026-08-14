@@ -1,7 +1,7 @@
 """Canonical PySide6 application entry point for NaChance.
 
 The bootstrap must hand off here, never to the legacy CustomTkinter
-``app.main`` module. This module owns QApplication creation and the Qt main
+legacy Tk module. This module owns QApplication creation and the Qt main
 window lifecycle; Core detection remains inside the Qt application service
 used by the window.
 """

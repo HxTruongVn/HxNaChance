@@ -40,3 +40,14 @@
 - [x] Khóa bootstrap không handoff vào CustomTkinter app/main.py.
 - [x] Bổ sung startup contract test chứng minh Qt-only handoff.
 - [x] Chạy startup smoke và Core/Qt regression trước khi đổi default branch.
+
+- [x] Quét toàn bộ source/config/script/test/docs tìm tham chiếu app/main.py.
+- [x] Phân biệt lời gọi thực thi với tham chiếu legacy/tài liệu hợp lệ.
+- [x] Kiểm tra packaging, installer và import chain không còn handoff legacy.
+- [x] Ghi báo cáo các điểm còn rủi ro trước khi đổi default branch.
+
+- [x] Cập nhật toàn bộ tài liệu còn hướng dẫn app/main.py hoặc NaChanceTk.py.
+- [x] Cập nhật setup/debug/setup_models/venv messages và manifest comments theo Qt startup.
+- [x] Xóa NaChanceTk.py khỏi nhánh Qt-primary.
+- [x] Bổ sung kiểm tra không còn launcher Tk trong startup contract.
+- [x] Chạy regression, commit và push thay đổi tài liệu/startup.

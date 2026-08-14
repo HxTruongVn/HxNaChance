@@ -241,7 +241,7 @@ mới cùng mô tả cần thiết.
 │                                             `NaChance.py::check_environment()`
 │                                             (in cảnh báo trong log
 │                                             Bootstrap) VÀ
-│                                             `app/main.py::_detect_runtime()`
+│                                             `app/qt_main.py::_detect_runtime()`
 │                                             (truyền vào NaChanceApp,
 │                                             hiện messagebox 1 lần sau
 │                                             khi UI sẵn sàng) — quét
