@@ -238,7 +238,14 @@
 - [x] Configure the active Shop before adding its snapshot as a Pipeline step
 - [x] Store each step's complete Workshop configuration at insertion time
 - [x] Pass Shop N output as Shop N+1 input
-- [ ] Continue sequential execution until the final configured Shop
+- [x] Continue sequential execution until the final configured Shop
 - [x] Stop and report the exact failing step when a Shop has no receiver or output
-- [ ] Add chain tests proving input → Shop A → output A → Shop B → output B
+- [x] Add chain tests proving input → Shop A → output A → Shop B → output B
+
+
+## Extended pipeline chain regression tests
+
+- [x] Add a pipeline handoff test with more than three sequential steps
+- [x] Add a repeated-workshop test with distinct snapshots for each occurrence
+- [x] Verify outputs remain ordered and each repeated step keeps its own snapshot
 

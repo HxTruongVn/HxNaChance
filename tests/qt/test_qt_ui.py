@@ -47,6 +47,55 @@ def test_qt_pipeline_chain_passes_output_to_next_step(tmp_path, monkeypatch):
     app.processEvents()
 
 
+def test_qt_pipeline_chain_longer_than_three_steps(tmp_path, monkeypatch):
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    outputs = [tmp_path / f"step_{index}.png" for index in range(1, 6)]
+    for index, output in enumerate(outputs, 1):
+        output.write_bytes(f"output-{index}".encode())
+    calls = []
+    window._pipeline_run = {
+        "steps": [{"workshop_id": name} for name in ("layout", "photo", "layout", "photo", "layout")],
+        "index": 1,
+        "current_input": "initial.png",
+        "outputs": [],
+        "failed": False,
+    }
+    monkeypatch.setattr(window, "_run_next_pipeline_step_qt", lambda: calls.append(window._pipeline_run["current_input"]))
+    for output in outputs:
+        window._pipeline_worker_finished_qt(str(output), "test")
+        window._pipeline_run["index"] += 1
+        app.processEvents()
+    assert window._pipeline_run["outputs"] == [str(output) for output in outputs]
+    assert window._pipeline_run["current_input"] == str(outputs[-1])
+    assert calls == [str(output) for output in outputs]
+    window._pipeline_run = None
+    window.close()
+    app.processEvents()
+
+
+def test_qt_pipeline_repeated_shop_keeps_distinct_snapshots():
+    app = QApplication.instance() or QApplication([])
+    window = QtNaChanceWindow()
+    pipeline = {
+        "name": "repeated-layout",
+        "steps": [
+            {"workshop_id": "layout", "state": {"caf_mode": "Fit", "presets": {"4x6": 1}}},
+            {"workshop_id": "photo", "state": {"preset": "13x18", "options": {"upscale": False}}},
+            {"workshop_id": "layout", "state": {"caf_mode": "Square", "presets": {"4x6": 3}}},
+            {"workshop_id": "layout", "state": {"caf_mode": "Extract", "presets": {"4x6": 5}}},
+        ],
+    }
+    layout_steps = [step for step in pipeline["steps"] if step["workshop_id"] == "layout"]
+    assert len(layout_steps) == 3
+    assert [step["state"]["caf_mode"] for step in layout_steps] == ["Fit", "Square", "Extract"]
+    assert [step["state"]["presets"]["4x6"] for step in layout_steps] == [1, 3, 5]
+    assert layout_steps[0]["state"] is not layout_steps[1]["state"]
+    assert layout_steps[1]["state"] is not layout_steps[2]["state"]
+    window.close()
+    app.processEvents()
+
+
 def test_qt_pipeline_step_snapshot_keeps_core_input(tmp_path):
     app = QApplication.instance() or QApplication([])
     window = QtNaChanceWindow()
