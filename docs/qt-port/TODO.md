@@ -249,3 +249,19 @@
 - [x] Add a repeated-workshop test with distinct snapshots for each occurrence
 - [x] Verify outputs remain ordered and each repeated step keeps its own snapshot
 
+
+## Qt UI coverage report
+
+- [x] Run the complete Qt UI test suite with coverage enabled
+- [x] Export detailed HTML, XML, and Markdown coverage reports
+- [x] Include per-file and per-module coverage summary
+
+
+## Shop manifest auto-sync correction
+
+- [x] Add verified SHA-256 metadata to every Photo weight manifest entry
+- [x] Confirm Core reads Shop manifests through `setup_models.MODELS`
+- [x] Confirm existing canonical weights are adopted without download
+- [x] Confirm missing Photo weights are downloaded and verified by Core
+- [x] Add regression test preventing checksum-less Shop manifest entries
+

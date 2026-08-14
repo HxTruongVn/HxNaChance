@@ -1,8 +1,19 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import re
+from pathlib import Path
 
 from setup.weight_manager import CoreWeightManager, WeightChecksumRequiredError, WeightConflictError
+
+
+def test_photo_manifest_has_checksum_for_every_weight():
+    manifest_path = Path(__file__).resolve().parents[1] / "workshops" / "photo" / "weights_sources.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest
+    for name, metadata in manifest.items():
+        assert re.fullmatch(r"[0-9a-f]{64}", metadata.get("sha256", "")), name
 
 
 def test_core_intakes_and_hashes_shop_weight(tmp_path):
