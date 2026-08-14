@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import zipfile
 
 import pytest
@@ -80,3 +81,52 @@ def test_approval_requires_contract_tests(tmp_path):
     case = workflow.submit(source)
     with pytest.raises(ValueError):
         workflow.approve(case, approver="reviewer")
+
+
+def test_intake_persists_source_fingerprint_and_resumes(tmp_path):
+    source = _source(tmp_path)
+    workflow = ReviewWorkflow(tmp_path / "quarantine")
+    case = workflow.submit(source, source_label="local-demo")
+
+    assert case.source_kind == "directory"
+    assert case.source_fingerprint["algorithm"] == "sha256-tree-v1"
+    assert case.source_fingerprint["file_count"] == 3
+    assert (Path(case.quarantine_path) / "case.json").is_file()
+
+    resumed = workflow.resume_case(case.case_id)
+    assert resumed.case_id == case.case_id
+    assert resumed.state is case.state
+    assert resumed.source_fingerprint == case.source_fingerprint
+    assert resumed.report is not None
+    assert resumed.profile is not None
+    assert workflow.list_cases() == [case.case_id]
+
+
+def test_zip_intake_records_kind_and_deterministic_fingerprint(tmp_path):
+    source = _source(tmp_path)
+    archive = tmp_path / "demo.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        for path in sorted(source.rglob("*")):
+            if path.is_file():
+                zf.write(path, path.relative_to(source))
+
+    workflow = ReviewWorkflow(tmp_path / "quarantine")
+    case = workflow.submit(archive)
+    resumed = workflow.resume_case(case.case_id)
+
+    assert case.source_kind == "zip"
+    assert case.source_fingerprint == resumed.source_fingerprint
+    assert case.source_fingerprint["file_count"] == 3
+
+
+def test_resume_rejects_case_path_escape(tmp_path):
+    source = _source(tmp_path)
+    workflow = ReviewWorkflow(tmp_path / "quarantine")
+    case = workflow.submit(source)
+    state_path = Path(case.quarantine_path) / "case.json"
+    payload = json.loads(state_path.read_text(encoding="utf-8"))
+    payload["quarantine_path"] = str(tmp_path / "outside")
+    state_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="does not match"):
+        workflow.resume_case(case.case_id)

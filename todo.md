@@ -51,3 +51,8 @@
 - [x] Xóa NaChanceTk.py khỏi nhánh Qt-primary.
 - [x] Bổ sung kiểm tra không còn launcher Tk trong startup contract.
 - [x] Chạy regression, commit và push thay đổi tài liệu/startup.
+
+- [x] Thêm source fingerprint/provenance/schema metadata cho intake case.
+- [x] Thêm persistence và resume case từ quarantine directory.
+- [x] Bổ sung test directory, ZIP, traversal/symlink, limits và resume.
+- [x] Chạy Core/review regression và cập nhật tài liệu Milestone 1.

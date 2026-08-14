@@ -1,14 +1,16 @@
 """Repository intake workflow: quarantine → profile → plan → resources → scaffold → test → approval."""
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
 from .approval import write_approval_marker
 from .inspector import inspect_repository, profile_from_report, report_to_dict
-from .models import IntakeState, IntegrationMode, ReviewCase, WorkshopProfile
+from .models import SCHEMA_VERSION, IntakeReport, IntakeState, IntegrationMode, ReviewCase, WorkshopProfile
 from .quarantine import QuarantineManager
 from .resource_warehouse import ResourceWarehouse
 
@@ -21,17 +23,91 @@ class ReviewWorkflow:
         self.scaffold_root = Path(scaffold_root or base.parent / "workshops").resolve()
         self.resource_warehouse = ResourceWarehouse(self.warehouse_root)
 
+    @staticmethod
+    def _now() -> str:
+        return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    @staticmethod
+    def _sha256_file(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    @classmethod
+    def _fingerprint_tree(cls, root: Path) -> dict:
+        entries: list[tuple[str, int, str]] = []
+        for path in sorted((item for item in root.rglob("*") if item.is_file()), key=lambda item: item.relative_to(root).as_posix()):
+            relative = path.relative_to(root).as_posix()
+            size = path.stat().st_size
+            entries.append((relative, size, cls._sha256_file(path)))
+        manifest = "".join(f"{relative}\0{size}\0{digest}\n" for relative, size, digest in entries).encode("utf-8")
+        return {
+            "algorithm": "sha256-tree-v1",
+            "digest": hashlib.sha256(manifest).hexdigest(),
+            "file_count": len(entries),
+            "total_bytes": sum(size for _, size, _ in entries),
+        }
+
+    @staticmethod
+    def _write_json_atomic(path: Path, value: dict) -> None:
+        temporary = path.with_suffix(path.suffix + ".tmp")
+        temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
+        temporary.replace(path)
+
     def _persist_case(self, case: ReviewCase) -> None:
         root = Path(case.quarantine_path)
-        if case.report: (root / "intake-report.json").write_text(json.dumps(report_to_dict(case.report), ensure_ascii=False, indent=2), encoding="utf-8")
-        if case.profile: (root / "intake-profile.json").write_text(json.dumps(case.profile.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
-        (root / "intake-state.json").write_text(json.dumps({"case_id": case.case_id, "state": case.state.value, "events": case.events}, ensure_ascii=False, indent=2), encoding="utf-8")
+        root.mkdir(parents=True, exist_ok=True)
+        case.updated_at = self._now()
+        if case.report:
+            self._write_json_atomic(root / "intake-report.json", report_to_dict(case.report))
+        if case.profile:
+            self._write_json_atomic(root / "intake-profile.json", case.profile.to_dict())
+        self._write_json_atomic(root / "intake-state.json", {
+            "schema_version": SCHEMA_VERSION,
+            "case_id": case.case_id,
+            "state": case.state.value,
+            "events": case.events,
+            "revision": case.revision,
+        })
+        self._write_json_atomic(root / "case.json", case.to_dict())
+
+    def resume_case(self, case_id: str) -> ReviewCase:
+        root = self.quarantine.root / case_id
+        case_file = root / "case.json"
+        if not case_file.is_file():
+            raise FileNotFoundError(f"intake case not found or not resumable: {case_id}")
+        case = ReviewCase.from_dict(json.loads(case_file.read_text(encoding="utf-8")))
+        if Path(case.quarantine_path).resolve() != root.resolve():
+            raise ValueError("case quarantine path does not match case id")
+        report_file = root / "intake-report.json"
+        profile_file = root / "intake-profile.json"
+        if report_file.is_file():
+            case.report = IntakeReport.from_dict(json.loads(report_file.read_text(encoding="utf-8")))
+        if profile_file.is_file():
+            case.profile = WorkshopProfile.from_dict(json.loads(profile_file.read_text(encoding="utf-8")))
+        return case
+
+    def list_cases(self) -> list[str]:
+        return sorted(path.name for path in self.quarantine.root.iterdir() if path.is_dir() and (path / "case.json").is_file())
 
     def submit(self, source: str | Path, *, source_label: str | None = None) -> ReviewCase:
-        case_id = f"review-{uuid4().hex[:12]}"; source_path = Path(source)
-        if source_path.suffix.lower() == ".zip": target = self.quarantine.create_case_from_zip(case_id, source_path)
-        else: target = self.quarantine.create_case(case_id, source_path)
-        case = ReviewCase(case_id=case_id, source=source_label or str(source), quarantine_path=str(target))
+        case_id = f"review-{uuid4().hex[:12]}"
+        source_path = Path(source).expanduser().resolve()
+        source_kind = "zip" if source_path.suffix.lower() == ".zip" else "directory"
+        if source_kind == "zip":
+            target = self.quarantine.create_case_from_zip(case_id, source_path)
+        else:
+            target = self.quarantine.create_case(case_id, source_path)
+        case = ReviewCase(
+            case_id=case_id,
+            source=source_label or str(source),
+            quarantine_path=str(target),
+            source_kind=source_kind,
+            source_fingerprint=self._fingerprint_tree(target),
+            created_at=self._now(),
+        )
         case.transition(IntakeState.QUARANTINED, reason="copied into isolated intake area")
         case.report = inspect_repository(target, source=case.source)
         case.transition(IntakeState.INSPECTED, reason="static inspection completed")
