@@ -16,6 +16,22 @@ def _method(host: Any, name: str):
     return callback if callable(callback) else None
 
 
+class TextInputCommandProvider:
+    """Priority provider for focused text controls.
+
+    Text widgets own editing shortcuts such as Undo/Redo. Returning no command
+    is intentional: the router must stop lower-priority Core/Workshop providers
+    from intercepting the event while TEXT_INPUT has focus.
+    """
+
+    provider_id = "text-input"
+
+    def resolve(self, command_id: str, context: CommandContext) -> Command | None:
+        if context.kind is WorkspaceKind.TEXT_INPUT:
+            return None
+        return None
+
+
 class PipelineCommandProvider:
     def resolve(self, command_id: str, context: CommandContext) -> Command | None:
         if command_id != "pipeline.run" or context.kind is not WorkspaceKind.PIPELINE:

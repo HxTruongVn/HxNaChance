@@ -62,4 +62,11 @@
 - [x] Khôi phục dependency cần thiết hoặc tách test không nên kéo dependency legacy.
 - [x] Chạy lại collection và regression sau khi xử lý.
 - [x] Cập nhật tài liệu dependency và test environment.
-- [ ] Sửa full-suite collection blocker: TextInputCommandProvider không còn tồn tại trong command provider API.
+- [x] Sửa full-suite collection blocker: TextInputCommandProvider không còn tồn tại trong command provider API.
+
+- [x] Đọc và đối chiếu TextInputCommandProvider với command model hiện tại.
+- [x] Xác định compatibility contract giữa test cũ và provider API mới.
+- [x] Sửa provider hoặc cập nhật test theo contract được chọn.
+- [x] Chạy full collection/regression và xử lý lỗi liên quan.
+- [x] Commit/push và cập nhật TODO kết quả.
+- [ ] Sửa full-suite failure còn lại: test_menu_context dùng Host._current_command_context() không tồn tại.

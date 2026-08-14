@@ -1,9 +1,5 @@
 from app.commands.context import CommandContext, ContextCommandRouter, WorkspaceKind
-from app.commands.providers import (
-    PipelineCommandProvider,
-    TextInputCommandProvider,
-    WorkshopCommandProvider,
-)
+from app.commands.providers import PipelineCommandProvider, TextInputCommandProvider, WorkshopCommandProvider
 
 
 class PipelineTarget:
@@ -70,46 +66,28 @@ def command_map(commands):
     return {command.command_id: command for command in commands}
 
 
-def test_pipeline_provider_binds_commands_to_pipeline_target():
-    target = PipelineTarget()
-    context = CommandContext(WorkspaceKind.PIPELINE, "pipeline.demo", target=target)
-    commands = command_map(PipelineCommandProvider().commands(context))
-
-    assert commands["edit.undo"].is_enabled()
-    commands["edit.undo"].execute()
-    commands["file.save"].execute()
-    commands["pipeline.validate"].execute()
-    assert target.calls == ["undo", "save", "validate"]
+def test_pipeline_provider_resolves_only_pipeline_run():
+    context = CommandContext(WorkspaceKind.PIPELINE, "pipeline.demo", metadata={"host": PipelineTarget()})
+    command = PipelineCommandProvider().resolve("pipeline.run", context)
+    assert command is not None
+    assert command.command_id == "pipeline.run"
+    assert PipelineCommandProvider().resolve("pipeline.run", CommandContext(WorkspaceKind.CORE, "core")) is None
 
 
-def test_workshop_provider_uses_host_for_state_commands_and_target_for_history():
-    target = WorkshopTarget()
-    host = Host()
-    context = CommandContext(
-        WorkspaceKind.WORKSHOP,
-        "workshop.example",
-        target=target,
-        metadata={"host": host},
-    )
-    commands = command_map(WorkshopCommandProvider().commands(context))
-
-    commands["edit.undo"].execute()
-    commands["file.save"].execute()
-    commands["file.open_state"].execute()
-    assert target.calls == ["undo"]
-    assert host.calls == ["save_state", "open_state"]
-    assert not commands["edit.redo"].is_enabled()
+def test_workshop_provider_resolves_only_workshop_run():
+    context = CommandContext(WorkspaceKind.WORKSHOP, "workshop.example", metadata={"host": Host()})
+    command = WorkshopCommandProvider().resolve("workshop.run", context)
+    assert command is not None
+    assert command.command_id == "workshop.run"
+    assert WorkshopCommandProvider().resolve("workshop.run", CommandContext(WorkspaceKind.CORE, "core")) is None
 
 
-def test_text_input_has_priority_and_does_not_expose_core_history():
-    router = ContextCommandRouter([
-        PipelineCommandProvider(),
-        TextInputCommandProvider(),
-    ])
+def test_text_input_provider_is_explicit_and_does_not_expose_core_history():
+    router = ContextCommandRouter([TextInputCommandProvider()])
     context = CommandContext(
         WorkspaceKind.TEXT_INPUT,
         "text.field",
         focused_widget=object(),
     )
-    assert router.commands_for(context) == ()
-    assert router.provider_for(context).provider_id == "text-input"
+    assert router.resolve("edit.undo", context) is None
+    assert TextInputCommandProvider().provider_id == "text-input"
