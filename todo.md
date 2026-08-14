@@ -56,3 +56,10 @@
 - [x] Thêm persistence và resume case từ quarantine directory.
 - [x] Bổ sung test directory, ZIP, traversal/symlink, limits và resume.
 - [x] Chạy Core/review regression và cập nhật tài liệu Milestone 1.
+
+- [x] Kiểm tra import chain cv2 và tkinter trong toàn bộ code/test.
+- [x] Xác định cv2/tkinter thuộc Core, Qt, Workshop Photo hay legacy compatibility.
+- [x] Khôi phục dependency cần thiết hoặc tách test không nên kéo dependency legacy.
+- [x] Chạy lại collection và regression sau khi xử lý.
+- [x] Cập nhật tài liệu dependency và test environment.
+- [ ] Sửa full-suite collection blocker: TextInputCommandProvider không còn tồn tại trong command provider API.

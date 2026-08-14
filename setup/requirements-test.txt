@@ -1,0 +1,16 @@
+# Test profile for Core + Qt + legacy compatibility collection.
+# Do not add these Workshop/legacy packages to setup/core_requirements.txt.
+-r requirements-dev.txt
+-r requirements-qt.txt
+
+# Workshop Photo imports cv2 during smoke/compatibility collection.
+# Headless build avoids pulling GUI backend into CI/sandbox.
+opencv-contrib-python-headless>=4.8.0
+
+# Needed only by legacy Tk compatibility imports/tests; not by Qt startup.
+customtkinter>=5.2.0
+
+# tkinter itself is an OS package, not a pip package:
+# Ubuntu/Debian: sudo apt-get install python3-tk
+# Fedora: sudo dnf install python3-tkinter
+# macOS/Windows: use the Python distribution with Tk support.
