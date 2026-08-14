@@ -10,6 +10,8 @@ export 1 tên, hoặc đường import nội bộ giữa các submodule bị đ�
 này báo lỗi ngay thay vì âm thầm vỡ main_ui.py/photo_agent.py/
 api/engine_wrapper.py lúc chạy thật.
 """
+from pathlib import Path
+
 from workshops.photo import (
     NaChanceEngine, SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME,
     _imread_unicode, _ensure_rgb,
@@ -53,3 +55,46 @@ def test_engine_initializes_without_crashing():
     assert engine.codeformer is not None
     assert engine.upscaler is not None
     assert engine.shoulder_analyzer is not None
+
+
+
+def test_bootstrap_handoff_is_qt_only():
+    import NaChance
+
+    project_root = NaChance.locate_project_root()
+    qt_entry = project_root / "app" / "qt_main.py"
+    legacy_tk_entry = project_root / "app" / "main.py"
+    source = NaChance.run_main.__doc__ or ""
+
+    assert qt_entry.is_file()
+    assert "PySide6" in source
+    assert "app/main.py" in source  # documented as legacy only
+    assert legacy_tk_entry.is_file()  # retained, but not a bootstrap target
+
+
+def test_bootstrap_propagates_qt_entry_exit_code(monkeypatch):
+    import NaChance
+
+    calls = []
+
+    class Result:
+        returncode = 17
+
+    def fake_run(command, cwd):
+        calls.append((command, cwd))
+        return Result()
+
+    monkeypatch.setattr(NaChance.subprocess, "run", fake_run)
+    try:
+        NaChance.run_main()
+    except SystemExit as exc:
+        assert exc.code == 17
+    else:
+        raise AssertionError("Bootstrap swallowed a failed Qt Main UI exit code")
+
+    command, cwd = calls[0]
+    assert command[0] == NaChance.sys.executable
+    assert command[1] == "-u"
+    assert command[-1].endswith("app/qt_main.py")
+    assert not any(str(part).endswith("app/main.py") for part in command)
+    assert Path(cwd) == NaChance.locate_project_root()

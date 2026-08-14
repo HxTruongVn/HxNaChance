@@ -20,8 +20,23 @@
 - [x] Tách test nghiệp vụ Photo/Layout khỏi phạm vi Core; chỉ giữ Compatibility/Contract Test ở phía NaChance.
 - [x] Chạy và ghi nhận kết quả bộ test Core mới sau khi di chuyển.
 
-- [ ] Khôi phục working tree Git trên nhánh đích của HxNaChance.
-- [ ] Áp dụng cây test Core mới và tài liệu Core Test Plan vào nhánh đích.
-- [ ] Chạy lại Core/integration/smoke/contract suite trước commit.
-- [ ] Commit và push thay đổi lên nhánh GitHub đã chọn.
-- [ ] Xác nhận commit đã tồn tại trên remote.
+- [x] Khôi phục working tree Git trên nhánh đích của HxNaChance.
+- [x] Áp dụng cây test Core mới và tài liệu Core Test Plan vào nhánh đích.
+- [x] Chạy lại Core/integration/smoke/contract suite trước commit.
+- [x] Commit và push thay đổi lên nhánh GitHub đã chọn.
+- [x] Xác nhận commit đã tồn tại trên remote.
+
+- [x] Liệt kê 27 commit riêng của core/nachance-foundation.
+- [x] Đối chiếu file và logic Core với qt/nachance-main-ui.
+- [x] Kiểm chứng các logic Core có khả năng cần chuyển sang Qt branch.
+- [x] Ghi báo cáo khuyến nghị hợp nhất an toàn, chưa merge tự động.
+
+- [x] Ghi nhận SHA cuối của core/nachance-foundation trước khi xóa.
+- [x] Xóa remote branch core/nachance-foundation.
+- [x] Xác nhận remote chỉ còn các nhánh dự kiến.
+
+- [x] Kiểm tra NaChance.py, app/main.py, app/qt_ui/main_window.py và toàn bộ import CustomTkinter.
+- [x] Xác định entry point PySide6 canonical cho nhánh Qt-primary.
+- [x] Khóa bootstrap không handoff vào CustomTkinter app/main.py.
+- [x] Bổ sung startup contract test chứng minh Qt-only handoff.
+- [x] Chạy startup smoke và Core/Qt regression trước khi đổi default branch.

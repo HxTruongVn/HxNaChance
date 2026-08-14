@@ -15,7 +15,7 @@ Luồng:
         │                           │               ↓
     YES ↓                           └──────────────┘
                                            ↓
-                                    Run main.py
+                                    Run Qt Main UI (PySide6)
 
 Nguyên tắc Bootstrap:
 - Nhỏ, không phụ thuộc module nghiệp vụ
@@ -193,20 +193,30 @@ def run_setup() -> bool:
 
 
 def run_main():
-    """Chạy app/main.py — ứng dụng chính."""
+    """Chạy canonical PySide6 Qt Main UI trong process con.
+
+    ``app/main.py`` là legacy CustomTkinter entry point và không được dùng
+    bởi Qt-primary bootstrap.
+    """
     try:
         project_root = locate_project_root()
-        main_path = project_root / "app" / "main.py"
+        main_path = project_root / "app" / "qt_main.py"
 
         if not main_path.exists():
-            log.error(f"❌ app/main.py không tìm thấy tại {main_path}")
+            log.error(f"❌ app/qt_main.py không tìm thấy tại {main_path}")
             sys.exit(1)
 
-        # Chạy app/main.py trong process con — nó sẽ tự xử lý venv + imports
-        subprocess.run([sys.executable, str(main_path)], cwd=str(project_root))
+        result = subprocess.run(
+            [sys.executable, "-u", str(main_path)], cwd=str(project_root)
+        )
+        if result.returncode != 0:
+            log.error(f"❌ Qt Main UI kết thúc với exit code {result.returncode}")
+            raise SystemExit(result.returncode)
 
+    except SystemExit:
+        raise
     except Exception as e:
-        log.error(f"❌ Lỗi khi chạy app/main.py: {e}")
+        log.error(f"❌ Lỗi khi chạy app/qt_main.py: {e}")
         sys.exit(1)
 
 
