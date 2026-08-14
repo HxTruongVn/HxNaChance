@@ -69,4 +69,10 @@
 - [x] Sửa provider hoặc cập nhật test theo contract được chọn.
 - [x] Chạy full collection/regression và xử lý lỗi liên quan.
 - [x] Commit/push và cập nhật TODO kết quả.
-- [ ] Sửa full-suite failure còn lại: test_menu_context dùng Host._current_command_context() không tồn tại.
+- [x] Sửa full-suite failure còn lại: test_menu_context dùng Host._current_command_context() không tồn tại.
+
+- [x] Đọc test_menu_context.py, Host fixture và context router hiện tại.
+- [x] Sửa boundary _current_command_context đúng theo Qt host/fixture contract.
+- [x] Chạy test menu context và full regression.
+- [ ] Sửa full-suite failure theme rebuild: title bar phải được dựng trước menu bar.
+- [x] Commit/push và cập nhật TODO kết quả.

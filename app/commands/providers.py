@@ -33,11 +33,37 @@ class TextInputCommandProvider:
 
 
 class PipelineCommandProvider:
+    provider_id = "pipeline"
+
     def resolve(self, command_id: str, context: CommandContext) -> Command | None:
-        if command_id != "pipeline.run" or context.kind is not WorkspaceKind.PIPELINE:
+        if context.kind is not WorkspaceKind.PIPELINE:
             return None
-        callback = _method(_host(context), "_run_active_workshop_qt")
-        return Command(command_id, "Run pipeline", callback or (lambda: None))
+        host = _host(context)
+        target = context.target or (context.metadata or {}).get("active_pipeline_workspace") or host
+        callbacks = {
+            "edit.undo": ("undo", "can_undo"),
+            "edit.redo": ("redo", "can_redo"),
+            "file.save": ("save", "can_save"),
+            "pipeline.validate": ("validate", None),
+            "pipeline.run": ("run", "can_run"),
+        }
+        methods = callbacks.get(command_id)
+        if methods is None:
+            return None
+        callback_name, capability_name = methods
+        callback = _method(target, callback_name)
+        if callback is None and command_id == "pipeline.run":
+            callback = _method(host, "_run_active_workshop_qt")
+        enabled = None
+        if capability_name:
+            capability = _method(target, capability_name)
+            if capability is not None:
+                enabled = capability
+            elif callback is None:
+                return None
+        elif callback is None:
+            return None
+        return Command(command_id, command_id, callback or (lambda: None), enabled_fn=enabled)
 
 
 class WorkshopCommandProvider:

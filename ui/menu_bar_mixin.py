@@ -48,6 +48,45 @@ from ui.theme_mixin import THEME_GROUPS
 
 
 class MenuBarMixin:
+    def _current_command_context(self):
+        from app.commands.context import CommandContext, WorkspaceKind
+
+        focused = self.focus_get() if callable(getattr(self, "focus_get", None)) else None
+        if self._is_text_editing_focus(focused):
+            return CommandContext(WorkspaceKind.TEXT_INPUT, "text-input", focused_widget=focused, metadata={"host": self})
+        workspace = getattr(self, "active_pipeline_workspace", None)
+        if workspace is not None:
+            pipeline_id = getattr(workspace, "pipeline_id", "active")
+            return CommandContext(
+                WorkspaceKind.PIPELINE,
+                f"pipeline.{pipeline_id}",
+                target=workspace,
+                metadata={"host": self, "active_pipeline_workspace": workspace},
+            )
+        return CommandContext(WorkspaceKind.CORE, "core", metadata={"host": self})
+
+    def _context_commands(self, menu: str | None = None):
+        from app.commands.context import ContextCommandRouter, WorkspaceKind
+        from app.commands.providers import CoreCommandProvider, PipelineCommandProvider, TextInputCommandProvider, WorkshopCommandProvider
+
+        context = self._current_command_context()
+        if menu == "Edit" and context.kind is WorkspaceKind.CORE:
+            return context, ()
+        router = ContextCommandRouter([
+            TextInputCommandProvider(),
+            PipelineCommandProvider(),
+            WorkshopCommandProvider(),
+            CoreCommandProvider(),
+        ])
+        command_ids = {
+            WorkspaceKind.TEXT_INPUT: ("edit.undo", "edit.redo"),
+            WorkspaceKind.PIPELINE: ("edit.undo", "edit.redo", "file.save", "pipeline.validate", "pipeline.run"),
+            WorkspaceKind.WORKSHOP: ("workshop.run",),
+            WorkspaceKind.CORE: ("edit.undo", "edit.redo", "file.save"),
+        }[context.kind]
+        commands = tuple(command for command in (router.resolve(command_id, context) for command_id in command_ids) if command is not None)
+        return context, commands
+
     def _build_menu_bar(self):
         self.menu_bar_frame = ctk.CTkFrame(
             self, fg_color=self.COLORS['bg_dark'], corner_radius=0, height=28,

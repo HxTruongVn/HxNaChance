@@ -28,6 +28,12 @@ class PipelineTarget:
     def validate(self):
         self.calls.append("validate")
 
+    def can_run(self):
+        return True
+
+    def run(self):
+        self.calls.append("run")
+
 
 class WorkshopDocument:
     def can_undo(self):
