@@ -34,7 +34,6 @@ Không được dùng tài liệu mục tiêu để kết luận rằng một t�
 - [Bootstrap](architecture/bootstrap.md) — luồng khởi động.
 - [Structure](architecture/structure.md) — cây thư mục và trách nhiệm vật lý.
 - [UI / Reception](architecture/ui.md) — phần giao diện lõi.
-- [ContextCommandProvider](architecture/context_command_provider.md) — command thích nghi theo vùng Core, Pipeline, Workshop và ô nhập liệu.
 - [Workshop Resource Contract](architecture/workshop_resource_contract.md) — hợp đồng Core ↔ Workshop ở mức hệ thống.
 - [Pipeline Model](pipeline_model.md) — cách Core kết nối các Workshop.
 - [Architecture Vision](architecture/NaChance%20Architecture%20Vision.md) — nguyên tắc dài hạn.
@@ -60,13 +59,6 @@ Không được dùng tài liệu mục tiêu để kết luận rằng một t�
 - [Code Review](development/code_review.md)
 - [Testing](development/testing.md)
 - [Troubleshooting](development/troubleshooting.md)
-
-## Theo dõi Pass 2
-
-- [Trạng thái Pass 2](pass2_status.md) — bảng trạng thái và tiêu chí hoàn thành.
-- [Roadmap Pass 2](pass2_roadmap.md) — thứ tự triển khai và điều kiện dừng.
-- [Quyết định kiến trúc Pass 2](pass2_decisions.md) — các nguyên tắc đã chốt.
-- [Changelog Pass 2](pass2_changelog.md) — các thay đổi đã thực hiện.
 
 ## Roadmap
 

@@ -1,3 +1,4 @@
-# NaChance Core runtime dependencies
+# Dependencies required for NaChance Core/bootstrap and the Qt host.
+# Workshop-specific packages belong only in workshops/<name>/requirements.txt.
 Pillow
-customtkinter
+PySide6

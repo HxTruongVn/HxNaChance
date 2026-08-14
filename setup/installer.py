@@ -39,7 +39,8 @@ class SetupInstaller:
         self.runtime_manager.ensure_weights_dir()
         report = self.runtime_manager.detect()
         return {
-            "can_run_lite": report.can_run_lite,
+            "core_ready": report.core_ready,
+            "can_run_lite": report.can_run_lite,  # compatibility projection only
             "can_run_full_ai": report.can_run_full_ai,
             "missing_packages": report.missing_required_packages,
             "report": report,
@@ -91,7 +92,8 @@ class SetupInstaller:
         print(report.summary_text())
         
         return {
-            "can_run_lite": report.can_run_lite,
+            "core_ready": report.core_ready,
+            "can_run_lite": report.can_run_lite,  # compatibility projection only
             "can_run_full_ai": report.can_run_full_ai,
             "report": report,
         }
@@ -105,7 +107,7 @@ class SetupInstaller:
         # 1. Kiểm tra trạng thái ban đầu
         initial = self.get_initial_status()
         
-        if initial["can_run_lite"]:
+        if initial["core_ready"]:
             print("✓ Môi trường có thể chạy ở Lite Mode")
             if initial["can_run_full_ai"]:
                 print("✓ Môi trường sẵn sàng chạy Full AI — không cần setup")
@@ -121,7 +123,7 @@ class SetupInstaller:
         # 3. Kiểm tra lại
         final = self.verify_after_setup()
         
-        if final["can_run_lite"]:
+        if final["core_ready"]:
             print("\n✅ Setup hoàn thành — app sẵn sàng chạy ở Lite Mode")
             return True, "Setup successful - can run Lite Mode"
         else:

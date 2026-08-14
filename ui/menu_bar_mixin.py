@@ -45,97 +45,9 @@ import customtkinter as ctk
 
 from ui.utils import open_folder as _open_folder
 from ui.theme_mixin import THEME_GROUPS
-from app.commands.context import CommandContext, ContextCommandRouter, WorkspaceKind
-from app.commands.providers import (
-    CoreCommandProvider,
-    PipelineCommandProvider,
-    TextInputCommandProvider,
-    WorkshopCommandProvider,
-)
 
 
 class MenuBarMixin:
-    def _context_command_router(self):
-        """Return the adaptive command router, created lazily for compatibility."""
-        router = getattr(self, "_command_context_router", None)
-        if router is None:
-            router = ContextCommandRouter([
-                TextInputCommandProvider(),
-                PipelineCommandProvider(),
-                WorkshopCommandProvider(),
-                CoreCommandProvider(),
-            ])
-            self._command_context_router = router
-        return router
-
-    def _current_command_context(self):
-        """Resolve the active editing surface without naming a Workshop."""
-        focused = None
-        try:
-            focused = self.focus_get()
-        except Exception:
-            pass
-        if self._is_text_editing_focus(focused):
-            return CommandContext(
-                kind=WorkspaceKind.TEXT_INPUT,
-                workspace_id=f"text.{id(focused)}",
-                focused_widget=focused,
-            )
-
-        pipeline = getattr(self, "active_pipeline_workspace", None)
-        if pipeline is not None:
-            pipeline_id = getattr(pipeline, "pipeline_id", id(pipeline))
-            selection = tuple(getattr(pipeline, "selected_node_ids", ()) or ())
-            return CommandContext(
-                kind=WorkspaceKind.PIPELINE,
-                workspace_id=f"pipeline.{pipeline_id}",
-                target=pipeline,
-                selection=selection,
-            )
-
-        active_window = self._active_workshop_window()
-        if active_window is not None:
-            workshop_id = getattr(active_window, "workshop_id", id(active_window))
-            return CommandContext(
-                kind=WorkspaceKind.WORKSHOP,
-                workspace_id=f"workshop.{workshop_id}",
-                target=active_window,
-                metadata={"host": self},
-            )
-
-        return CommandContext(
-            kind=WorkspaceKind.CORE,
-            workspace_id="core.reception",
-            target=self,
-        )
-
-    def _context_commands(self, menu_name=None):
-        context = self._current_command_context()
-        commands = self._context_command_router().commands_for(context)
-        if menu_name is None:
-            return context, commands
-        return context, tuple(command for command in commands if command.menu == menu_name)
-
-    def _execute_context_command(self, command_id, context=None):
-        context = context or self._current_command_context()
-        command = self._context_command_router().resolve(command_id, context)
-        if command is None or not command.is_enabled():
-            return None
-        return command.execute()
-
-    @staticmethod
-    def _add_context_commands(menu, commands, context):
-        for command in commands:
-            if not command.is_visible():
-                continue
-            menu.add_command(
-                label=command.label,
-                command=lambda item=command: item.execute(),
-                state="normal" if command.is_enabled() else "disabled",
-                accelerator=command.shortcut or "",
-            )
-
-
     def _build_menu_bar(self):
         self.menu_bar_frame = ctk.CTkFrame(
             self, fg_color=self.COLORS['bg_dark'], corner_radius=0, height=28,
@@ -146,7 +58,6 @@ class MenuBarMixin:
         menu_defs = [
             ("File", self._menu_file),
             ("Edit", self._menu_edit),
-            ("Pipeline", self._menu_pipeline),
             ("Window", self._menu_window),
             ("View", self._menu_view),
             ("Tool", self._menu_tool),
@@ -186,14 +97,11 @@ class MenuBarMixin:
         self.bind_all("<Control-Shift-KeyPress-grave>", self._shortcut_previous_workshop)
 
     def _shortcut_run(self, event=None):
-        """Ctrl+R routes to the active Pipeline or Workshop provider."""
-        context = self._current_command_context()
-        command_id = {
-            WorkspaceKind.PIPELINE: "pipeline.run",
-            WorkspaceKind.WORKSHOP: "workshop.run",
-        }.get(context.kind)
-        if command_id:
-            self._execute_context_command(command_id, context)
+        """Ctrl+R = Run của Workshop đang active. Core chỉ định tuyến;
+        Workshop tự khai execution.run_method trong manifest.json."""
+        fn = getattr(self, "_run_active_workshop", None)
+        if callable(fn):
+            fn()
         return "break"
 
     def _shortcut_next_workshop(self, event=None):
@@ -230,38 +138,31 @@ class MenuBarMixin:
 
     # ===== FILE =====
     def _menu_file(self, menu: tk.Menu):
-        """File commands are selected from the active workspace context."""
-        context, commands = self._context_commands("File")
-        self._add_context_commands(menu, commands, context)
-
+        """File định tuyến theo Workshop active trong session hiện tại."""
         active_workshop = self._active_workshop() if hasattr(self, "_active_workshop") else None
-        if active_workshop is not None:
-            menu.add_separator()
-            menu.add_command(
-                label="Open Workshop...",
-                command=self._open_active_workshop,
-                state="normal" if active_workshop.open_method else "disabled",
-                accelerator="Ctrl+O",
-            )
-        has_context_state_open = any(
-            command.command_id == "file.open_state" for command in commands
+        menu.add_command(
+            label="Open...",
+            command=self._open_active_workshop,
+            state="normal" if (active_workshop and active_workshop.open_method) else "disabled",
+            accelerator="Ctrl+O",
         )
-        if not has_context_state_open:
-            menu.add_command(
-                label="Open Saved State...",
-                command=self._open_saved_state,
-                accelerator="Ctrl+Shift+O",
-            )
+        menu.add_command(
+            label="Open Saved State...",
+            command=self._open_saved_state,
+            accelerator="Ctrl+Shift+O",
+        )
+        menu.add_separator()
+        menu.add_command(
+            label="Save State...",
+            command=self._save_current_state,
+            state="normal" if getattr(self, "current_document", None) is not None else "disabled",
+            accelerator="Ctrl+S",
+        )
         menu.add_separator()
         menu.add_command(label="Choose Save Folder...", command=self._choose_save_dir)
         menu.add_command(label="Open Save Folder", command=lambda: _open_folder(self.save_dir))
         menu.add_separator()
         menu.add_command(label="Exit", command=self._on_close)
-
-    def _menu_pipeline(self, menu: tk.Menu):
-        """Pipeline commands only appear when Pipeline Builder is active."""
-        context, commands = self._context_commands("Pipeline")
-        self._add_context_commands(menu, commands, context)
 
     def _active_workshop_window(self):
         manager = getattr(self, "_window_manager", None)
@@ -275,11 +176,31 @@ class MenuBarMixin:
 
     # ===== EDIT =====
     def _menu_edit(self, menu: tk.Menu):
-        """Edit is provided by the active Pipeline/Workshop context."""
-        context, commands = self._context_commands("Edit")
-        self._add_context_commands(menu, commands, context)
+        """Edit phản ánh capability/history của Workshop đang active.
 
-        # Existing Workshop-specific menu extension remains supported.
+        Không tạo mục Undo/Redo giả khi Workshop chưa có history. Với Document
+        hiện tại, mỗi lần mở menu lại đọc can_undo/can_redo mới nhất.
+        """
+        active_window = self._active_workshop_window()
+        doc = getattr(active_window, "current_document", None) if active_window else None
+
+        # Core history commands. Chỉ hiện khi capability tồn tại và đang có
+        # bước để thực hiện; không để một menu đầy mục disabled vô nghĩa.
+        if doc is not None and doc.can_undo():
+            menu.add_command(
+                label="Undo",
+                command=lambda w=active_window: w._undo(),
+                accelerator="Ctrl+Z",
+            )
+        if doc is not None and doc.can_redo():
+            menu.add_command(
+                label="Redo",
+                command=lambda w=active_window: w._redo(),
+                accelerator="Ctrl+Y",
+            )
+
+        # Workshop-specific Edit commands can opt in through a future
+        # `get_edit_menu_items()` contract without Core hard-coding them.
         provider = getattr(self, "get_edit_menu_items", None)
         if callable(provider):
             items = provider() or []
@@ -307,7 +228,7 @@ class MenuBarMixin:
         focus = self.focus_get()
         if self._is_text_editing_focus(focus):
             return None
-        self._execute_context_command("file.save")
+        self._save_current_state()
         return "break"
 
     def _save_current_state(self):
@@ -392,17 +313,24 @@ class MenuBarMixin:
             return None
 
     def _shortcut_undo(self, event=None):
+        # Khi người dùng đang gõ vào Entry/Text, nhường Ctrl+Z cho widget đó.
         focus = self.focus_get()
         if self._is_text_editing_focus(focus):
             return None
-        self._execute_context_command("edit.undo")
+        active_window = self._active_workshop_window()
+        doc = getattr(active_window, "current_document", None) if active_window else None
+        if doc is not None and doc.can_undo():
+            active_window._undo()
         return "break"
 
     def _shortcut_redo(self, event=None):
         focus = self.focus_get()
         if self._is_text_editing_focus(focus):
             return None
-        self._execute_context_command("edit.redo")
+        active_window = self._active_workshop_window()
+        doc = getattr(active_window, "current_document", None) if active_window else None
+        if doc is not None and doc.can_redo():
+            active_window._redo()
         return "break"
 
     # ===== WINDOW — thao tác host + submenu từng Xưởng =====

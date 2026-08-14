@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Any, Mapping
 
 
@@ -18,6 +19,7 @@ class RuntimeState(str, Enum):
 
 class ResourceState(str, Enum):
     DECLARED = "declared"
+    INVALID = "invalid"
     MISSING = "missing"
     RESOLVING = "resolving"
     DOWNLOADING = "downloading"
@@ -58,9 +60,20 @@ class WorkshopDescriptor:
     capabilities: tuple[str, ...] = ()
     requirements: tuple[Mapping[str, Any], ...] = ()
     resources: tuple[ResourceDescriptor, ...] = ()
+    ui: Mapping[str, Any] = field(default_factory=dict)
+    about_path: str = ""
+    execution: Mapping[str, Any] = field(default_factory=dict)
     manifest_path: str = ""
     enabled: bool = True
     discovery_error: str | None = None
+
+    @property
+    def workshop_name(self) -> str:
+        return Path(self.manifest_path).parent.name if self.manifest_path else self.name
+
+    @property
+    def menu_label(self) -> str:
+        return self.workshop_name
 
 
 @dataclass(frozen=True)

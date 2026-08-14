@@ -1,42 +1,41 @@
 {
-  "_comment": "WorkshopManifest — Layout owns its UI; Core owns lifecycle/context.",
+  "_comment": "WorkshopManifest (docs/architecture/meta_architecture.md, mục [ ] còn thiếu). Xưởng này KHÔNG dùng AI model nào — capabilities_required rỗng có chủ đích, không phải thiếu sót.",
   "workshop_id": "layout",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "Xếp ảnh đã xử lý (hoặc ảnh bất kỳ) vào khổ in theo công thức bố cục, tối ưu số lượng ảnh trên tờ giấy.",
   "environment": {
+    "_comment": "ĐÃ có Bootstrap Controller đọc/enforce khối này — setup/runtime_manager.py::verify_workshop_environment(). Workshop này chỉ cần Pillow, không cần GPU/RAM lớn.",
     "python_version": ">=3.10",
     "device_preference": "cpu_only",
     "min_ram_gb": 2
   },
   "ui": {
-    "module": "workshops.layout.shortcut_ui",
-    "mixin_class": "ShortcutLayoutTabMixin",
+    "_comment": "Core đọc khối này để TỰ PHÁT HIỆN Workshop — không hardcode tên Workshop.",
+    "module": "workshops.layout.ui",
+    "mixin_class": "LayoutTabMixin",
     "build_method": "_build_layout_tab",
     "menu_build_method": "_menu_layout_content",
     "open_method": "_choose_layout_src"
   },
-  "execution": {
-    "run_method": "_layout_run_current"
-  },
-  "shortcuts": {
-    "Ctrl+O": "choose_source",
-    "Ctrl+Shift+O": "add_source",
-    "F2": "preview",
-    "Ctrl+R": "run"
-  },
   "capabilities_required": [],
   "capabilities_optional": [],
   "resources": {
+    "_comment": "Không có weight AI nào — chỉ cần dữ liệu công thức khổ in (cùng thư mục, Xưởng tự quản — trước đây ở config/presets/).",
     "layout_presets_file": "layout_presets.json"
   },
   "default_spec": null,
+  "_default_spec_note": "Không có spec mặc định duy nhất — Xưởng này cho chọn NHIỀU khổ in cùng lúc (checkbox), không có khái niệm 1 preset 'mặc định'. null có chủ đích, không phải bỏ sót.",
   "output_settings": {
+    "_comment": "Khai báo mới — chưa có nơi nào đọc field này.",
     "format": "jpg",
     "dpi": 300,
     "auto_save": false
   },
   "about_file": "ABOUT.md",
   "io": {
-    "accepts": ["image"]
-  }
+    "accepts": [
+      "image"
+    ]
+  },
+  "resource_contract_version": 1
 }

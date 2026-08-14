@@ -30,6 +30,7 @@ nó chỉ BÁO CÁO model nào đang thiếu.
 
 from __future__ import annotations
 
+import hashlib
 import importlib
 import json
 import re
@@ -42,6 +43,10 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from core.model_registry import load_model_registry
+from core.contracts import ResourceDescriptor, ResourceState
+from core.paths import core_weights_dir
+from core.resource_contract import normalize_resources, resolve_resource
+from core.compatibility import LEGACY_CAPABILITY_ALIASES, project_legacy_capabilities
 
 
 # ------------------------------------------------------------------
@@ -75,11 +80,23 @@ def _parse_requirement_names(requirements_path: Path) -> List[str]:
     return names
 
 
-def _workshop_specs(workshops_dir: Optional[Path] = None) -> List[dict]:
+def _core_requirement_names(requirements_path: Optional[Path] = None) -> List[str]:
+    if requirements_path is None:
+        requirements_path = Path(__file__).resolve().parent / "core_requirements.txt"
+    return _parse_requirement_names(Path(requirements_path))
+
+
+def _workshop_specs(
+    workshops_dir: Optional[Path] = None,
+    weights_dir: Optional[Path] = None,
+) -> List[dict]:
     """Quét động manifest của mọi Workshop và đọc metadata của chính nó."""
     if workshops_dir is None:
         workshops_dir = Path(__file__).resolve().parent.parent / "workshops"
     workshops_dir = Path(workshops_dir)
+    core_weights_dir = Path(weights_dir) if weights_dir is not None else (
+        Path(__file__).resolve().parent.parent / "weights"
+    )
     specs: List[dict] = []
     if not workshops_dir.is_dir():
         return specs
@@ -117,7 +134,9 @@ def _workshop_specs(workshops_dir: Optional[Path] = None) -> List[dict]:
                     if isinstance(raw, dict):
                         capabilities = raw
 
-            weights_dir = workshop_dir / resources.get("weights_directory", "weights")
+            # A Workshop may declare resource metadata, but it never owns a
+            # runtime weight store. Core resolves every model into one shared
+            # project-level cache.
             specs.append({
                 "id": manifest.get("workshop_id", workshop_dir.name),
                 "name": manifest.get("workshop_name", workshop_dir.name),
@@ -127,7 +146,7 @@ def _workshop_specs(workshops_dir: Optional[Path] = None) -> List[dict]:
                 "registry": registry,
                 "weights": weights,
                 "capabilities": capabilities,
-                "weights_dir": weights_dir,
+                "weights_dir": core_weights_dir,
             })
         except Exception as exc:
             print(f"[RuntimeDiscovery] ⚠ Bỏ qua {manifest_path}: {exc}")
@@ -140,12 +159,6 @@ def _is_importable(module_name: str) -> bool:
         return True
     except Exception:
         return False
-
-
-def _core_required_package_names() -> set[str]:
-    """Các package tối thiểu để mở Core shell và UI nền."""
-    core_file = Path(__file__).resolve().parent / "core_requirements.txt"
-    return {name.lower() for name in _parse_requirement_names(core_file)}
 
 
 # ------------------------------------------------------------------
@@ -167,19 +180,24 @@ class RuntimeReport:
     cpu_cores: Optional[int] = None  # số logical CPU cores
     # Các trạng thái này được tổng hợp từ metadata của Workshop đang tồn tại.
     package_status: Dict[str, bool] = field(default_factory=dict)
+    core_package_status: Dict[str, bool] = field(default_factory=dict)
     model_status: Dict[str, bool] = field(default_factory=dict)
     feature_available: Dict[str, bool] = field(default_factory=dict)
     missing_required_packages: List[str] = field(default_factory=list)
+    missing_core_packages: List[str] = field(default_factory=list)
     missing_models: List[str] = field(default_factory=list)
     workshop_reports: Dict[str, dict] = field(default_factory=dict)
+    resources: tuple[ResourceDescriptor, ...] = ()
+
+    @property
+    def core_ready(self) -> bool:
+        return not self.missing_core_packages
 
     @property
     def can_run_lite(self) -> bool:
-        # Lite mode is a CORE startup capability, not a Workshop capability.
-        # NaChance is a container and must still open when no Workshop is
-        # installed or when every Workshop is temporarily unavailable.
-        # Workshop compatibility is reported separately in workshop_reports.
-        return True
+        # Compatibility name retained for callers. The decision is now owned
+        # by Core readiness and is independent of Workshop discovery.
+        return self.core_ready
 
     @property
     def can_run_full_ai(self) -> bool:
@@ -243,16 +261,10 @@ def _legacy_workshop_metadata():
     return result
 
 _legacy_meta = _legacy_workshop_metadata()
-_LEGACY_CAPABILITY_ALIASES = {
-    "face_align": "face_parser",
-    "remove_bg": "background_remover",
-    "face_restore": "face_restorer",
-    "upscale": "upscaler",
-    "face_parsing": "face_parser",
-}
-for _alias, _canonical in _LEGACY_CAPABILITY_ALIASES.items():
-    if _canonical in _legacy_meta["features"]:
-        _legacy_meta["features"].setdefault(_alias, _legacy_meta["features"][_canonical])
+# Compatibility projection only. The canonical map lives in
+# core.compatibility; these views remain exported for old callers/tests.
+_LEGACY_CAPABILITY_ALIASES = dict(LEGACY_CAPABILITY_ALIASES)
+_legacy_meta["features"] = project_legacy_capabilities(_legacy_meta["features"])
 # Historical face alignment uses MediaPipe landmarks and no weight file.
 _legacy_meta["features"].update({
     "face_align": {"packages": ["mediapipe"], "models": []},
@@ -295,8 +307,10 @@ class RuntimeManager:
     Không tải model, không cài package — chỉ BÁO CÁO hiện trạng máy.
     """
 
-    def __init__(self, weights_dir: str = "weights", model_registry=None):
-        self.weights_dir = Path(weights_dir)
+    def __init__(self, weights_dir: str | Path | None = None, model_registry=None):
+        self.weights_dir = Path(weights_dir) if weights_dir is not None else core_weights_dir()
+        if not self.weights_dir.is_absolute():
+            self.weights_dir = core_weights_dir() if str(self.weights_dir) == "weights" else self.weights_dir.resolve()
         self.model_registry = model_registry
 
     def ensure_weights_dir(self) -> None:
@@ -306,11 +320,18 @@ class RuntimeManager:
         python_version = sys.version.split()[0]
         os_name = self._detect_os_name()
 
-        specs = _workshop_specs()
+        core_names = _core_requirement_names()
+        core_package_status = {
+            name: self._distribution_installed(name) for name in core_names
+        }
+        missing_core = [name for name, ok in core_package_status.items() if not ok]
+
+        specs = _workshop_specs(weights_dir=self.weights_dir)
         package_status: Dict[str, bool] = {}
         model_status: Dict[str, bool] = {}
         feature_available: Dict[str, bool] = {}
         workshop_reports: Dict[str, dict] = {}
+        resources: List[ResourceDescriptor] = []
         missing_required: List[str] = []
         missing_models: List[str] = []
 
@@ -332,6 +353,40 @@ class RuntimeManager:
                 for name in sorted(model_names)
             }
             model_status.update({f"{spec['id']}::{k}": v for k, v in model_status_local.items()})
+            for name in sorted(model_names):
+                metadata = spec["weights"].get(name, {}) if isinstance(spec["weights"], dict) else {}
+                expected = str(metadata.get("sha256", "")).strip().lower() or None
+                path = spec["weights_dir"] / name
+                state = ResourceState.MISSING
+                error = None
+                if path.is_file():
+                    state = ResourceState.READY
+                    if expected:
+                        digest = self._sha256_file(path)
+                        if digest != expected:
+                            state = ResourceState.INVALID
+                            error = f"sha256 mismatch: expected {expected}, got {digest}"
+                resources.append(ResourceDescriptor(
+                    resource_id=f"{spec['id']}::{name}",
+                    kind="weight",
+                    required=not bool(metadata.get("optional", False)),
+                    version=metadata.get("version"),
+                    checksum=expected,
+                    paths=(str(path),),
+                    state=state,
+                    error=error,
+                ))
+
+            declared_resources = normalize_resources(spec["manifest"].get("resources"))
+            resolved_resources = tuple(
+                resolve_resource(
+                    resource,
+                    workshop_dir=spec["dir"],
+                    core_weights_dir=self.weights_dir,
+                )
+                for resource in declared_resources
+            )
+            resources.extend(resolved_resources)
 
             caps = spec["capabilities"]
             cap_status = {}
@@ -351,14 +406,9 @@ class RuntimeManager:
                 cap_status.setdefault(cap_name, False)
                 feature_available.setdefault(cap_name, cap_status[cap_name])
 
-            core_required = _core_required_package_names()
             for name, ok in pkg_status.items():
-                # Dependency của Workshop chỉ làm Workshop đó unavailable;
-                # không được chặn Core và các Workshop nhẹ khác.
-                if not ok and name.lower() in core_required:
-                    blocker = f"core::{name}"
-                    if blocker not in missing_required:
-                        missing_required.append(blocker)
+                if not ok:
+                    missing_required.append(f"{spec['id']}::{name}")
             for name, ok in model_status_local.items():
                 if not ok and not spec["weights"].get(name, {}).get("optional", False):
                     missing_models.append(f"{spec['id']}::{name}")
@@ -370,11 +420,12 @@ class RuntimeManager:
                 "capabilities": cap_status,
                 "required_capabilities": required_caps,
                 "optional_capabilities": optional_caps,
+                "resources": resolved_resources,
             }
 
-        for alias, canonical in _LEGACY_CAPABILITY_ALIASES.items():
-            if canonical in feature_available:
-                feature_available.setdefault(alias, feature_available[canonical])
+        # Compatibility projection only; this does not participate in
+        # core_ready or ResourceDescriptor state.
+        feature_available = project_legacy_capabilities(feature_available)
 
         device, gpu_name, torch_build_info = self._detect_device(
             any(name.endswith("::torch") and ok for name, ok in package_status.items())
@@ -398,12 +449,23 @@ class RuntimeManager:
             storage_free_gb=storage_free_gb,
             cpu_cores=cpu_cores,
             package_status=package_status,
+            core_package_status=core_package_status,
             model_status=model_status,
             feature_available=feature_available,
             missing_required_packages=missing_required,
+            missing_core_packages=missing_core,
             missing_models=missing_models,
             workshop_reports=workshop_reports,
+            resources=tuple(resources),
         )
+
+    @staticmethod
+    def _sha256_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(chunk_size), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
 
     @staticmethod
     def _distribution_installed(name: str) -> bool:

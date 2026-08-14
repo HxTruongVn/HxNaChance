@@ -23,12 +23,12 @@ LẠI app để nhận (không phải hot-reload giữa phiên đang chạy — 
 đích, tránh rủi ro đổi cấu trúc UI giữa chừng lúc người dùng đang dùng).
 """
 import importlib
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Type
 
-from core.identity import WorkshopIdentity
+from core.contracts import WorkshopDescriptor
+from core.workshop_registry import discover_workshops as discover_core_workshops
 
 
 @dataclass
@@ -45,7 +45,7 @@ class WorkshopUI:
     workshop_name: str
     description: str
     about_path: Optional[Path]
-    mixin_class: Optional[Type]
+    mixin_class: Type
     build_method: str
     tab_title: str = ""
     tab_order: int = 999
@@ -57,49 +57,33 @@ class WorkshopUI:
     run_method: Optional[str] = None
 
 
-def _discover_one(manifest_path: Path, load_ui: bool = True) -> Optional[WorkshopUI]:
-    """Read one manifest, deriving identity/display name from its directory."""
+def _load_ui(descriptor: WorkshopDescriptor) -> Optional[WorkshopUI]:
+    """Load only the UI entry point from a Core-approved descriptor."""
     try:
-        with open(manifest_path, encoding="utf-8") as f:
-            manifest = json.load(f)
-
-        ui = manifest.get("ui")
+        ui = descriptor.ui
         if not ui:
-            print(f"[WorkshopDiscovery] ⚠ {manifest_path} không có khối \"ui\" — bỏ qua")
+            print(f"[WorkshopDiscovery] ⚠ Core descriptor has no UI entry: {descriptor.workshop_id}")
             return None
-
-        workshop_dir = manifest_path.parent
-        identity = WorkshopIdentity.from_directory(workshop_dir, manifest)
-        workshop_id = identity.workshop_id
-        workshop_name = identity.workshop_id
-
-        mixin_class = None
-        if load_ui:
-            module = importlib.import_module(ui["module"])
-            mixin_class = getattr(module, ui["mixin_class"])
-
-        # Title/name are derived from the folder.  ``display_name`` is
-        # deliberately not accepted here: the current contract is that the
-        # Workshop's visible name is its directory name.
+        module = importlib.import_module(str(ui["module"]))
+        mixin_class = getattr(module, str(ui["mixin_class"]))
+        workshop_name = Path(descriptor.manifest_path).parent.name
         return WorkshopUI(
-            workshop_id=workshop_id,
+            workshop_id=descriptor.workshop_id,
             workshop_name=workshop_name,
-            description=manifest.get("description", ""),
-            about_path=(
-                manifest_path.parent / manifest["about_file"]
-            ).resolve() if manifest.get("about_file") else None,
+            description=descriptor.description,
+            about_path=Path(descriptor.about_path) if descriptor.about_path else None,
             mixin_class=mixin_class,
-            build_method=ui["build_method"],
+            build_method=str(ui["build_method"]),
             tab_title=workshop_name,
             tab_order=999,
             window_title=f"NaChance — {workshop_name}",
             menu_label=workshop_name,
             menu_build_method=ui.get("menu_build_method"),
             open_method=ui.get("open_method"),
-            run_method=(manifest.get("execution") or {}).get("run_method"),
+            run_method=descriptor.execution.get("run_method"),
         )
     except Exception as exc:
-        print(f"[WorkshopDiscovery] ⚠ Bỏ qua {manifest_path}: {exc}")
+        print(f"[WorkshopDiscovery] ⚠ UI load failed for {descriptor.workshop_id}: {exc}")
         return None
 
 
@@ -107,7 +91,7 @@ def discover_workshops(
     workshops_dir: Optional[Path] = None,
     *,
     load_ui: bool = True,
-) -> List[WorkshopUI]:
+) -> list[WorkshopUI | WorkshopDescriptor]:
     """Create a fresh Workshop session from the current disk contents.
 
     There is NO persisted Workshop navigation order and NO ``session_priority``
@@ -126,13 +110,24 @@ def discover_workshops(
     if not workshops_dir.is_dir():
         return found
 
-    # Directory name is the source of identity and therefore also the source
-    # of the default session order.  Never use manifest ordering/priority.
-    for manifest_path in sorted(
-        workshops_dir.glob("*/manifest.json"),
-        key=lambda p: p.parent.name.casefold(),
-    ):
-        workshop = _discover_one(manifest_path, load_ui=load_ui)
+    # Core owns manifest discovery, validation and normalized description.
+    # App only loads UI for descriptors Core accepted; UI import failures are
+    # presentation failures and remain local to this adapter.
+    core_descriptors = tuple(
+        sorted(
+            (item for item in discover_core_workshops(workshops_dir) if item.enabled and not item.discovery_error),
+            key=lambda item: Path(item.manifest_path).parent.name.casefold(),
+        )
+    )
+    if not load_ui:
+        return list(core_descriptors)
+    for descriptor in core_descriptors:
+        # The old Tk intake adapter is retained for compatibility and Core
+        # validation, but it is not a Qt Workshop UI entry point. The Qt
+        # adapter provides the Onboarding surface itself.
+        if descriptor.workshop_id == "repo_intake":
+            continue
+        workshop = _load_ui(descriptor)
         if workshop is not None:
             found.append(workshop)
 
@@ -150,4 +145,11 @@ def discover_workshop_at(workshop_dir: Path) -> Optional[WorkshopUI]:
     manifest_path = workshop_dir / "manifest.json"
     if not manifest_path.is_file():
         return None
-    return _discover_one(manifest_path)
+    descriptors = discover_core_workshops(workshop_dir.parent)
+    accepted = next(
+        (item for item in descriptors if Path(item.manifest_path).resolve() == manifest_path.resolve()),
+        None,
+    )
+    if accepted is None or not accepted.enabled or accepted.discovery_error:
+        return None
+    return _load_ui(accepted)

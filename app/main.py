@@ -72,9 +72,7 @@ def _detect_runtime():
         print("\nLỖI: thiếu package bắt buộc, không thể chạy app:")
         for name in report.missing_required_packages:
             print(f"  - {name}")
-        print("\nCài dependency nền:  pip install -r setup/core_requirements.txt")
-        print("Dependency AI của từng Workshop có thể cài riêng khi cần, ví dụ:")
-        print("  pip install -r workshops/photo/requirements.txt")
+        print("\nCài đặt:  pip install -r requirements.txt")
         input("\nNhấn Enter để thoát...")
         sys.exit(1)
 
@@ -104,11 +102,6 @@ def _detect_runtime():
 
 try:
     RUNTIME_REPORT, WORKSHOP_PROBLEMS = _detect_runtime()
-    try:
-        from ui.core_shortcut_policy import install as _install_core_shortcut_policy
-        _install_core_shortcut_policy()
-    except Exception:
-        pass
     from app.main_ui import NaChanceApp
     import customtkinter as ctk
 except SystemExit:

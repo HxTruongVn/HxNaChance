@@ -1,7 +1,7 @@
 {
   "codeformer.pth": {
-    "size_mb": 359,
     "sha256": "1009e537e0c2a07d4cabce6355f53cb66767cd4b4297ec7a4a64ca4b8a5684b7",
+    "size_mb": 359,
     "sources": [
       {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/codeformer.pth"},
       {"method": "http", "url": "https://huggingface.co/sczhou/CodeFormer/resolve/main/codeformer.pth"},
@@ -9,8 +9,8 @@
     ]
   },
   "RealESRGAN_x2plus.pth": {
-    "size_mb": 64,
     "sha256": "49fafd45f8fd7aa8d31ab2a22d14d91b536c34494a5cfe31eb5d89c2fa266abb",
+    "size_mb": 64,
     "sources": [
       {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/RealESRGAN_x2plus.pth"},
       {"method": "http", "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth"},
@@ -18,8 +18,8 @@
     ]
   },
   "79999_iter.pth": {
+    "sha256": "468e13ca13a9b43cc0881a9f99083a430e9c0a38abd935431d1c28ee94b26567",
     "size_mb": 50,
-    "sha256": "e013561b62b4f339b193dbabe88e0bebc794b353ceb2ac3984d633ee63f94baf",
     "sources": [
       {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/79999_iter.pth"},
       {"method": "http", "url": "https://huggingface.co/spaces/ysharma/FaceParsing/resolve/main/79999_iter.pth"},
@@ -27,8 +27,8 @@
     ]
   },
   "isnet-general-use.onnx": {
-    "size_mb": 170,
     "sha256": "60920e99c45464f2ba57bee2ad08c919a52bbf852739e96947fbb4358c0d964a",
+    "size_mb": 170,
     "sources": [
       {"method": "http", "url": "https://github.com/HxTruongVn/HxNaChance/releases/download/NaChanceModelWeightV0.0.1/isnet-general-use.onnx"},
       {"method": "http", "url": "https://huggingface.co/OzzyGT/REMBG/resolve/main/isnet-general-use.onnx"},
@@ -36,8 +36,8 @@
     ]
   },
   "pose_landmarker_lite.task": {
-    "size_mb": 5,
     "sha256": "59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a",
+    "size_mb": 5,
     "optional": true,
     "_comment": "Dùng cho tính năng 'Cân vai theo sống mũi' (ShoulderAnalyzer). Tuỳ chọn — pipeline vẫn chạy bình thường nếu thiếu, tính năng tự tắt (.available=False).",
     "sources": [

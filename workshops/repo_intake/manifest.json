@@ -6,11 +6,7 @@
   "ui": {
     "module": "workshops.repo_intake.ui",
     "mixin_class": "RepoIntakeUIMixin",
-    "build_method": "_build_repo_intake_tab",
-    "menu_label": "repo_intake",
-    "menu_build_method": "_menu_repo_intake_content",
-    "open_method": "_open_repo_intake",
-    "session_priority": 2
+    "build_method": "_build_repo_intake_tab"
   },
   "capabilities_required": [],
   "capabilities_optional": [
@@ -22,8 +18,8 @@
     "contract.test"
   ],
   "resources": {
-    "requirements_file": "requirements.txt",
-    "weights_directory": "weights"
+    "requirements_file": "requirements.txt"
   },
-  "about_file": "ABOUT.md"
+  "about_file": "ABOUT.md",
+  "resource_contract_version": 1
 }

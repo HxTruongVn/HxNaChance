@@ -166,6 +166,60 @@ class CoreWeightManager:
     def missing(self, required_ids: Iterable[str]) -> list[str]:
         return [resource_id for resource_id in required_ids if self.resolve(resource_id) is None]
 
+    def sync_declared_resources_via_gate(self, workshop_id: str | None = None) -> list[str]:
+        """Synchronize declared resources through Core's quarantine/test gate.
+
+        This is the canonical path for new Qt/Core callers. Existing valid files
+        are adopted without downloading; URL resources are staged in intake,
+        tested, approved into SHA-256 storage, then materialized for legacy
+        Workshop consumers under ``weights/``.
+        """
+        from core.workshop_onboarding.downloader import CoreResourceDownloader, ResourceDownloadError
+        from core.workshop_onboarding.resource_gate import ResourceGateState, ResourceTestGate
+        from setup.setup_models import MODELS
+
+        gate = ResourceTestGate(self.project_root / "data" / "resource_warehouse")
+        downloader = CoreResourceDownloader(gate)
+        failed: list[str] = []
+        resources = [
+            (resource_id, metadata)
+            for resource_id, metadata in MODELS.items()
+            if workshop_id is None or resource_id.startswith(f"{workshop_id}::")
+        ]
+        for resource_id, metadata in resources:
+            target = self.weights_dir / resource_id.split("::", 1)[-1]
+            if self.resolve(resource_id) is not None:
+                continue
+            try:
+                if target.is_file():
+                    record = gate.intake(target, resource_id, expected_sha256=metadata.get("sha256"))
+                else:
+                    result = downloader.download(
+                        resource_id,
+                        metadata.get("sources", []),
+                        expected_sha256=metadata.get("sha256"),
+                        filename=target.name,
+                    )
+                    record = result.record
+                if record is None or record.state is ResourceGateState.FAILED:
+                    failed.append(resource_id)
+                    continue
+                tested = gate.test_and_approve(resource_id, lambda path: path.is_file() and path.stat().st_size > 0)
+                if tested.state is not ResourceGateState.APPROVED:
+                    failed.append(resource_id)
+                    continue
+                canonical = Path(tested.source_path)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if target.is_file() and self.sha256_file(target) != tested.sha256:
+                    raise WeightConflictError(f"Core weight conflict for {resource_id}: registered SHA-256 {tested.sha256}, found {self.sha256_file(target)}")
+                if not target.exists():
+                    import shutil
+                    shutil.copy2(canonical, target)
+                self.register_existing(target, resource_id, expected_sha256=tested.sha256)
+            except (OSError, ValueError, ResourceDownloadError, WeightConflictError):
+                failed.append(resource_id)
+        return failed
+
     def sync_declared_resources(self, workshop_id: str | None = None) -> list[str]:
         """Resolve/download declared resources through Core's setup catalog.
 

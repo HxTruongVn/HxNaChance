@@ -1,4 +1,4 @@
-"""PySide6 desktop frontend for the existing NaChance application logic."""
+"""Qt-primary UI package for NaChance."""
 
 from .main_window import QtNaChanceWindow
 

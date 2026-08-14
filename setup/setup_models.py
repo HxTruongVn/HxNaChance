@@ -93,6 +93,10 @@ def run_cmd(cmd, desc=""):
     return result.returncode == 0
 
 
+def _core_requirement_file() -> Path:
+    return Path(__file__).parent / "core_requirements.txt"
+
+
 def _workshop_requirement_files():
     workshops_dir = PROJECT_ROOT / "workshops"
     if not workshops_dir.is_dir():
@@ -101,8 +105,14 @@ def _workshop_requirement_files():
 
 
 def install_requirements(cpu_only: bool = False):
-    """Cài dependencies từ requirements.txt do từng Workshop tự quản.
-    Core không giữ danh sách package của Workshop."""
+    """Cài Core requirements trước, rồi mới cài requirements từng Workshop."""
+    core_file = _core_requirement_file()
+    if core_file.is_file():
+        run_cmd(
+            f'"{sys.executable}" -m pip install -r "{core_file}"',
+            "Đang cài dependency của NaChance Core...",
+        )
+
     req_files = _workshop_requirement_files()
     if not req_files:
         print("[Packages] Không có Workshop nào khai báo requirements.txt.")

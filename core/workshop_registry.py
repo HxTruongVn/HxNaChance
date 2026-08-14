@@ -5,7 +5,8 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
-from .contracts import ResourceDescriptor, ResourceState, WorkshopDescriptor
+from .contracts import ResourceDescriptor, WorkshopDescriptor
+from .resource_contract import ResourceContractError, normalize_resources
 
 
 class WorkshopManifestError(ValueError):
@@ -13,66 +14,21 @@ class WorkshopManifestError(ValueError):
 
 
 def _resources(raw: Any) -> tuple[ResourceDescriptor, ...]:
-    """Normalize both Core v1 list resources and legacy/current Workshop maps."""
-    if raw is None:
-        return ()
-    result: list[ResourceDescriptor] = []
-
-    if isinstance(raw, dict):
-        # Existing Photo/Layout/Repo Intake manifests use a self-owned map such
-        # as {"registry_file": "model_registry.json"}.  Keep that contract
-        # intact and normalize it into the Core descriptor list.
-        for key, value in raw.items():
-            if str(key).startswith("_"):
-                continue
-            if isinstance(value, dict):
-                item = dict(value)
-                resource_id = str(item.get("id") or key)
-                paths = item.get("paths", [])
-                if not paths and isinstance(item.get("path"), str):
-                    paths = [item["path"]]
-                if not paths and isinstance(value.get("file"), str):
-                    paths = [value["file"]]
-                kind = str(item.get("kind", "file"))
-                required = bool(item.get("required", True))
-                version = item.get("version")
-                checksum = item.get("checksum")
-            else:
-                resource_id = str(key)
-                paths = [str(value)] if isinstance(value, (str, Path)) else []
-                kind = "file" if paths else "declaration"
-                required = True
-                version = None
-                checksum = None
-            result.append(ResourceDescriptor(
-                resource_id=resource_id, kind=kind, required=required,
-                version=version, checksum=checksum,
-                paths=tuple(str(path) for path in paths),
-            ))
-        return tuple(result)
-
-    if not isinstance(raw, list):
-        raise WorkshopManifestError("resources must be a list or object map")
-    for item in raw:
-        if not isinstance(item, dict) or not item.get("id"):
-            raise WorkshopManifestError("each resource needs an id")
-        result.append(ResourceDescriptor(
-            resource_id=str(item["id"]),
-            kind=str(item.get("kind", "unknown")),
-            required=bool(item.get("required", True)),
-            version=item.get("version"),
-            checksum=item.get("checksum"),
-            paths=tuple(str(path) for path in item.get("paths", [])),
-        ))
-    return tuple(result)
+    """Compatibility wrapper around the canonical Core Resource Contract."""
+    try:
+        return normalize_resources(raw)
+    except ResourceContractError as exc:
+        raise WorkshopManifestError(str(exc)) from exc
 
 
 def descriptor_from_manifest(manifest: dict[str, Any], manifest_path: Path) -> WorkshopDescriptor:
-    workshop_id = manifest.get("id") or manifest.get("workshop_id")
-    name = manifest.get("name") or manifest.get("workshop_name") or workshop_id
-    version = manifest.get("version")
-    if not workshop_id or not name or not version:
-        raise WorkshopManifestError("manifest requires id/workshop_id, name/workshop_name and version")
+    # The directory is the canonical Workshop identity. Manifest IDs/names
+    # are descriptive metadata and cannot rename the owning folder.
+    workshop_id = manifest_path.parent.name
+    name = workshop_id
+    version = str(manifest.get("version") or "0.0.0")
+    if not workshop_id:
+        raise WorkshopManifestError("manifest must live in a named Workshop directory")
 
     # Current Workshop manifests split capabilities into required/optional.
     # Core exposes one normalized capability tuple while preserving order.
@@ -101,6 +57,10 @@ def descriptor_from_manifest(manifest: dict[str, Any], manifest_path: Path) -> W
         capabilities=tuple(str(value) for value in capabilities),
         requirements=tuple(value for value in requirements if isinstance(value, dict)),
         resources=_resources(manifest.get("resources")),
+        ui=dict(manifest.get("ui") or {}) if isinstance(manifest.get("ui"), dict) else {},
+        about_path=(str((manifest_path.parent / manifest["about_file"]).resolve())
+                    if manifest.get("about_file") else ""),
+        execution=dict(manifest.get("execution") or {}) if isinstance(manifest.get("execution"), dict) else {},
         manifest_path=str(manifest_path),
         enabled=bool(manifest.get("enabled", True)),
     )

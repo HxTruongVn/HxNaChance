@@ -114,7 +114,7 @@ def test_qt_window_exposes_main_workshop_tabs():
     app = QApplication.instance() or QApplication([])
     window = QtNaChanceWindow()
     assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ["Core"]
-    assert list(window._workshop_launcher_buttons) == ["layout", "photo", "repo_intake"]
+    assert list(window._workshop_launcher_buttons) == ["layout", "onboarding", "photo"]
     assert [action.text().replace("&", "") for action in window.menuBar().actions()] == [
         "File", "Edit", "Pipeline", "Window", "View", "Tool", "Help"
     ]
@@ -271,7 +271,7 @@ def test_qt_grave_shortcuts_change_workspace_state():
     assert window._qt_shortcuts == []
     window._next_workshop_qt()
     app.processEvents()
-    assert window._active_workshop_id == "photo"
+    assert window._active_workshop_id == "onboarding"
     window._previous_workshop_qt()
     app.processEvents()
     assert window._active_workshop_id == "layout"
@@ -320,17 +320,17 @@ def test_qt_core_workshop_transition_preserves_session_cursor_after_close():
     window = QtNaChanceWindow()
     assert window._active_workshop_index == 0
     window._next_workshop_qt()
-    assert window._active_workshop_id == "photo"
-    assert window._active_workshop_index == window._session_order.index("photo")
-    window._close_workshop_by_id("photo")
+    assert window._active_workshop_id == "onboarding"
+    assert window._active_workshop_index == window._session_order.index("onboarding")
+    window._close_workshop_by_id("onboarding")
     app.processEvents()
     assert window._active_workshop_id is None
-    assert window._active_workshop_index == window._session_order.index("photo")
+    assert window._active_workshop_index == window._session_order.index("onboarding")
     window._next_workshop_qt()
-    assert window._active_workshop_id == "repo_intake"
+    assert window._active_workshop_id == "photo"
     window._return_to_core_qt()
     assert window._active_workshop_id is None
-    assert window._active_workshop_index == window._session_order.index("repo_intake")
+    assert window._active_workshop_index == window._session_order.index("photo")
     window.close()
     app.processEvents()
 
