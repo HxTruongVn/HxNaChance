@@ -7,6 +7,7 @@ workshops/layout/ui.py (2 Mixin thật) — dùng importorskip thay vì giả
 định môi trường CI luôn có, tránh làm vỡ CI nếu thiếu.
 """
 import json
+from pathlib import Path
 
 import pytest
 
@@ -14,6 +15,7 @@ tk = pytest.importorskip("tkinter", reason="Cần tkinter để import Mixin UI 
 pytest.importorskip("customtkinter", reason="Cần customtkinter để import Mixin UI thật")
 
 from app.workshop_discovery import discover_workshops, WorkshopUI
+from core.workshop_registry import discover_workshops as discover_core_workshops
 
 
 def test_discover_workshops_finds_both_real_workshops():
@@ -27,14 +29,19 @@ def test_discover_workshops_finds_both_real_workshops():
 
 def test_discover_workshops_get_fresh_folder_based_session_order():
     workshops = discover_workshops()
-    # Identity and display name come from the Workshop directory, never from
-    # hard-coded Vietnamese labels or manifest workshop_name/window_title.
-    assert [w.workshop_id for w in workshops] == ["layout", "photo", "repo_intake"]
-    assert [w.workshop_name for w in workshops] == ["layout", "photo", "repo_intake"]
-    assert [w.session_priority for w in workshops] == [0, 1, 2]
+    # Qt App session contains only approved UI adapters. The legacy Tk intake
+    # remains a Core validation target, but is not loaded as a Qt window.
+    assert [w.workshop_id for w in workshops] == ["layout", "photo"]
+    assert [w.workshop_name for w in workshops] == ["layout", "photo"]
+    assert [w.session_priority for w in workshops] == [0, 1]
     assert [w.window_title for w in workshops] == [
-        "NaChance — layout", "NaChance — photo", "NaChance — repo_intake"
+        "NaChance — layout", "NaChance — photo"
     ]
+
+
+def test_core_discovery_retains_legacy_intake_for_validation():
+    descriptors = discover_core_workshops(Path(__file__).resolve().parents[1] / "workshops")
+    assert any(item.workshop_id == "repo_intake" for item in descriptors)
 
 
 def test_discover_workshops_mixin_class_has_declared_build_method():

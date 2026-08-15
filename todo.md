@@ -87,5 +87,11 @@
 - [x] Đảm bảo close_all() refresh_workshop_state() đúng owner và đúng thời điểm.
 - [x] Bổ sung/điều chỉnh lifecycle regression tests.
 - [x] Chạy lifecycle và full regression.
-- [ ] Xử lý discovery contract cũ còn kỳ vọng repo_intake trong session order.
+- [x] Xử lý discovery contract cũ còn kỳ vọng repo_intake trong session order.
+- [x] Commit/push và cập nhật TODO kết quả.
+
+- [x] Đọc Core workshop registry, App workshop discovery và session order tests.
+- [x] Xác nhận Core vẫn thấy repo_intake nhưng Qt App không nạp legacy intake UI.
+- [x] Cập nhật test/implementation theo contract discovery mới.
+- [x] Chạy discovery và full regression.
 - [x] Commit/push và cập nhật TODO kết quả.
