@@ -85,13 +85,31 @@ class WorkshopWindowManager:
         window.close()  # tự gọi on_window_closed() ở dưới để dọn dict + tile lại
 
     def close_all(self):
+        """Close every managed window through the shared lifecycle contract.
+
+        Calling ``destroy()`` directly bypasses ``WorkshopWindow.close()`` and
+        therefore skips ``on_window_closed()`` and the Core launcher refresh.
+        The final refresh is intentional as a guard for legacy windows whose
+        close callback is incomplete or raises during shutdown.
+        """
         for window in list(self.windows.values()):
             try:
-                window._closed = True
-                window.destroy()
+                close = getattr(window, "close", None)
+                if callable(close):
+                    close()
+                else:
+                    window._closed = True
+                    window.destroy()
             except Exception:
-                pass
+                try:
+                    window._closed = True
+                    window.destroy()
+                except Exception:
+                    pass
         self.windows.clear()
+        refresh = getattr(self.core, "_refresh_workshop_launcher_buttons", None)
+        if callable(refresh):
+            refresh()
 
     def on_window_closed(self, workshop_id):
         self.windows.pop(workshop_id, None)

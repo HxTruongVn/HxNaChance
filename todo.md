@@ -80,5 +80,12 @@
 - [x] Đọc test_theme_rebuild_order.py và rebuild theme implementation.
 - [x] Đảm bảo _build_title_bar() chạy trước _build_menu_bar() khi rebuild.
 - [x] Chạy theme tests và full regression.
-- [ ] Sửa full-suite failure window lifecycle: close_all() chưa gọi refresh_workshop_state().
+- [x] Sửa full-suite failure window lifecycle: close_all() chưa gọi refresh_workshop_state().
+- [x] Commit/push và cập nhật TODO kết quả.
+
+- [x] Đọc WindowManager, close lifecycle và test close_all.
+- [x] Đảm bảo close_all() refresh_workshop_state() đúng owner và đúng thời điểm.
+- [x] Bổ sung/điều chỉnh lifecycle regression tests.
+- [x] Chạy lifecycle và full regression.
+- [ ] Xử lý discovery contract cũ còn kỳ vọng repo_intake trong session order.
 - [x] Commit/push và cập nhật TODO kết quả.
