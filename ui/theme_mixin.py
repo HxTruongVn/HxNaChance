@@ -103,8 +103,8 @@ class ThemeMixin:
             child.destroy()
 
         self.configure(fg_color=self.COLORS['bg_dark'])
-        self._build_menu_bar()
         self._build_title_bar()
+        self._build_menu_bar()
         self._build_main_panel()
         self._lock_unavailable_features()
         self.resize_grip.lift()  # cùng lý do với __init__ — main_frame tạo sau, đè lên grip

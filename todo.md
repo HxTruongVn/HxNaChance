@@ -74,5 +74,11 @@
 - [x] Đọc test_menu_context.py, Host fixture và context router hiện tại.
 - [x] Sửa boundary _current_command_context đúng theo Qt host/fixture contract.
 - [x] Chạy test menu context và full regression.
-- [ ] Sửa full-suite failure theme rebuild: title bar phải được dựng trước menu bar.
+- [x] Sửa full-suite failure theme rebuild: title bar phải được dựng trước menu bar.
+- [x] Commit/push và cập nhật TODO kết quả.
+
+- [x] Đọc test_theme_rebuild_order.py và rebuild theme implementation.
+- [x] Đảm bảo _build_title_bar() chạy trước _build_menu_bar() khi rebuild.
+- [x] Chạy theme tests và full regression.
+- [ ] Sửa full-suite failure window lifecycle: close_all() chưa gọi refresh_workshop_state().
 - [x] Commit/push và cập nhật TODO kết quả.
