@@ -1,0 +1,8 @@
+{
+  "resources": [],
+  "notes": [
+    "Workshop không sở hữu weights directory.",
+    "Ảnh frame/texture tương lai phải khai báo qua Core Resource Contract.",
+    "Orientation detection dùng Core/Photo shared service."
+  ]
+}

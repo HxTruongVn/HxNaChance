@@ -17,8 +17,7 @@ from app.workshop_discovery import discover_workshops, WorkshopUI
 
 
 def test_discover_workshops_finds_both_real_workshops():
-    """Chạy THẬT trên 2 manifest.json thật đang có trong repo — không
-    tạo manifest giả, xác nhận cơ chế đọc đúng dữ liệu thật."""
+    """Chạy thật trên các manifest Workshop trong repo và xác nhận discovery động."""
     workshops = discover_workshops()
     ids = [w.workshop_id for w in workshops]
     assert "photo" in ids
@@ -29,11 +28,11 @@ def test_discover_workshops_get_fresh_folder_based_session_order():
     workshops = discover_workshops()
     # Identity and display name come from the Workshop directory, never from
     # hard-coded Vietnamese labels or manifest workshop_name/window_title.
-    assert [w.workshop_id for w in workshops] == ["layout", "photo"]
-    assert [w.workshop_name for w in workshops] == ["layout", "photo"]
-    assert [w.session_priority for w in workshops] == [0, 1]
+    assert [w.workshop_id for w in workshops] == ["frame_finishing", "layout", "photo"]
+    assert [w.workshop_name for w in workshops] == ["frame_finishing", "layout", "photo"]
+    assert [w.session_priority for w in workshops] == [0, 1, 2]
     assert [w.window_title for w in workshops] == [
-        "NaChance — layout", "NaChance — photo"
+        "NaChance — frame_finishing", "NaChance — layout", "NaChance — photo"
     ]
 
 

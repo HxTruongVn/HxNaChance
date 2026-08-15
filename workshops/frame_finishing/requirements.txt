@@ -1,0 +1,3 @@
+# Core supplies Pillow and PySide6; this file is intentionally empty of heavy AI dependencies.
+# Optional local development dependency:
+# Pillow>=10.0

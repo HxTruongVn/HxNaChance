@@ -1,0 +1,23 @@
+{
+  "legacy_border": {
+    "mode": "legacy",
+    "width_unit": "percent",
+    "widths": {"left": 0.85, "right": 0.85, "top": 0.85, "bottom": 0.85},
+    "content_kind": "solid",
+    "color": "ffffff"
+  },
+  "inner_border": {
+    "mode": "inside",
+    "width_unit": "percent",
+    "widths": {"left": 1.0, "right": 1.0, "top": 1.0, "bottom": 1.0},
+    "content_kind": "solid",
+    "color": "ffffff"
+  },
+  "polaroid": {
+    "mode": "polaroid",
+    "width_unit": "percent",
+    "widths": {"left": 2.0, "right": 2.0, "top": 2.0, "bottom": 8.0},
+    "content_kind": "solid",
+    "color": "ffffff"
+  }
+}

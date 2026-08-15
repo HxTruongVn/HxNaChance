@@ -1799,17 +1799,44 @@ class QtNaChanceWindow(QMainWindow):
         self.chk_layout_stroke = QCheckBox("Bật")
         self.chk_layout_stroke.setChecked(True)
         self.chk_layout_stroke.toggled.connect(self._layout_controls_changed)
-        self.entry_stroke_w = QLineEdit("0.85")
-        self.entry_stroke_w.editingFinished.connect(self._layout_controls_changed)
-        self.entry_stroke_w.setFixedWidth(64)
-        stroke_part_layout.addWidget(self.chk_layout_stroke)
-        stroke_part_layout.addWidget(QLabel("%"))
-        stroke_part_layout.addWidget(self.entry_stroke_w)
+        self.layout_stroke_widths: dict[str, QLineEdit] = {}
+        self.layout_stroke_link_checks: dict[str, QCheckBox] = {}
+        for key, label in (("left", "Trái"), ("right", "Phải"), ("top", "Trên"), ("bottom", "Dưới")):
+            field = QLineEdit("0.85")
+            field.setFixedWidth(48)
+            field.editingFinished.connect(lambda key=key: self._apply_layout_linked_stroke_width(key))
+            self.layout_stroke_widths[key] = field
+            link = QCheckBox("🔗")
+            link.setToolTip(f"Khóa độ dày cạnh {label} với các cạnh được chọn khác")
+            link.setAccessibleName(f"Liên kết độ dày viền {label}")
+            link.toggled.connect(self._layout_controls_changed)
+            self.layout_stroke_link_checks[key] = link
+            stroke_part_layout.addWidget(QLabel(label))
+            stroke_part_layout.addWidget(field)
+            stroke_part_layout.addWidget(link)
+        link_hint = QLabel("Chọn 🔗 ở 2–4 cạnh; nhập một ô để áp dụng chung")
+        link_hint.setWordWrap(True)
+        stroke_part_layout.addWidget(link_hint)
+        self.entry_stroke_w = self.layout_stroke_widths["left"]  # legacy UI/test alias
+        self.layout_stroke_style = QComboBox()
+        self.layout_stroke_style.addItem("Vuông", "square")
+        self.layout_stroke_style.addItem("Bo góc", "rounded")
+        self.layout_stroke_style.addItem("Viền đôi", "double")
+        self.layout_stroke_style.currentIndexChanged.connect(self._layout_controls_changed)
+        stroke_part_layout.addWidget(QLabel("Kiểu"))
+        stroke_part_layout.addWidget(self.layout_stroke_style)
+        self.layout_border_mode = QComboBox()
+        self.layout_border_mode.addItem("Viền gốc", "legacy")
+        self.layout_border_mode.addItem("Mở rộng trong khung", "inside")
+        self.layout_border_mode.setToolTip("Viền gốc giữ nguyên hành vi hiện tại; Mở rộng trong khung giữ cố định kích thước slot và trừ viền khỏi vùng ảnh.")
+        self.layout_border_mode.currentIndexChanged.connect(self._layout_controls_changed)
+        stroke_part_layout.addWidget(QLabel("Chế độ"))
+        stroke_part_layout.addWidget(self.layout_border_mode)
 
         color_part = QGroupBox("Màu viền")
         color_part_layout = QHBoxLayout(color_part)
         color_part_layout.setContentsMargins(8, 8, 8, 8)
-        self.entry_stroke_color = QLineEdit("686868")
+        self.entry_stroke_color = QLineEdit("ffffff")
         self.entry_stroke_color.setFixedWidth(82)
         self.entry_stroke_color.editingFinished.connect(self._layout_controls_changed)
         color_part_layout.addWidget(QLabel("HEX"))
@@ -2365,6 +2392,20 @@ class QtNaChanceWindow(QMainWindow):
             self.layout_source_label.setText("  +  ".join(Path(p).name for p in self.layout_sources))
             self._layout_live_preview_qt()
 
+    def _apply_layout_linked_stroke_width(self, source_key: str) -> None:
+        fields = getattr(self, "layout_stroke_widths", {})
+        links = getattr(self, "layout_stroke_link_checks", {})
+        source = fields.get(source_key)
+        if source is None:
+            return
+        selected = [key for key, checkbox in links.items() if checkbox.isChecked()]
+        if len(selected) >= 2 and source_key in selected:
+            value = source.text()
+            for key in selected:
+                if key != source_key:
+                    fields[key].setText(value)
+        self._layout_controls_changed()
+
     def _layout_config_qt(self) -> dict[str, Any]:
         def number(key: str, default: float = 0.0) -> float:
             try:
@@ -2385,7 +2426,12 @@ class QtNaChanceWindow(QMainWindow):
             "marginBottom": number("marginBottom"), "gapY": number("gapY", 0.1974),
             "res": int(number("res", 300)), "cafMode": caf_map.get(self.caf_mode.currentText(), 0),
             "chkStroke": self.chk_layout_stroke.isChecked(), "strokeW": number_from_text(self.entry_stroke_w.text(), 0.85),
-            "strokeColor": self.entry_stroke_color.text().strip() or "686868", "presets": presets,
+            "strokeColor": self.entry_stroke_color.text().strip() or "ffffff",
+            "strokeStyle": self.layout_stroke_style.currentData() or "square",
+            "strokeWidths": {key: number_from_text(field.text(), 0.85) for key, field in self.layout_stroke_widths.items()},
+            "strokeLinkedEdges": [key for key, checkbox in self.layout_stroke_link_checks.items() if checkbox.isChecked()],
+            "borderMode": self.layout_border_mode.currentData() or "legacy",
+            "presets": presets,
         }
 
     def _toggle_layout_advanced_qt(self, checked: bool) -> None:

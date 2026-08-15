@@ -1,0 +1,49 @@
+{
+  "_comment": "Frame/Finishing scaffold: nhẹ, không sở hữu weights, được Core discovery nhận diện khi khởi động.",
+  "workshop_id": "frame_finishing",
+  "version": "0.1.0",
+  "resource_contract_version": 1,
+  "description": "Đóng khung và hoàn thiện một ảnh hoặc cả thư mục ảnh trước khi chuyển sang Layout.",
+  "environment": {
+    "python_version": ">=3.10",
+    "device_preference": "cpu_only",
+    "min_ram_gb": 2
+  },
+  "ui": {
+    "module": "workshops.frame_finishing.ui",
+    "mixin_class": "FrameFinishingTabMixin",
+    "build_method": "_build_frame_finishing_tab",
+    "menu_build_method": "_menu_frame_finishing_content",
+    "open_method": "_open_frame_finishing"
+  },
+  "execution": {
+    "run_method": "_run_frame_finishing"
+  },
+  "capabilities_required": [],
+  "capabilities_optional": [
+    "orientation_detection",
+    "image_frame",
+    "folder_batch"
+  ],
+  "resources": {
+    "presets_file": "presets/frame_presets.json",
+    "resource_declarations_file": "resources.json"
+  },
+  "default_spec": "legacy_border",
+  "output_settings": {
+    "format": "png",
+    "dpi": 300,
+    "auto_save": false
+  },
+  "about_file": "ABOUT.md",
+  "io": {
+    "accepts": [
+      "image",
+      "folder"
+    ],
+    "produces": [
+      "image",
+      "asset_collection"
+    ]
+  }
+}

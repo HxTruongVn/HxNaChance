@@ -31,11 +31,11 @@ def test_discover_workshops_get_fresh_folder_based_session_order():
     workshops = discover_workshops()
     # Qt App session contains only approved UI adapters. The legacy Tk intake
     # remains a Core validation target, but is not loaded as a Qt window.
-    assert [w.workshop_id for w in workshops] == ["layout", "photo"]
-    assert [w.workshop_name for w in workshops] == ["layout", "photo"]
-    assert [w.session_priority for w in workshops] == [0, 1]
+    assert [w.workshop_id for w in workshops] == ["frame_finishing", "layout", "photo"]
+    assert [w.workshop_name for w in workshops] == ["frame_finishing", "layout", "photo"]
+    assert [w.session_priority for w in workshops] == [0, 1, 2]
     assert [w.window_title for w in workshops] == [
-        "NaChance — layout", "NaChance — photo"
+        "NaChance — frame_finishing", "NaChance — layout", "NaChance — photo"
     ]
 
 

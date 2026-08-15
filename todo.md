@@ -137,3 +137,115 @@
 - [x] Triển khai A→B→A quay lại revision A, không tạo revision C trùng lặp.
 - [x] Bổ sung test duplicate state, A-B-A và undo/redo.
 - [x] Chạy regression sau khi sửa revision deduplication.
+
+- [x] Kiểm tra manifest và weights_sources của Photo có source URL/checksum hợp lệ.
+- [x] Truy vết Core Resource Gate, Warehouse và downloader đang được gọi ở đâu.
+- [x] Tái hiện trạng thái weight missing/available và xác định điểm dừng tự tải.
+- [x] Ghi kết luận về nguyên nhân hệ chưa tự tải weight.
+
+- [x] Chốt contract: Core/Qt environment phải READY trước khi tạo UI.
+- [x] Chốt contract: weights/model là resource provisioning nền, không phải environment setup.
+- [x] Thiết kế Lite Mode tạm thời và cơ chế tự cập nhật Workshop readiness sau checksum/approval.
+- [x] Đối chiếu startup/resource lifecycle hiện tại với contract mới.
+
+- [ ] Kiểm tra Layout engine và luồng preview/xuất file hiện tại.
+- [ ] Chốt contract viền/bo góc không cắt hoặc che nội dung ảnh.
+- [ ] Thêm xử lý viền vào Layout engine.
+- [ ] Thêm điều khiển viền vào Qt Layout UI và đồng bộ preview.
+- [ ] Bổ sung test cho các kiểu viền và bảo toàn kích thước/nội dung.
+- [ ] Chạy regression và cập nhật nhánh Qt.
+
+- [ ] Đổi mặc định viền Layout sang màu trắng.
+- [ ] Hỗ trợ độ rộng viền riêng cho trái/phải/trên/dưới.
+- [ ] Cho phép bo góc che nhẹ nội dung tại góc theo yêu cầu.
+- [ ] Sửa test viền theo contract mới và chạy lại regression.
+
+- [ ] Thêm móc khóa chọn 2/3/4 cạnh để nhập chung độ dày viền.
+- [ ] Giữ khả năng bỏ chọn và chỉnh độ dày riêng từng cạnh.
+- [ ] Đồng bộ linked-edge state với preview, pipeline và cấu hình lưu.
+- [ ] Bổ sung test cho các nhóm cạnh và chạy regression.
+
+- [x] Chuyển viền vào bên trong khung mục tiêu cố định, không mở rộng kích thước slot.
+- [x] Tính vùng ảnh hữu dụng = khung mục tiêu trừ trái/phải/trên/dưới.
+- [x] Áp dụng lại Fit/CAF trong vùng hữu dụng và kiểm thử ví dụ 6x9 - 0.5cm.
+
+- [ ] Giữ nguyên chế độ Viền ảnh gốc làm mặc định, không đổi hành vi hiện tại.
+- [ ] Thêm chế độ mở rộng như một lựa chọn mới trong khu vực Viền ảnh.
+- [ ] Phân biệt rõ state/config/preview của chế độ gốc và chế độ mở rộng.
+- [ ] Cập nhật test để bảo vệ compatibility của chế độ gốc.
+
+- [x] Không dùng 6x9 làm kích thước cố định trong contract hoặc test.
+- [x] Tính vùng hữu dụng riêng cho từng slot theo kích thước preset/công thức thực tế.
+- [x] Kiểm thử nhiều kích thước slot và viền bốn cạnh trong chế độ inside.
+
+- [ ] Mở rộng border/stroke thành vùng frame có diện tích và loại nội dung màu hoặc ảnh.
+- [ ] Xác định contract input thư mục và thứ tự ảnh khi xếp lên canvas.
+- [ ] Thiết kế canvas spec, slot spec và frame content spec dùng chung.
+- [ ] Phân định phần nào thuộc Layout và phần nào nên tách thành Frame/Finishing.
+
+- [ ] Tách nghiệp vụ Frame/Finishing khỏi Layout UI và engine gốc.
+- [ ] Hỗ trợ Frame/Finishing nhận một ảnh hoặc toàn thư mục theo cùng contract.
+- [ ] Quy định output của Frame/Finishing tương thích trực tiếp với Layout hiện tại.
+- [ ] Giữ Layout gốc chỉ làm nhiệm vụ xếp output lên canvas, không chỉnh từng ảnh hàng loạt.
+
+- [ ] Tái sử dụng orientation detection của Photo trong Frame/Finishing.
+- [ ] Chuẩn hóa semantic edges: top, bottom, left, right sau khi xác định hướng ảnh.
+- [ ] Thiết kế FrameSpec cho Polaroid, inner border và viền bất đối xứng theo cạnh đáy.
+- [ ] Bổ sung contract test cho ảnh dọc, ngang và ảnh đã xoay EXIF.
+
+- [ ] Thiết kế Shop Frame/Finishing độc lập, không nhồi nghiệp vụ vào Layout.
+- [ ] Chốt cấu trúc thư mục và manifest cho Shop Frame/Finishing.
+- [ ] Chốt hai luồng Single và Folder Batch cùng UI cấu hình khung.
+- [ ] Chốt output contract để Layout gốc nhận trực tiếp.
+
+- [ ] Cho phép chỉnh độ dày độc lập cho top/bottom/left/right.
+- [ ] Hỗ trợ đơn vị tuyệt đối và phần trăm theo width/height mục tiêu.
+- [ ] Hiển thị giá trị quy đổi và giới hạn để không làm mất vùng ảnh hữu dụng.
+- [ ] Móc khóa áp dụng một giá trị cho nhóm 2/3/4 cạnh.
+
+- [ ] Thêm CornerSpec cho bật/tắt bo góc và bán kính góc.
+- [ ] Hỗ trợ bán kính theo px, đơn vị tuyệt đối hoặc phần trăm cạnh ngắn.
+- [ ] Xác định bo góc áp dụng cho ảnh, vùng frame hay toàn output.
+- [ ] Kiểm thử bo góc với ảnh dọc, ngang và Folder Batch.
+
+- [ ] Thêm ShadowSpec cho bóng khung ảnh trên vùng viền.
+- [ ] Cho phép bật/tắt, chỉnh màu, opacity, offset X/Y và blur.
+- [ ] Đồng bộ bóng với bo góc, Polaroid, inner border và Folder Batch.
+- [ ] Bảo đảm bóng không che nội dung ảnh chính ngoài vùng cho phép.
+
+- [ ] Thêm ContentCompensationSpec cho vùng trống sau khi fit khung.
+- [ ] Hỗ trợ fix theo chiều ngắn, chiều dài và xoay nội dung.
+- [ ] Giữ semantic bottom của ảnh mục tiêu sau orientation normalization.
+- [ ] Thiết kế preview hàng loạt để so sánh các chế độ trước khi chạy batch.
+- [ ] Lưu chế độ đã chọn và kết quả bù vào output manifest.
+
+- [ ] Preview Folder Batch theo nhóm 4 ảnh.
+- [ ] Có nút nhóm trước/nhóm sau và chỉ báo tiến độ đến hết thư mục.
+- [ ] Có Áp dụng hàng loạt cho toàn bộ thư mục.
+- [ ] Cho phép đánh dấu nhóm cần chỉnh lại trước khi chạy batch.
+
+- [ ] Fix theo cạnh dài: giữ toàn bộ nội dung, bật CAF để bù phần thiếu.
+- [ ] Fix theo cạnh ngắn: tắt CAF, crop có chủ đích và chấp nhận mất phần thừa.
+- [ ] Cho phép kéo ảnh bằng chuột trong preview để chọn vùng nội dung giữ lại.
+- [ ] Lưu crop anchor/offset theo ảnh hoặc nhóm batch trong manifest.
+
+- [x] Thiết kế Data Flow từ input ảnh/thư mục đến preview, approve và output.
+- [x] Thiết kế schema lưu CropSpec, CAF, FrameSpec, preview group và batch job.
+- [x] Chốt versioning, override theo nhóm/ảnh và manifest output.
+- [x] Ghi sơ đồ và cấu trúc dữ liệu thành tài liệu kiến trúc.
+
+- [x] Viết renderer mẫu cho long_side/CAF và short_side/crop anchor.
+- [x] Viết Frame/Corner/Shadow layer trong worker.
+- [x] Viết batch worker cập nhật batch_jobs và batch_items.
+- [x] Viết test mẫu và hướng dẫn tích hợp PostgreSQL/queue.
+
+- [x] Kiểm tra chuẩn Workshop hiện tại và điểm discovery.
+- [x] Tạo cây thư mục chuẩn cho Workshop Frame/Finishing.
+- [x] Tạo manifest, entrypoint Qt, contract và resource declaration.
+- [x] Bổ sung test discovery/smoke và tài liệu vận hành.
+- [x] Chạy regression và xác nhận NaChance nhận Workshop khi khởi động.
+
+- [ ] Kiểm tra diff và trạng thái branch Qt trước khi commit.
+- [ ] Xác nhận test và dọn artifact trước commit.
+- [ ] Commit và push scaffold Frame/Finishing lên qt/nachance-main-ui.
+- [ ] Xác nhận remote đồng bộ và ghi mã commit.
