@@ -206,8 +206,12 @@ def run_main():
             log.error(f"❌ app/qt_main.py không tìm thấy tại {main_path}")
             sys.exit(1)
 
+        # Run the canonical Qt entry point as a module from the repository root.
+        # Executing app/qt_main.py by file path makes Python use app/ as the
+        # first import path, so `from app.qt_ui import ...` fails with
+        # ModuleNotFoundError: No module named 'app'.
         result = subprocess.run(
-            [sys.executable, "-u", str(main_path)], cwd=str(project_root)
+            [sys.executable, "-u", "-m", "app.qt_main"], cwd=str(project_root)
         )
         if result.returncode != 0:
             log.error(f"❌ Qt Main UI kết thúc với exit code {result.returncode}")

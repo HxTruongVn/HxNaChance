@@ -95,6 +95,6 @@ def test_bootstrap_propagates_qt_entry_exit_code(monkeypatch):
     command, cwd = calls[0]
     assert command[0] == NaChance.sys.executable
     assert command[1] == "-u"
-    assert command[-1].endswith("app/qt_main.py")
+    assert command[2:4] == ["-m", "app.qt_main"]
     assert not any(str(part).endswith("app/main.py") for part in command)
     assert Path(cwd) == NaChance.locate_project_root()

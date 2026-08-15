@@ -95,3 +95,39 @@
 - [x] Cập nhật test/implementation theo contract discovery mới.
 - [x] Chạy discovery và full regression.
 - [x] Commit/push và cập nhật TODO kết quả.
+
+- [x] Xác nhận HEAD là commit 6cf58c9 hoặc descendant đã push.
+- [x] Chạy pytest collection và toàn bộ test suite.
+- [x] Kiểm tra skips, artifacts runtime và working tree sau test.
+- [x] Ghi kết quả regression sau commit 6cf58c9.
+
+- [x] Rà soát toàn bộ task còn lại trong todo.md sau full suite 217 passed.
+- [x] Đối chiếu task còn lại với code, tài liệu và test hiện tại.
+- [x] Sắp xếp task tiếp theo theo ưu tiên và dependency.
+- [x] Ghi roadmap tiếp theo vào tài liệu tiến độ.
+
+- [x] Kiểm tra luồng tạo và sử dụng env_status["workshops"] trong NaChance.py.
+- [x] Kiểm tra RuntimeReport.core_ready và can_run_lite trong bootstrap/runtime.
+- [x] Đối chiếu startup tests với implementation hiện tại.
+- [x] Ghi kết luận về các điểm đúng, lệch và rủi ro còn lại.
+
+- [x] Xác nhận branch/HEAD và working tree của nhánh Qt.
+- [x] Thu thập log bootstrap và tái hiện lỗi khởi động.
+- [x] Kiểm tra import chain NaChance.py → app/qt_main.py và dependency Core/Qt.
+- [x] Đối chiếu startup contract tests và ghi nguyên nhân lỗi.
+
+- [x] Chốt danh sách dependency tối thiểu cho NaChance Core và PySide6 Qt shell.
+- [x] Tách rõ Core requirements khỏi Workshop requirements và test-only requirements.
+- [x] Cài/xác nhận môi trường Core tối thiểu trong môi trường phát triển hiện tại.
+- [x] Bổ sung test và tài liệu cho quy trình mở rộng môi trường theo Workshop.
+
+- [x] Tái hiện lỗi khởi động trên môi trường Qt hiện tại và xác định điểm dừng thực tế.
+- [x] Truy vết setup/installer và điều kiện handoff tới app/qt_main.py.
+- [x] Sửa startup flow để không treo hoặc cài thừa dependency Workshop khi Core đã đủ.
+- [x] Bổ sung regression test cho startup flow thực tế.
+- [x] Chạy startup smoke và full regression sau bản sửa.
+
+- [x] Kiểm tra diff local của bản sửa startup và tài liệu liên quan.
+- [x] Xác nhận test trước khi commit.
+- [ ] Commit và push bản sửa lên qt/nachance-main-ui.
+- [ ] Xác nhận remote đã chứa commit mới.
