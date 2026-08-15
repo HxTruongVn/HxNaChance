@@ -329,77 +329,19 @@ def caf_process(img: Image.Image, tw_cm: float, th_cm: float,
     return edge_extend_pil(img, new_w, new_h)
 
 
-def _hex_rgb(hex_color: str) -> tuple[int, int, int]:
-    value = str(hex_color or "686868").strip().lstrip("#")
-    if len(value) != 6:
-        value = "686868"
-    try:
-        return tuple(int(value[index:index + 2], 16) for index in (0, 2, 4))
-    except ValueError:
-        return (104, 104, 104)
-
-
-def apply_stroke(
-    img: Image.Image,
-    stroke_px: int | tuple[int, int, int, int],
-    hex_color: str = "ffffff",
-    style: str = "square",
-) -> Image.Image:
-    """Add a border *outside* the image; never paint over source pixels.
-
-    The returned canvas is enlarged by ``2 * stroke_px``. The original image
-    is pasted at that offset, so every source pixel remains intact. ``rounded``
-    and ``double`` change only the border geometry around the image.
-    """
-    if isinstance(stroke_px, (tuple, list)):
-        left, top, right, bottom = (max(0, int(value)) for value in stroke_px)
-    else:
-        left = top = right = bottom = max(0, int(stroke_px))
-    if max(left, top, right, bottom) <= 0:
+def apply_stroke(img: Image.Image, stroke_px: int, hex_color: str) -> Image.Image:
+    if stroke_px <= 0:
         return img
-    source = img.convert("RGBA")
-    width, height = source.size
-    canvas = Image.new("RGBA", (width + left + right, height + top + bottom), (255, 255, 255, 0))
-    canvas.paste(source, (left, top), source)
-    draw = ImageDraw.Draw(canvas)
-    color = (*_hex_rgb(hex_color), 255)
-    style = str(style or "square").lower()
-    if style == "rounded":
-        radius = max(1, min(width, height) // 18 + max(left, top, right, bottom))
-        draw.rounded_rectangle(
-            (left // 2, top // 2, width + left + right - max(1, right // 2), height + top + bottom - max(1, bottom // 2)),
-            radius=radius,
-            outline=color,
-            width=max(1, max(left, top, right, bottom)),
-        )
-    else:
-        draw.rectangle((left // 2, top // 2, width + left + right - max(1, right // 2), height + top + bottom - max(1, bottom // 2)), outline=color, width=1)
-        if top:
-            draw.rectangle((0, 0, width + left + right - 1, max(0, top - 1)), fill=color)
-        if bottom:
-            draw.rectangle((0, height + top, width + left + right - 1, height + top + bottom - 1), fill=color)
-        if left:
-            draw.rectangle((0, 0, max(0, left - 1), height + top + bottom - 1), fill=color)
-        if right:
-            draw.rectangle((width + left, 0, width + left + right - 1, height + top + bottom - 1), fill=color)
-        if style == "double":
-            inset = max(1, min(left, top, right, bottom) // 2)
-            draw.rectangle((left + inset, top + inset, width + left - inset - 1, height + top - inset - 1), outline=color, width=max(1, inset))
-    return canvas
-
-
-def border_padding_px(stroke: bool, stroke_w: float, base_side_cm: float, res: int) -> int:
-    if not stroke:
-        return 0
-    return max(1, round((base_side_cm * res / 2.54) * (float(stroke_w) / 100.0)))
-
-
-def border_paddings_px(stroke: bool, widths: dict | None, base_side_cm: float, res: int) -> tuple[int, int, int, int]:
-    if not stroke:
-        return (0, 0, 0, 0)
-    default = border_padding_px(True, 0.85, base_side_cm, res)
-    values = widths or {}
-    return tuple(max(0, round((base_side_cm * res / 2.54) * (float(values.get(key, 0.85)) / 100.0))) for key in ("left", "top", "right", "bottom"))
+    img = img.copy()
+    draw = ImageDraw.Draw(img)
+    w, h = img.size
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    s = min(stroke_px, w // 2, h // 2)
+    for i in range(s):
+        draw.rectangle([i, i, w - 1 - i, h - 1 - i], outline=(r, g, b, 255))
+    return img
 
 
 # ------------------------------------------------------------------
@@ -432,79 +374,45 @@ class LayoutRenderer:
         self.kho_phoi[key] = phoi
         return phoi
 
-    def build_final(self, s1: float, s2: float, angle: float,
-                    caf_mode: int, stroke: bool, stroke_w: float,
-                    stroke_color: str, stroke_style: str = "square",
-                    stroke_widths: dict | None = None,
-                    border_mode: str = "legacy") -> Image.Image:
-        identity = f"{s1}x{s2}_G{angle}_M{caf_mode}_S{stroke}_{stroke_w}_{stroke_color}_{stroke_style}_{stroke_widths}_{border_mode}"
+    def build_final(self, s1: float, s2: float, angle: float, 
+                    caf_mode: int, stroke: bool, stroke_w: float, 
+                    stroke_color: str) -> Image.Image:
+        identity = f"{s1}x{s2}_G{angle}_M{caf_mode}_S{stroke_w}"
         if identity in self.final_cache:
             return self.final_cache[identity]
 
-        widths = stroke_widths or {"left": stroke_w, "top": stroke_w, "right": stroke_w, "bottom": stroke_w}
+        phoi = self.get_smart_phoi(s1, s2, caf_mode)
+        pw, ph = phoi.size
+        is_phoi_landscape = pw > ph
+        is_target_landscape = s1 > s2
+
+        img = phoi
+        if is_phoi_landscape != is_target_landscape:
+            img = img.rotate(90, expand=True)
+
         target_w_px = int(round(cm_to_px(s1, self.res)))
         target_h_px = int(round(cm_to_px(s2, self.res)))
-        mode = str(border_mode or "legacy").lower()
+        img = img.resize((target_w_px, target_h_px), Image.LANCZOS)
 
-        if mode != "inside":
-            # Compatibility path: this is the original Layout border behavior.
-            phoi = self.get_smart_phoi(s1, s2, caf_mode)
-            img = phoi
-            if (phoi.size[0] > phoi.size[1]) != (s1 > s2):
-                img = img.rotate(90, expand=True)
-            img = img.resize((target_w_px, target_h_px), Image.LANCZOS)
-            if angle != 0:
-                img = img.rotate(-angle, expand=True, resample=Image.BICUBIC)
-            if stroke:
-                pads = border_paddings_px(True, widths, max(s1, s2), self.res)
-                img = apply_stroke(img, pads, stroke_color or "ffffff", stroke_style)
-            self.final_cache[identity] = img
-            return img
+        if stroke:
+            base_side = max(s1, s2)
+            img_w_px = base_side * self.res / 2.54
+            stroke_px = max(1, round(img_w_px * (stroke_w / 100.0)))
+            img = apply_stroke(img, int(stroke_px), stroke_color)
 
-        # New mode: keep the target slot fixed and fit the image inside the
-        # usable rectangle after subtracting the four border widths.
-        left_pad, top_pad, right_pad, bottom_pad = border_paddings_px(stroke, widths, max(s1, s2), self.res)
-        inner_w_px = max(1, target_w_px - left_pad - right_pad)
-        inner_h_px = max(1, target_h_px - top_pad - bottom_pad)
-        inner_w_cm = max(0.01, px_to_cm(inner_w_px, self.res))
-        inner_h_cm = max(0.01, px_to_cm(inner_h_px, self.res))
-        phoi = self.get_smart_phoi(inner_w_cm, inner_h_cm, caf_mode)
-        img = phoi
-        if (phoi.size[0] > phoi.size[1]) != (inner_w_cm > inner_h_cm):
-            img = img.rotate(90, expand=True)
-        img = img.resize((inner_w_px, inner_h_px), Image.LANCZOS)
         if angle != 0:
             img = img.rotate(-angle, expand=True, resample=Image.BICUBIC)
 
-        color = (*_hex_rgb(stroke_color or "ffffff"), 255)
-        frame = Image.new("RGBA", (target_w_px, target_h_px), color if stroke else (255, 255, 255, 255))
-        frame.paste(img, (left_pad, top_pad), img)
-        if stroke and str(stroke_style or "square").lower() == "rounded":
-            draw = ImageDraw.Draw(frame)
-            radius = max(1, min(target_w_px, target_h_px) // 18 + max(left_pad, top_pad, right_pad, bottom_pad))
-            draw.rounded_rectangle((0, 0, target_w_px - 1, target_h_px - 1), radius=radius, outline=color, width=max(1, max(left_pad, top_pad, right_pad, bottom_pad)))
-        elif stroke and str(stroke_style or "square").lower() == "double":
-            draw = ImageDraw.Draw(frame)
-            inset = max(1, min(left_pad, top_pad, right_pad, bottom_pad) // 2)
-            draw.rectangle((inset, inset, target_w_px - inset - 1, target_h_px - inset - 1), outline=color, width=max(1, inset))
-        self.final_cache[identity] = frame
-        return frame
+        self.final_cache[identity] = img
+        return img
 
     def put(self, canvas: Image.Image, s1: float, s2: float, angle: float,
             caf_mode: int, target_x_cm: float, target_y_cm: float,
-            stroke: bool, stroke_w: float, stroke_color: str,
-            stroke_style: str = "square", stroke_widths: dict | None = None,
-            border_mode: str = "legacy"):
-        final_img = self.build_final(s1, s2, angle, caf_mode,
-                                     stroke, stroke_w, stroke_color, stroke_style, stroke_widths, border_mode)
-        if str(border_mode or "legacy").lower() == "inside":
-            x_px = int(round(cm_to_px(target_x_cm, self.res)))
-            y_px = int(round(cm_to_px(target_y_cm, self.res)))
-        else:
-            widths = stroke_widths or {"left": stroke_w, "top": stroke_w, "right": stroke_w, "bottom": stroke_w}
-            left_pad, top_pad, _, _ = border_paddings_px(stroke, widths, max(s1, s2), self.res)
-            x_px = int(round(cm_to_px(target_x_cm, self.res))) - left_pad
-            y_px = int(round(cm_to_px(target_y_cm, self.res))) - top_pad
+            stroke: bool, stroke_w: float, stroke_color: str):
+        final_img = self.build_final(s1, s2, angle, caf_mode, 
+                                      stroke, stroke_w, stroke_color)
+        x_px = int(round(cm_to_px(target_x_cm, self.res)))
+        y_px = int(round(cm_to_px(target_y_cm, self.res)))
         canvas.paste(final_img, (x_px, y_px), final_img)
 
 
@@ -624,10 +532,7 @@ def build_layout_canvas(src_path: str, ui_config: Dict,
                                 cfg["marginTop"] + last_y + o["dy"],
                                 ui_config.get("chkStroke", False),
                                 ui_config.get("strokeW", 0.85),
-                                ui_config.get("strokeColor", "ffffff"),
-                                ui_config.get("strokeStyle", "square"),
-                                ui_config.get("strokeWidths"),
-                                ui_config.get("borderMode", "legacy")
+                                ui_config.get("strokeColor", "686868")
                             )
                         last_y += plan["totalHeight"] + cfg["gapY"]
 

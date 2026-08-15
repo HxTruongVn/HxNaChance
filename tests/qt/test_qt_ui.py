@@ -464,25 +464,3 @@ def test_qt_layout_preserves_multiple_presets_and_counts(tmp_path):
     assert isinstance(payload, dict)
     window.close()
     app.processEvents()
-
-
-def test_qt_layout_linked_stroke_width_applies_to_selected_edges():
-    app = QApplication.instance() or QApplication([])
-    window = QtNaChanceWindow()
-    window._open_workshop_window("layout")
-    links = window.layout_stroke_link_checks
-    fields = window.layout_stroke_widths
-    for key in ("left", "right", "top"):
-        links[key].setChecked(True)
-    fields["left"].setText("1.25")
-    window._apply_layout_linked_stroke_width("left")
-    assert [fields[key].text() for key in ("left", "right", "top")] == ["1.25", "1.25", "1.25"]
-    assert fields["bottom"].text() == "0.85"
-    links["right"].setChecked(False)
-    fields["left"].setText("2.0")
-    window._apply_layout_linked_stroke_width("left")
-    assert fields["left"].text() == "2.0"
-    assert fields["top"].text() == "2.0"
-    assert fields["right"].text() == "1.25"
-    window.close()
-    app.processEvents()

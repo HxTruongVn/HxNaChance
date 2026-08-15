@@ -245,7 +245,13 @@
 - [x] Bổ sung test discovery/smoke và tài liệu vận hành.
 - [x] Chạy regression và xác nhận NaChance nhận Workshop khi khởi động.
 
-- [ ] Kiểm tra diff và trạng thái branch Qt trước khi commit.
-- [ ] Xác nhận test và dọn artifact trước commit.
-- [ ] Commit và push scaffold Frame/Finishing lên qt/nachance-main-ui.
-- [ ] Xác nhận remote đồng bộ và ghi mã commit.
+- [x] Kiểm tra diff và trạng thái branch Qt trước khi commit.
+- [x] Xác nhận test và dọn artifact trước commit.
+- [x] Commit và push scaffold Frame/Finishing lên qt/nachance-main-ui.
+- [x] Xác nhận remote đồng bộ và ghi mã commit.
+
+- [x] Đối chiếu commit 6454109 để xác định thay đổi lẫn vào Layout.
+- [x] Khôi phục Layout về trạng thái trước khi thêm Frame/Finishing.
+- [x] Tách test/logic Frame sang Shop riêng, không sửa Layout gốc.
+- [x] Chạy regression và xác nhận Layout không còn thay đổi ngoài phạm vi.
+- [ ] Commit và push bản sửa phạm vi lên qt/nachance-main-ui.
