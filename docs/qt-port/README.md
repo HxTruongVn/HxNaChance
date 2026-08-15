@@ -23,7 +23,7 @@ python NaChance.py
 
 ## Current Qt slice
 
-The Qt window currently exposes Core status and manifest discovery, a Layout tab that calls `workshops.layout.print_layout.build_layout_canvas` and `save_layout`, a Photo tab that lazily calls `workshops.photo.NaChanceEngine` and `PhotoQAAgent`, and a Repo Intake tab that reads the existing manifest.
+The Qt window currently exposes Core status and manifest discovery, a Layout tab that calls `workshops.layout.print_layout.build_layout_canvas` and `save_layout`, a Photo tab that lazily calls `workshops.photo.NaChanceEngine` and `PhotoQAAgent`, and a Onboarding tab that reads the existing manifest.
 
 No Workshop algorithm is copied into the Qt layer. Qt owns widgets, signals, dialogs and worker threads; the existing main services and Workshop modules own processing behavior.
 

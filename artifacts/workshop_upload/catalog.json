@@ -1,0 +1,21 @@
+{
+  "catalog_version": 1,
+  "demo_id": "frame_finishing_caf",
+  "workshop_id": "frame_finishing",
+  "version": "0.2.0",
+  "package": {
+    "filename": "frame_finishing_demo-0.2.0.zip",
+    "url": "file://{catalog_dir}/frame_finishing_demo-0.2.0.zip",
+    "sha256": "6299b5f8d2728c4404cb523914edba328d0f04e38395271b1e3a5b1c9655c693"
+  },
+  "launcher": {
+    "module": "workshops.frame_finishing.__main__",
+    "callable": "main",
+    "mode": "process"
+  },
+  "demo": {
+    "input_mode": "generated_diagnostic_sample",
+    "backends": ["edge_extend", "opencv_inpaint"],
+    "neural_model": "not_provisioned"
+  }
+}

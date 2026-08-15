@@ -254,4 +254,97 @@
 - [x] Khôi phục Layout về trạng thái trước khi thêm Frame/Finishing.
 - [x] Tách test/logic Frame sang Shop riêng, không sửa Layout gốc.
 - [x] Chạy regression và xác nhận Layout không còn thay đổi ngoài phạm vi.
-- [ ] Commit và push bản sửa phạm vi lên qt/nachance-main-ui.
+- [x] Commit và push bản sửa phạm vi lên qt/nachance-main-ui.
+
+- [x] Kiểm kê toàn bộ cây thư mục và manifest trong workshops/.
+- [x] Phân tích import chéo và dependency boundary giữa các Workshop.
+- [x] Kiểm tra resource/requirements/entrypoint và contract độc lập.
+- [x] Sửa phụ thuộc sai phạm vi nếu phát hiện.
+- [x] Chạy regression và ghi báo cáo tính độc lập của các Workshop.
+
+- [x] Kiểm tra startup đang quét thư mục workshops nào.
+- [x] Kiểm tra descriptor/manifest của Shop mới và discovery_error.
+- [x] Kiểm tra UI import/mount failure của Shop mới.
+- [x] Sửa lỗi discovery nếu phát hiện và chạy startup regression.
+
+- [ ] Chốt contract: Workshop phải tự chạy được từ UI/entrypoint riêng trước khi được NaChance nhận.
+- [ ] Phân định Core chỉ kiểm tra boundary, environment và resource; không import sâu business UI của Shop.
+- [ ] Đối chiếu Frame/Finishing, Layout, Photo và Repo Intake với self-hosted contract.
+- [ ] Thiết kế launcher/adapter biên cho Shop độc lập và quy trình gọi Core khi thiếu resource/environment.
+
+- [ ] Đối chiếu manifest hiện tại với self-hosted contract.
+- [ ] Cập nhật manifest Frame/Finishing thành self-hosted.
+- [ ] Thêm legacy_adapter cho Layout, Photo và Repo Intake.
+- [ ] Cập nhật contract tests/discovery validation.
+- [ ] Chạy full regression sau khi cập nhật manifest.
+
+- [ ] Chuẩn hóa một Workshop contract duy nhất để Workshop nội bộ và bên thứ ba không phụ thuộc legacy UI của Qt host.
+- [ ] Tách rõ Core launch/discovery contract khỏi legacy_adapter compatibility contract.
+- [ ] Bổ sung contract test cho một Workshop bên thứ ba chỉ có launcher và resource declaration.
+- [ ] Cập nhật tài liệu developer: Workshop không cần biết mixin, menu host hoặc cấu trúc nội bộ NaChance.
+- [ ] Chạy full regression sau khi loại bỏ các giả định legacy khỏi đường self-hosted.
+
+- [ ] Rà soát toàn bộ tham chiếu `repo_intake` và phân loại tham chiếu runtime, manifest, test, tài liệu và migration.
+- [ ] Chuẩn hóa Workshop identity/runtime/session hiển thị thành `onboarding`.
+- [ ] Di chuyển alias `repo_intake` vào một compatibility migration boundary duy nhất.
+- [ ] Cập nhật manifest, discovery, Qt host, pipeline và contract tests theo tên `onboarding`.
+- [ ] Cập nhật tài liệu, loại bỏ thuật ngữ cũ khỏi đường hướng dẫn mới và chạy full regression.
+
+- [x] Kiểm tra Frame/Finishing manifest, launcher, entrypoint và import boundary.
+- [x] Xác nhận Frame/Finishing không phụ thuộc Layout/Photo hoặc legacy_adapter để chạy.
+- [x] Bổ sung contract test chứng minh Frame/Finishing chạy như Workshop bên thứ ba.
+- [x] Kiểm tra input/output, resource và batch contract của Frame/Finishing rồi chạy regression.
+
+- [x] Đọc và trích xuất nguyên lý CAF từ `CAF_FitLong_Hybrid_FitShort_v13.jsx`.
+- [x] Đối chiếu CAF trong Photoshop với Layout và Frame/Finishing Python.
+- [x] Kiểm tra fit dài/ngắn, crop/anchor/zoom, vùng bù và compositing bằng test/ảnh mẫu.
+- [x] Ghi kết luận mức tương đương và các phần cần sửa để giữ đúng bản chất CAF.
+
+- [ ] Xác định tiêu chí chất lượng để gọi là CAF tương đương và giới hạn của OpenCV Telea.
+- [ ] Thiết kế pipeline mask-aware gồm geometry, mask refinement, structural fill và texture/detail synthesis.
+- [ ] Chọn backend inpainting chính, fallback CPU và resource contract cho Core.
+- [ ] Thiết kế benchmark/QA theo vùng biên, vật thể, texture và semantic anchor.
+- [ ] Viết đề xuất kiến trúc và lộ trình tích hợp Layout/Frame/Finishing.
+
+- [x] Tạo Core inpainting contracts: MaskSpec, InpaintRequest, InpaintResult và backend registry.
+- [x] Tách backend solid/image/texture, edge_extend và OpenCV thành các implementation có tên rõ ràng.
+- [x] Thêm mask validation, mask refinement, source preservation và seam quality checks.
+- [ ] Khai báo LaMa optional resource trong manifest với checksum được phê duyệt; đã có lazy loader SHA-256 nhưng chưa có model bundle chính thức.
+- [ ] Hoàn thiện tích hợp Frame/Finishing với content_size/output_size; hiện đã tích hợp InpaintingService vào long-side path.
+- [x] Migrate Layout Hybrid ratio liên tục, Extract thật, anchor/zoom và giữ compatibility.
+- [x] Bổ sung image behavior tests và chạy full regression.
+
+- [x] Viết script benchmark trực quan OpenCV inpaint và edge_extend trên mẫu ảnh Frame/Finishing.
+- [x] Xuất input, mask, hai output, contact sheet và JSON metrics.
+- [x] Chạy script và kiểm tra trực quan các artifact/seam của từng backend.
+
+- [x] Kiểm tra dependency và model format khả dụng cho LaMa/Stable Diffusion Inpainting.
+- [x] Tạo adapter unified cho LaMa và Stable Diffusion, lazy load và checksum.
+- [x] Mở rộng benchmark CLI để chạy các backend neural cùng OpenCV/edge_extend.
+- [x] Xuất status khi model thiếu/không verify, không fallback im lặng.
+- [x] Chạy benchmark thực tế và cập nhật quality report.
+
+- [x] Tạo Demo CAF bundle manifest có URL, version và SHA-256 cố định.
+- [x] Tạo một lệnh downloader + Resource Gate để tải/verify/cache demo bundle.
+- [x] Tự nhận Frame/Finishing demo Workshop sau khi verify và chạy smoke/contract/image tests.
+- [x] Thêm CLI Demo CAF mode và trạng thái lỗi dễ hiểu; không yêu cầu người dùng tự cài model từng bước.
+
+- [x] Đóng gói artifact ZIP Frame/Finishing để người dùng tải vào NaChance.
+- [x] Tạo catalog/checksum đi kèm artifact thực tế.
+- [x] Chạy intake, manifest, launcher và visual smoke test trên chính ZIP.
+- [x] Gửi ZIP cùng hướng dẫn nhận Workshop vào NaChance.
+
+- [ ] Kiểm tra điểm nhập ZIP Workshop trong UI/CLI hiện tại.
+- [ ] Xác định rõ luồng người dùng từ ZIP → Onboarding → Core verify → Workshop session.
+- [ ] Bổ sung entrypoint nhập ZIP nếu hiện tại chỉ có script nội bộ.
+- [ ] Chạy test bằng artifact ZIP và viết hướng dẫn thao tác thực tế.
+
+- [x] Thêm nút `Import Workshop ZIP` vào Onboarding UI thật.
+- [x] Kết nối nút với intake/quarantine/resource gate và checksum.
+- [x] Refresh Core discovery sau khi cài bundle và hiển thị trạng thái READY/INVALID.
+- [x] Test import bằng ZIP Frame/Finishing đính kèm qua luồng UI.
+
+- [ ] Kiểm tra working tree và nhánh remote hiện tại.
+- [ ] Rà soát diff, loại artifact/cache không nên commit.
+- [ ] Commit các thay đổi Demo CAF và Import Workshop ZIP.
+- [ ] Push commit lên `qt/nachance-main-ui` và xác nhận hash remote.

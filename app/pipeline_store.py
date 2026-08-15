@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from core.compatibility import canonical_workshop_id
+
 class PipelineStore:
     def __init__(self, db_path: Path):
         self.db_path = Path(db_path)
@@ -26,7 +28,8 @@ class PipelineStore:
                 con.execute("UPDATE pipelines SET name=?, updated_at=? WHERE id=?", (name, now, pipeline_id))
                 con.execute("DELETE FROM pipeline_steps WHERE pipeline_id=?", (pipeline_id,))
             for idx, step in enumerate(steps, 1):
-                con.execute("INSERT INTO pipeline_steps(pipeline_id, step_order, workshop_id, workshop_version, workshop_name, state_json) VALUES (?, ?, ?, ?, ?, ?)", (pipeline_id, idx, step["workshop_id"], step.get("workshop_version"), step.get("workshop_name"), json.dumps(step.get("state") or {}, ensure_ascii=False, sort_keys=True)))
+                workshop_id = canonical_workshop_id(str(step["workshop_id"]))
+                con.execute("INSERT INTO pipeline_steps(pipeline_id, step_order, workshop_id, workshop_version, workshop_name, state_json) VALUES (?, ?, ?, ?, ?, ?)", (pipeline_id, idx, workshop_id, step.get("workshop_version"), step.get("workshop_name"), json.dumps(step.get("state") or {}, ensure_ascii=False, sort_keys=True)))
         return pipeline_id
     def list(self):
         with self._connect() as con:
@@ -37,7 +40,7 @@ class PipelineStore:
             row = con.execute("SELECT id,name,created_at,updated_at FROM pipelines WHERE id=?", (pipeline_id,)).fetchone()
             if not row: return None
             steps = con.execute("SELECT step_order,workshop_id,workshop_version,workshop_name,state_json FROM pipeline_steps WHERE pipeline_id=? ORDER BY step_order", (pipeline_id,)).fetchall()
-        return {"id":row[0],"name":row[1],"created_at":row[2],"updated_at":row[3],"steps":[{"order":s[0],"workshop_id":s[1],"workshop_version":s[2],"workshop_name":s[3],"state":json.loads(s[4] or "{}")} for s in steps]}
+        return {"id":row[0],"name":row[1],"created_at":row[2],"updated_at":row[3],"steps":[{"order":s[0],"workshop_id":canonical_workshop_id(s[1]),"workshop_version":s[2],"workshop_name":s[3],"state":json.loads(s[4] or "{}")} for s in steps]}
     def delete(self, pipeline_id: int):
         with self._connect() as con:
             con.execute("DELETE FROM pipeline_steps WHERE pipeline_id=?", (pipeline_id,)); con.execute("DELETE FROM pipelines WHERE id=?", (pipeline_id,))

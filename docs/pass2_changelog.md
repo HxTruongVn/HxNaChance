@@ -9,7 +9,7 @@ File này ghi các thay đổi đã thực sự được thực hiện. Ý tư�
 - Tạo `docs/pass2_decisions.md` làm sổ quyết định kiến trúc.
 - Tạo `docs/pass2_changelog.md` làm nhật ký thay đổi.
 - Xác nhận nguyên tắc: thiếu resource của Workshop không chặn Core.
-- Xác nhận Warehouse là infrastructure dùng chung, không thuộc riêng Repo Intake.
+- Xác nhận Warehouse là infrastructure dùng chung, không thuộc riêng Onboarding.
 - Xác nhận Transport, Watcher, Warehouse và Core API v1 là các mốc riêng, không gộp thành một tính năng mơ hồ.
 
 ## 2026-08-13 — Context-aware command menu
@@ -24,7 +24,7 @@ File này ghi các thay đổi đã thực sự được thực hiện. Ý tư�
 ## 2026-08-13 — Window lifecycle hardening
 
 - `WorkshopWindowManager.close_all()` giờ đi qua cùng lifecycle `close()` như nút X và toggle.
-- Repo Intake được khai báo đầy đủ UI/open contract và giữ nguyên discovery động, không hardcode trong Core.
+- Onboarding được khai báo đầy đủ UI/open contract và giữ nguyên discovery động, không hardcode trong Core.
 - Thêm lifecycle tests cho open idempotency, toggle close/reopen và close_all cleanup.
 - Bổ sung `WM_DELETE_WINDOW`/toggle contract documentation vào tài liệu ContextCommandProvider.
 - Full regression suite đạt `107 passed`.

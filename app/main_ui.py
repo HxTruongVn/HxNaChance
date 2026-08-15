@@ -1019,7 +1019,7 @@ class NaChanceApp(
 
         Intake/quarantine repositories are deliberately outside this watch.
         A changed approval snapshot invalidates the package and requires a
-        fresh repo_intake review before the next session can load it.
+        fresh onboarding review before the next session can load it.
         """
         from app.workshop_watcher import WorkshopWatcher
         previous = getattr(self, "_managed_workshop_watcher", None)

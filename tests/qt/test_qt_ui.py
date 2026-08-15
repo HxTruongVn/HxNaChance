@@ -114,11 +114,16 @@ def test_qt_window_exposes_main_workshop_tabs():
     app = QApplication.instance() or QApplication([])
     window = QtNaChanceWindow()
     assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ["Core"]
-    assert list(window._workshop_launcher_buttons) == ["layout", "onboarding", "photo"]
+    assert list(window._workshop_launcher_buttons) == [
+        "layout", "onboarding", "photo", "frame_finishing"
+    ]
+    assert "frame_finishing" in window._session_workshop_ids()
     assert [action.text().replace("&", "") for action in window.menuBar().actions()] == [
         "File", "Edit", "Pipeline", "Window", "View", "Tool", "Help"
     ]
-    assert [button.text() for button in window._workshop_launcher_buttons.values()] == ["OPEN", "OPEN", "OPEN"]
+    assert [button.text() for button in window._workshop_launcher_buttons.values()] == [
+        "OPEN", "OPEN", "OPEN", "OPEN"
+    ]
     assert not window.windowIcon().isNull()
     assert not window.findChild(QPushButton, "titleCloseButton")
     layout_window = window._open_workshop_window("layout")

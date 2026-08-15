@@ -294,39 +294,65 @@ except ImportError:
     HAS_CV2 = False
 
 
-def caf_process(img: Image.Image, tw_cm: float, th_cm: float, 
-                mode: int, res: int) -> Image.Image:
-    w, h = img.size
+def caf_process(img: Image.Image, tw_cm: float, th_cm: float,
+                mode: int, res: int, ratio: float | None = None,
+                anchor_x: float = 0.5, anchor_y: float = 0.5,
+                zoom: float = 1.0) -> Image.Image:
+    """Build a target canvas using Fit Long/Short geometry and explicit fill.
+
+    ``ratio`` is continuous: 0 means Fit Long and 1 means Fit Short. For
+    backwards compatibility, the old Hybrid mode defaults to 0.5.
+    """
+    source = img.convert("RGBA")
+    w, h = source.size
+    target_w = max(1, round(cm_to_px(tw_cm, res)))
+    target_h = max(1, round(cm_to_px(th_cm, res)))
 
     if mode == 1:
-        side = max(w, h)
-        new_w, new_h = side, side
-    else:
-        tw_px = cm_to_px(tw_cm, res)
-        th_px = cm_to_px(th_cm, res)
-        r_dst = max(tw_px, th_px) / min(tw_px, th_px)
-        is_src_landscape = w > h
-        r_dst = r_dst if is_src_landscape else 1 / r_dst
-        r_src = w / h
+        target_w = target_h = max(w, h)
+    if ratio is None:
+        ratio = 0.5 if mode == 2 else (1.0 if mode == 3 else 0.0)
+    ratio = min(1.0, max(0.0, float(ratio)))
 
-        if r_src > r_dst:
-            new_w, new_h = w, int(w / r_dst)
+    src_long, src_short = max(w, h), min(w, h)
+    dst_long, dst_short = max(target_w, target_h), min(target_w, target_h)
+    scale_long = dst_long / src_long
+    scale_short = dst_short / src_short
+    scale = scale_long + (scale_short - scale_long) * ratio
+    scaled = source.resize((max(1, round(w * scale * max(zoom, 0.01))),
+                            max(1, round(h * scale * max(zoom, 0.01)))), Image.Resampling.LANCZOS)
+
+    ax = min(1.0, max(0.0, anchor_x))
+    ay = min(1.0, max(0.0, anchor_y))
+    crop_left = round(max(0, scaled.width - target_w) * ax)
+    crop_top = round(max(0, scaled.height - target_h) * ay)
+    visible_w = min(target_w, scaled.width)
+    visible_h = min(target_h, scaled.height)
+    visible = scaled.crop((crop_left, crop_top, crop_left + visible_w, crop_top + visible_h))
+    left = max(0, (target_w - visible.width) // 2)
+    top = max(0, (target_h - visible.height) // 2)
+
+    canvas = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
+    canvas.alpha_composite(visible, (left, top))
+    if visible.width < target_w or visible.height < target_h:
+        if HAS_CV2:
+            try:
+                filled = inpaint_extend_cv2(visible, target_w, target_h)
+            except Exception as exc:
+                print(f"Warning: inpaint error ({exc}), fallback to edge extend")
+                filled = edge_extend_pil(visible, target_w, target_h)
         else:
-            new_w, new_h = int(h * r_dst), h
+            filled = edge_extend_pil(visible, target_w, target_h)
+        canvas = filled
 
-        if mode == 2:
-            grown_w = w + (new_w - w) * 0.5
-            scale = grown_w / w
-            new_w2, new_h2 = int(w * scale), int(h * scale)
-            new_w, new_h = max(new_w, new_w2), max(new_h, new_h2)
-
-    if HAS_CV2:
-        try:
-            return inpaint_extend_cv2(img, new_w, new_h)
-        except Exception as e:
-            print(f"Warning: inpaint error ({e}), fallback to edge extend")
-
-    return edge_extend_pil(img, new_w, new_h)
+    if mode == 3:
+        # Extract mode keeps only the generated outside region.
+        alpha = Image.new("L", (target_w, target_h), 255)
+        from PIL import ImageDraw
+        draw = ImageDraw.Draw(alpha)
+        draw.rectangle((left, top, left + visible.width - 1, top + visible.height - 1), fill=0)
+        canvas.putalpha(alpha)
+    return canvas
 
 
 def apply_stroke(img: Image.Image, stroke_px: int, hex_color: str) -> Image.Image:
@@ -355,33 +381,39 @@ class LayoutRenderer:
         self.kho_phoi = {}
         self.final_cache = {}
 
-    def get_smart_phoi(self, s1: float, s2: float, caf_mode: int) -> Image.Image:
+    def get_smart_phoi(self, s1: float, s2: float, caf_mode: int,
+                       caf_ratio: float | None = None,
+                       anchor_x: float = 0.5, anchor_y: float = 0.5,
+                       zoom: float = 1.0) -> Image.Image:
         t_long, t_short = max(s1, s2), min(s1, s2)
-        ratio = round(t_long / t_short, 3)
-        key = f"M{caf_mode}_R_{ratio}"
+        target_ratio = round(t_long / t_short, 3)
+        ratio = 0.5 if caf_ratio is None and caf_mode == 2 else (caf_ratio or 0.0)
+        key = f"M{caf_mode}_T_{target_ratio}_H_{round(ratio, 4)}_A_{round(anchor_x, 3)}_{round(anchor_y, 3)}_Z_{round(zoom, 3)}"
 
         if key in self.kho_phoi:
             return self.kho_phoi[key]
 
         w, h = self.src_img.size
-        s_ratio = round(max(w, h) / min(w, h), 3)
+        source_ratio = round(max(w, h) / min(w, h), 3)
 
-        if s_ratio == ratio:
+        if source_ratio == target_ratio and ratio == 0 and zoom == 1.0 and anchor_x == 0.5 and anchor_y == 0.5:
             phoi = self.src_img.copy()
         else:
-            phoi = caf_process(self.src_img, t_long, t_short, caf_mode, self.res)
+            phoi = caf_process(self.src_img, t_long, t_short, caf_mode, self.res, ratio=ratio, anchor_x=anchor_x, anchor_y=anchor_y, zoom=zoom)
 
         self.kho_phoi[key] = phoi
         return phoi
 
-    def build_final(self, s1: float, s2: float, angle: float, 
-                    caf_mode: int, stroke: bool, stroke_w: float, 
-                    stroke_color: str) -> Image.Image:
-        identity = f"{s1}x{s2}_G{angle}_M{caf_mode}_S{stroke_w}"
+    def build_final(self, s1: float, s2: float, angle: float,
+                    caf_mode: int, stroke: bool, stroke_w: float,
+                    stroke_color: str, caf_ratio: float | None = None,
+                    anchor_x: float = 0.5, anchor_y: float = 0.5,
+                    zoom: float = 1.0) -> Image.Image:
+        identity = f"{s1}x{s2}_G{angle}_M{caf_mode}_H{caf_ratio}_A{anchor_x}_{anchor_y}_Z{zoom}_S{stroke_w}"
         if identity in self.final_cache:
             return self.final_cache[identity]
 
-        phoi = self.get_smart_phoi(s1, s2, caf_mode)
+        phoi = self.get_smart_phoi(s1, s2, caf_mode, caf_ratio, anchor_x, anchor_y, zoom)
         pw, ph = phoi.size
         is_phoi_landscape = pw > ph
         is_target_landscape = s1 > s2
@@ -408,9 +440,13 @@ class LayoutRenderer:
 
     def put(self, canvas: Image.Image, s1: float, s2: float, angle: float,
             caf_mode: int, target_x_cm: float, target_y_cm: float,
-            stroke: bool, stroke_w: float, stroke_color: str):
-        final_img = self.build_final(s1, s2, angle, caf_mode, 
-                                      stroke, stroke_w, stroke_color)
+            stroke: bool, stroke_w: float, stroke_color: str,
+            caf_ratio: float | None = None, anchor_x: float = 0.5,
+            anchor_y: float = 0.5, zoom: float = 1.0):
+        final_img = self.build_final(s1, s2, angle, caf_mode,
+                                      stroke, stroke_w, stroke_color,
+                                      caf_ratio, anchor_x, anchor_y, zoom)
+
         x_px = int(round(cm_to_px(target_x_cm, self.res)))
         y_px = int(round(cm_to_px(target_y_cm, self.res)))
         canvas.paste(final_img, (x_px, y_px), final_img)

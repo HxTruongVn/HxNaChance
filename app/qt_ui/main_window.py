@@ -7,8 +7,11 @@ modules and Workshops.
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
+import subprocess
+import sys
 import traceback
 from dataclasses import replace
 from pathlib import Path
@@ -379,6 +382,7 @@ class QtNaChanceWindow(QMainWindow):
         self._photo_orientation_queue: dict[str, Any] | None = None
         self._workshop_windows: dict[str, QtWorkshopWindow] = {}
         self._side_panel_windows: dict[str, QtSidePanelWindow] = {}
+        self._self_hosted_processes: dict[str, subprocess.Popen[Any]] = {}
         self._workshop_order: list[str] = []
         self._active_workshop_id: str | None = None
         self._active_workshop_index = -1
@@ -406,12 +410,15 @@ class QtNaChanceWindow(QMainWindow):
         # user-facing Workshop name used by the Qt session.
         self._discovered_workshops = [
             replace(item, workshop_id="onboarding", name="onboarding")
-            if item.workshop_id == "repo_intake" else item
+            if item.workshop_id == "onboarding" else item
             for item in self._discovered_workshops
         ]
         canonical_order = {"layout": 0, "onboarding": 1, "photo": 2}
         self._discovered_workshops.sort(key=lambda item: canonical_order.get(item.workshop_id, 999))
-        self._session_order = [item.workshop_id for item in self._discovered_workshops if item.workshop_id in canonical_order]
+        # Keep every Core-approved Workshop in the session. Known IDs retain
+        # the historical order; new Workshop directories are appended in
+        # deterministic discovery order instead of being silently filtered.
+        self._session_order = [item.workshop_id for item in self._discovered_workshops]
         self._active_workshop_index = 0 if self._session_order else -1
         from app.pipeline_store import PipelineStore
         self.pipeline_store = PipelineStore(PROJECT_ROOT / "data" / "pipelines.db")
@@ -509,7 +516,8 @@ class QtNaChanceWindow(QMainWindow):
                         self._photo_menu_actions[attr] = option_action
                 workshop_menu.aboutToShow.connect(self._sync_photo_menu_checks)
             elif item.workshop_id == "onboarding":
-                workshop_menu.addAction("Inspect / Intake", self._repo_submit)
+                workshop_menu.addAction("Open Onboarding", lambda: self._open_workshop_window("onboarding"))
+                workshop_menu.addAction("Import Workshop ZIP…", self._open_onboarding_import)
         window_menu.addSeparator()
         preview_active = QAction("Preview active Workshop", self)
         preview_active.setShortcut("F2")
@@ -1017,9 +1025,9 @@ class QtNaChanceWindow(QMainWindow):
         self.workshop_launcher_layout.setContentsMargins(0, 6, 0, 0)
         self.workshop_launcher_layout.setSpacing(6)
         self._workshop_launcher_buttons: dict[str, QPushButton] = {}
-        for index, (workshop_id, title) in enumerate((
-            ("layout", "layout"), ("onboarding", "onboarding"), ("photo", "photo")
-        ), start=1):
+        for index, descriptor in enumerate(self._discovered_workshops, start=1):
+            workshop_id = descriptor.workshop_id
+            title = descriptor.name or workshop_id
             row = QWidget()
             row_layout = QHBoxLayout(row)
             row_layout.setContentsMargins(0, 0, 0, 0)
@@ -1111,7 +1119,11 @@ class QtNaChanceWindow(QMainWindow):
             self._active_workshop_id = None
             self.workspace_label.setText("CORE / HOME")
             return
-        workshop_id = ("layout", "photo", "onboarding")[index - 1]
+        order = self._session_workshop_ids()
+        offset = index - 1
+        if not 0 <= offset < len(order):
+            return
+        workshop_id = order[offset]
         self._open_workshop_window(workshop_id)
         self.workspace_label.setText(f"WORKSHOP / {workshop_id.upper()}")
 
@@ -1127,7 +1139,14 @@ class QtNaChanceWindow(QMainWindow):
     def _refresh_launcher_buttons(self) -> None:
         for workshop_id, button in self._workshop_launcher_buttons.items():
             window = self._workshop_windows.get(workshop_id)
-            is_open = bool(window is not None and window.isVisible())
+            process = self._self_hosted_processes.get(workshop_id)
+            if process is not None and process.poll() is not None:
+                self._self_hosted_processes.pop(workshop_id, None)
+                process = None
+            is_open = bool(
+                (window is not None and window.isVisible())
+                or (process is not None and process.poll() is None)
+            )
             button.setText("CLOSE" if is_open else "OPEN")
             button.setProperty("openState", is_open)
             button.style().unpolish(button)
@@ -1184,10 +1203,35 @@ class QtNaChanceWindow(QMainWindow):
         window = self._workshop_windows.get(workshop_id)
         if window is not None:
             window.close()
-        else:
-            self._refresh_launcher_buttons()
+            return
+        process = self._self_hosted_processes.pop(workshop_id, None)
+        if process is not None and process.poll() is None:
+            process.terminate()
+        self._refresh_launcher_buttons()
 
-    def _open_workshop_window(self, workshop_id: str) -> QtWorkshopWindow:
+    def _launch_self_hosted_workshop(self, workshop_id: str, manifest: dict[str, Any]) -> None:
+        """Launch an approved Workshop in its own process, without importing its UI."""
+        process = self._self_hosted_processes.get(workshop_id)
+        if process is not None and process.poll() is None:
+            self._active_workshop_id = workshop_id
+            self.status_bar.showMessage(f"Workshop {workshop_id} đang chạy độc lập", 3000)
+            return
+        launcher = manifest.get("launcher") or {}
+        module = launcher.get("module")
+        if not module or launcher.get("mode") != "process":
+            raise ValueError(f"Launcher self-hosted không hợp lệ cho Workshop '{workshop_id}'")
+        env = os.environ.copy()
+        env["NACHANCE_CORE_ROOT"] = str(PROJECT_ROOT)
+        try:
+            process = subprocess.Popen([sys.executable, "-m", str(module)], cwd=str(PROJECT_ROOT), env=env)
+        except OSError as exc:
+            raise RuntimeError(f"Không thể khởi chạy Workshop '{workshop_id}': {exc}") from exc
+        self._self_hosted_processes[workshop_id] = process
+        self._active_workshop_id = workshop_id
+        self.status_bar.showMessage(f"Đã mở Workshop {workshop_id} ở process độc lập", 4000)
+        self._refresh_launcher_buttons()
+
+    def _open_workshop_window(self, workshop_id: str) -> QtWorkshopWindow | None:
         existing = self._workshop_windows.get(workshop_id)
         if existing is not None:
             self._active_workshop_id = workshop_id
@@ -1199,13 +1243,36 @@ class QtNaChanceWindow(QMainWindow):
             self._refresh_launcher_buttons()
             self._update_workspace_state_qt()
             return existing
+        descriptor = next(
+            (item for item in self._discovered_workshops if item.workshop_id == workshop_id),
+            None,
+        )
+        if descriptor is None:
+            raise KeyError(f"Workshop '{workshop_id}' không tồn tại trong Core discovery")
+        if descriptor.self_hosted and descriptor.launcher:
+            self._launch_self_hosted_workshop(
+                workshop_id,
+                {"self_hosted": True, "launcher": dict(descriptor.launcher)},
+            )
+            return None
+
         builders = {
             "layout": ("Layout Workshop", self._build_layout_tab),
             "photo": ("Photo Workshop", self._build_photo_tab),
             "onboarding": ("Workshop Onboarding", self._build_workshop_onboarding_tab),
         }
-        title, builder = builders[workshop_id]
-        window = QtWorkshopWindow(workshop_id, title, builder(), self)
+        if workshop_id in builders:
+            title, builder = builders[workshop_id]
+            content = builder()
+        else:
+            if not descriptor.ui:
+                raise KeyError(f"Workshop '{workshop_id}' không có UI descriptor hợp lệ")
+            module = importlib.import_module(str(descriptor.ui["module"]))
+            mixin_class = getattr(module, str(descriptor.ui["mixin_class"]))
+            build_method = getattr(mixin_class, str(descriptor.ui["build_method"]))
+            title = descriptor.name or workshop_id
+            content = build_method(self)
+        window = QtWorkshopWindow(workshop_id, title, content, self)
         window.core_resource_paths = dict(self._core_resource_paths)
         window.apply_theme(self._stylesheet())
         self._workshop_windows[workshop_id] = window
@@ -2019,21 +2086,21 @@ class QtNaChanceWindow(QMainWindow):
         scroll.setWidgetResizable(True)
         body = QWidget()
         layout = QVBoxLayout(body)
-        title = QLabel("Repository Intake")
+        title = QLabel("Workshop Onboarding")
         title.setObjectName("panelTitle")
         layout.addWidget(title)
-        description = QLabel("Tiếp nhận repo lạ trong quarantine, hoàn thiện hồ sơ, đăng ký Resource, tạo scaffold và kiểm thử contract trước khi phê duyệt.")
+        description = QLabel("Chọn Workshop ZIP hoặc thư mục, kiểm tra manifest và SHA-256, sau đó tiếp nhận vào Core để mở Workshop.")
         description.setWordWrap(True)
         layout.addWidget(description)
 
         source_row = QHBoxLayout()
         self.repo_source = QLineEdit()
-        self.repo_source.setPlaceholderText("Thư mục / ZIP / đường dẫn repository")
+        self.repo_source.setPlaceholderText("Chọn Workshop ZIP hoặc thư mục Workshop")
         choose_folder = QPushButton("Folder")
         choose_folder.clicked.connect(self._repo_choose_folder)
-        choose_zip = QPushButton("ZIP")
+        choose_zip = QPushButton("Import Workshop ZIP…")
         choose_zip.clicked.connect(self._repo_choose_zip)
-        submit = QPushButton("Tiếp nhận")
+        submit = QPushButton("Verify và Tiếp nhận")
         submit.clicked.connect(self._repo_submit)
         source_row.addWidget(self.repo_source, 1)
         source_row.addWidget(choose_folder)
@@ -2180,6 +2247,10 @@ class QtNaChanceWindow(QMainWindow):
             panel.close()
         for window in list(self._workshop_windows.values()):
             window.close()
+        for process in list(self._self_hosted_processes.values()):
+            if process.poll() is None:
+                process.terminate()
+        self._self_hosted_processes.clear()
         super().closeEvent(event)
 
     def _refresh_quick_pipelines_qt(self) -> None:
@@ -2881,13 +2952,17 @@ class QtNaChanceWindow(QMainWindow):
         self.photo_status.setText("Photo is not ready; see log for details.")
         self.log.appendPlainText(trace)
 
+    def _open_onboarding_import(self) -> None:
+        self._open_workshop_window("onboarding")
+        QTimer.singleShot(0, lambda: self.repo_source.setFocus() if hasattr(self, "repo_source") else None)
+
     def _repo_choose_folder(self) -> None:
         selected = QFileDialog.getExistingDirectory(self, "Chọn repository cần tiếp nhận")
         if selected:
             self.repo_source.setText(selected)
 
     def _repo_choose_zip(self) -> None:
-        selected, _ = QFileDialog.getOpenFileName(self, "Chọn repository ZIP", "", "ZIP (*.zip);;All files (*.*)")
+        selected, _ = QFileDialog.getOpenFileName(self, "Import Workshop ZIP", "", "Workshop packages (*.zip);;ZIP (*.zip);;All files (*.*)")
         if selected:
             self.repo_source.setText(selected)
 

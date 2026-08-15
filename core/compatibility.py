@@ -36,3 +36,21 @@ def project_legacy_capabilities(
 
 def is_legacy_capability(name: str) -> bool:
     return name in LEGACY_CAPABILITY_ALIASES
+
+
+# Workshop identity migration. This is the only place where the removed
+# repository-era name is understood; new manifests, discovery and UI must use
+# the canonical onboarding identity.
+LEGACY_WORKSHOP_ID_ALIASES = MappingProxyType({
+    "repo_intake": "onboarding",
+})
+
+
+def canonical_workshop_id(name: str) -> str:
+    """Normalize a persisted/API Workshop id to the canonical folder id."""
+    return LEGACY_WORKSHOP_ID_ALIASES.get(name, name)
+
+
+def is_legacy_workshop_id(name: str) -> bool:
+    """Return whether a Workshop id belongs only to migration compatibility."""
+    return name in LEGACY_WORKSHOP_ID_ALIASES

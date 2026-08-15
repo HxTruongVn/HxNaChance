@@ -363,3 +363,69 @@ Core weights: .../weights
 ```
 
 `MISSING` không tự động là lỗi khi không dùng `--check-files`; đó là trạng thái để Core Downloader/Resource Gate xử lý. Khi dùng `--check-files`, resource bắt buộc ở trạng thái `MISSING` hoặc `INVALID` sẽ làm validator trả exit code `1`. Script cũng luôn báo lỗi nếu phát hiện thư mục `workshops/<name>/weights` hoặc `workshops/<name>/models`, vì weights runtime phải thuộc kho Core duy nhất.
+
+
+## 12. Contract duy nhất cho Workshop self-hosted
+
+Từ `resource_contract_version: 1`, một Workshop phát hành mới phải được thiết kế như một ứng dụng độc lập trước khi được NaChance Core tiếp nhận. NaChance không yêu cầu Workshop biết `QMainWindow`, `mixin_class`, menu host, shortcut host hoặc tên hàm nội bộ của Qt. Các thành phần đó chỉ thuộc compatibility layer của những Workshop cũ.
+
+Manifest self-hosted tối thiểu:
+
+```json
+{
+  "workshop_id": "example_workshop",
+  "version": "1.0.0",
+  "resource_contract_version": 1,
+  "description": "Một Workshop độc lập.",
+  "self_hosted": true,
+  "launcher": {
+    "module": "workshops.example_workshop.__main__",
+    "callable": "main",
+    "mode": "process"
+  },
+  "environment": {
+    "python_version": ">=3.10",
+    "dependencies": ["Pillow"]
+  },
+  "resources": [
+    {
+      "id": "example_workshop::preset",
+      "kind": "preset",
+      "required": true,
+      "paths": ["presets/default.json"]
+    }
+  ],
+  "io": {
+    "accepts": ["image"],
+    "produces": ["image"]
+  },
+  "about_file": "ABOUT.md"
+}
+```
+
+`launcher.module` phải chạy được độc lập từ project root bằng `python -m workshops.example_workshop.__main__`. Entrypoint có thể sử dụng Core service qua API/contract ổn định, nhưng không được import `app.qt_ui.main_window`, `app.workshop_discovery`, các mixin của Workshop khác hoặc module UI legacy của host.
+
+| Thành phần | Workshop self-hosted phải cung cấp | Workshop không được phụ thuộc vào |
+|---|---|---|
+| Entrypoint | `launcher.module`, `launcher.callable`, `launcher.mode` | Hàm mở cửa sổ riêng của Qt host |
+| UI | UI và vòng đời riêng trong chính Workshop | `mixin_class`, `build_method` của host |
+| Input/output | `io.accepts`, `io.produces` và execution boundary của chính nó | Biến trạng thái nội bộ của Layout/Photo |
+| Resource | Descriptor, version, checksum/source metadata nếu cần | `workshops/<name>/weights/` hoặc downloader riêng |
+| Environment | Khai báo nhu cầu | Tự quyết định Core có READY hay không |
+| Theme/setting | Nhận theme hoặc setting qua Core contract nếu cần | Đọc trực tiếp widget/menu của host |
+
+`legacy_adapter` là trường **tùy chọn**, không phải một phần bắt buộc của self-hosted contract. Chỉ Workshop cũ đang được Qt host nhúng trực tiếp mới cần trường này. Khi một Workshop self-hosted có `launcher`, Core và host phải ưu tiên launcher; sự tồn tại hay không tồn tại của `legacy_adapter` không được ảnh hưởng đến khả năng discovery hoặc chạy độc lập.
+
+## 13. Boundary mà Core phải bảo đảm
+
+Core có trách nhiệm duy nhất là đọc, validate và tạo `WorkshopDescriptor` chuẩn hóa. Descriptor phải chứa trực tiếp `self_hosted`, `launcher`, `legacy_adapter`, resources, requirements và execution; App không được đọc lại `manifest.json` để tự suy luận Workshop có phải self-hosted hay không.
+
+Qt host có hai đường rõ ràng. Với descriptor `self_hosted=true`, host chỉ hiển thị metadata và gọi launcher process. Với descriptor legacy, host mới load adapter đã được khai báo. Không có đường thứ ba trong đó Workshop mới phải giả dạng một legacy mixin để được Qt host nhận.
+
+> Nếu một Workshop bên thứ ba có thể chạy độc lập bằng entrypoint của chính nó, có manifest hợp lệ và vượt qua Core resource/environment gate, NaChance phải tiếp nhận Workshop đó mà không yêu cầu developer sửa code theo cấu trúc nội bộ của NaChance.
+
+## 14. Quy tắc kiểm thử dành cho bên thứ ba
+
+Developer bên thứ ba chỉ cần chứng minh bốn điều: entrypoint chạy được độc lập; manifest parse được bởi Core; resource declaration normalize được và không vi phạm path/checksum; input/output contract có thể mô tả được. Test của họ không cần import Qt host hoặc các Workshop nội bộ.
+
+NaChance cung cấp contract test dùng chung để kiểm tra các điều kiện đó. Compatibility test cho `legacy_adapter` chỉ áp dụng khi developer chủ động chọn chế độ nhúng vào host cũ; nó không phải điều kiện phát hành Workshop self-hosted.

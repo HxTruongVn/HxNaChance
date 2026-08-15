@@ -19,7 +19,7 @@ Nếu muốn dùng Photo Workshop đầy đủ, cài thêm dependency riêng c�
 python -m pip install -r workshops/photo/requirements.txt
 ```
 
-Stack Photo có thể nặng và không bắt buộc để mở Layout hoặc Repo Intake.
+Stack Photo có thể nặng và không bắt buộc để mở Layout hoặc Onboarding.
 
 ## Linux
 

@@ -45,8 +45,10 @@ class WorkshopUI:
     workshop_name: str
     description: str
     about_path: Optional[Path]
-    mixin_class: Type
-    build_method: str
+    mixin_class: Optional[Type]
+    build_method: Optional[str]
+    self_hosted: bool = False
+    launcher: Optional[dict] = None
     tab_title: str = ""
     tab_order: int = 999
     window_title: Optional[str] = None
@@ -58,15 +60,35 @@ class WorkshopUI:
 
 
 def _load_ui(descriptor: WorkshopDescriptor) -> Optional[WorkshopUI]:
-    """Load only the UI entry point from a Core-approved descriptor."""
+    """Load a legacy UI adapter or describe a self-hosted launcher.
+
+    Self-hosted Workshops are never imported into the Qt host.  They still
+    appear in discovery so the host can launch them as independent processes.
+    """
     try:
         ui = descriptor.ui
-        if not ui:
-            print(f"[WorkshopDiscovery] ⚠ Core descriptor has no UI entry: {descriptor.workshop_id}")
-            return None
+        workshop_name = Path(descriptor.manifest_path).parent.name
+        if descriptor.self_hosted:
+            launcher = dict(descriptor.launcher)
+            if not launcher:
+                print(f"[WorkshopDiscovery] ⚠ Self-hosted descriptor has no launcher: {descriptor.workshop_id}")
+                return None
+            return WorkshopUI(
+                workshop_id=descriptor.workshop_id,
+                workshop_name=workshop_name,
+                description=descriptor.description,
+                about_path=Path(descriptor.about_path) if descriptor.about_path else None,
+                mixin_class=None,
+                build_method=None,
+                self_hosted=True,
+                launcher=launcher,
+                tab_title=workshop_name,
+                tab_order=999,
+                window_title=f"NaChance — {workshop_name}",
+                menu_label=workshop_name,
+            )
         module = importlib.import_module(str(ui["module"]))
         mixin_class = getattr(module, str(ui["mixin_class"]))
-        workshop_name = Path(descriptor.manifest_path).parent.name
         return WorkshopUI(
             workshop_id=descriptor.workshop_id,
             workshop_name=workshop_name,
@@ -125,7 +147,7 @@ def discover_workshops(
         # The old Tk intake adapter is retained for compatibility and Core
         # validation, but it is not a Qt Workshop UI entry point. The Qt
         # adapter provides the Onboarding surface itself.
-        if descriptor.workshop_id == "repo_intake":
+        if descriptor.workshop_id == "onboarding":
             continue
         workshop = _load_ui(descriptor)
         if workshop is not None:

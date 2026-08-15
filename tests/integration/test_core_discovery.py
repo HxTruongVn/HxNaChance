@@ -39,6 +39,9 @@ def test_discover_workshops_get_fresh_folder_based_session_order():
 def test_discover_workshops_mixin_class_has_declared_build_method():
     workshops = discover_workshops()
     for w in workshops:
+        if w.self_hosted:
+            assert w.launcher and w.launcher.get("module")
+            continue
         assert hasattr(w.mixin_class, w.build_method), (
             f"{w.mixin_class} thiếu method {w.build_method} đã khai trong manifest.json")
 
@@ -50,6 +53,8 @@ def test_discover_workshops_menu_fields_present_and_valid():
     workshops = discover_workshops()
     for w in workshops:
         assert w.menu_label, f"{w.workshop_id} thiếu menu_label trong manifest.json"
+        if w.self_hosted:
+            continue
         assert w.menu_build_method, f"{w.workshop_id} thiếu menu_build_method"
         assert hasattr(w.mixin_class, w.menu_build_method), (
             f"{w.mixin_class} thiếu method {w.menu_build_method} đã khai trong manifest.json")
@@ -60,6 +65,8 @@ def test_discover_workshops_open_method_is_declared():
     NaChanceApp phải kế thừa UI mixin của từng Workshop."""
     workshops = discover_workshops()
     for w in workshops:
+        if w.self_hosted:
+            continue
         assert w.open_method, f"{w.workshop_id} thiếu open_method trong manifest.json"
 
 

@@ -18,6 +18,8 @@ import uuid
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageOps
 
+from core.inpainting import InpaintRequest, InpaintingService, MaskSpec, build_canvas_mask
+
 
 @dataclass(frozen=True)
 class CropSpec:
@@ -37,6 +39,10 @@ class CAFSpec:
     fill_uri: str | None = None
     fit_mode: str = "cover"  # cover | contain | stretch | tile
     opacity: float = 1.0
+    backend: str = "fill"  # fill | auto | opencv_inpaint | edge_extend | lama
+    quality: str = "balanced"  # fast | balanced | high
+    seed: int = 0
+    model_resource_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -174,11 +180,39 @@ def render_one(source: Image.Image, config: RenderConfig) -> Image.Image:
     target = (config.width_px, config.height_px)
     crop = config.crop
     if crop.mode == "long_side":
-        # Preserve the entire source; fit the long side and let CAF fill the rest.
+        # Preserve the entire source; fit the long side and fill only the outside mask.
         scale = min(target[0] / source.width, target[1] / source.height)
         fitted = source.resize((max(1, round(source.width * scale)), max(1, round(source.height * scale))), Image.Resampling.LANCZOS)
-        canvas = _caf_background(target, config.caf if crop.caf_enabled else CAFSpec(fill_kind="transparent"))
-        canvas.alpha_composite(fitted, ((target[0] - fitted.width) // 2, (target[1] - fitted.height) // 2))
+        left = (target[0] - fitted.width) // 2
+        top = (target[1] - fitted.height) // 2
+        if not crop.caf_enabled or config.caf.backend == "fill":
+            canvas = _caf_background(target, config.caf if crop.caf_enabled else CAFSpec(fill_kind="transparent"))
+            canvas.alpha_composite(fitted, (left, top))
+        else:
+            source_canvas = Image.new("RGBA", target, (0, 0, 0, 0))
+            source_canvas.alpha_composite(fitted, (left, top))
+            spec = MaskSpec(
+                canvas_size=target,
+                source_rect=(left, top, left + fitted.width, top + fitted.height),
+                fill_regions=((0, 0, target[0], top),
+                              (0, top + fitted.height, target[0], target[1]),
+                              (0, top, left, top + fitted.height),
+                              (left + fitted.width, top, target[0], top + fitted.height)),
+                feather_px=0,
+                dilate_px=0,
+                anchor=(crop.anchor_x, crop.anchor_y),
+            )
+            # Explicit backend policy: neural backend is not silently substituted.
+            request = InpaintRequest(
+                image=source_canvas,
+                mask=build_canvas_mask(spec),
+                mask_spec=spec,
+                backend=config.caf.backend,
+                fill_color=(*_rgb(config.caf.color), round(config.caf.opacity * 255)),
+                seed=config.caf.seed,
+                metadata={"model_resource_id": config.caf.model_resource_id, "quality": config.caf.quality},
+            )
+            canvas = InpaintingService().expand(request).image
     elif crop.mode == "short_side":
         fitted = _fit_cover(source, target, (crop.anchor_x, crop.anchor_y), crop.zoom)
         canvas = fitted

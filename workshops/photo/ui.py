@@ -9,7 +9,9 @@ from PIL import Image as PILImage
 
 import customtkinter as ctk
 
-from workshops.photo import SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME
+# Import the local contract directly so UI discovery does not eagerly import
+# every Photo processor/model through workshops.photo.__init__.
+from workshops.photo.spec import SPEC_PRESETS, PhotoSpec, DEFAULT_PRESET_NAME
 from workshops.photo.preview_controller import PhotoPreviewController
 
 

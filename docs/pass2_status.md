@@ -12,7 +12,7 @@
 |---|---|---:|---|
 | Core Contracts | Đã có | 80% | Contract không phụ thuộc Workshop cụ thể và có test |
 | Workshop Discovery | Đã có một phần | 70% | Discovery chỉ đọc manifest, không chạy code lạ |
-| Repo Intake/Review | Prototype hoạt động | 60% | Hồ sơ, kiểm định, approval và transport có state rõ |
+| Onboarding/Review | Prototype hoạt động | 60% | Hồ sơ, kiểm định, approval và transport có state rõ |
 | Resource Warehouse | Prototype local | 25% | Catalog SHA-256, dedup, resolve, request, export và test |
 | Transport | Có trong workflow | 45% | Module riêng, atomic copy, rollback và approval marker |
 | Managed Watcher | Có snapshot watcher | 45% | Theo dõi managed Workshop và kiểm tra readiness resource |

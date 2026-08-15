@@ -2,7 +2,7 @@
 
 ## Boundary
 
-NaChance does not watch arbitrary repositories. External repositories belong to `repo_intake` quarantine until their intake report, resource claims, adapter plan and contract tests are complete.
+NaChance does not watch arbitrary repositories. External repositories belong to `onboarding` quarantine until their intake report, resource claims, adapter plan and contract tests are complete.
 
 ## State flow
 

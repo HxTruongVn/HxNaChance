@@ -1,8 +1,8 @@
 from pathlib import Path
 
 
-def test_repo_intake_build_returns_a_root_frame():
-    text = Path("workshops/repo_intake/ui.py").read_text(encoding="utf-8")
+def test_onboarding_build_returns_a_root_frame():
+    text = Path("workshops/onboarding/ui.py").read_text(encoding="utf-8")
     assert "return frame" in text
 
 

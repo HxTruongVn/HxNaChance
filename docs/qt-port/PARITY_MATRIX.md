@@ -100,7 +100,7 @@
 |---|---|---|---|---|
 | Workshop title/header | `WorkshopWindow._build_window_chrome` | Có | Một phần | Logo/title/focus/close parity |
 | Status bar | `_build_status_bar` | Có label | Một phần | Visibility/persist/status updates |
-| Scrollable content | `CTkScrollableFrame` | Core, Layout, Photo và Repo Intake đều dùng QScrollArea; Workshop giữ cửa sổ riêng và content scroll | Một phần | Kiểm chứng resize/native viewport trên desktop platforms |
+| Scrollable content | `CTkScrollableFrame` | Core, Layout, Photo và Onboarding đều dùng QScrollArea; Workshop giữ cửa sổ riêng và content scroll | Một phần | Kiểm chứng resize/native viewport trên desktop platforms |
 | Busy/processing lock | `_lock_unavailable_features` | Chưa đầy đủ | Thiếu | Disable đúng capability khi runtime thiếu |
 | About Workshop | `_show_workshop_about` | Chưa có | Thiếu | Dùng manifest metadata |
 | Requirements dialog | `_show_workshop_requirements` | Chưa có | Thiếu | Hiển thị dependency/resource readiness |
@@ -134,18 +134,18 @@
 | Photo menu actions | `_menu_photo_content` | Qt cascade có Open/Run và checkable Face, Pose, Background, Validation groups | Một phần | Đồng bộ checked state ngược từ controls khi menu mở |
 | Engine/worker/output | `PhotoQAAgent`, `NaChanceEngine` | Có worker | Một phần |
 
-## Tầng 10 — Repo Intake Workshop
+## Tầng 10 — Onboarding Workshop
 
 | Hạng mục | Nguồn main | Qt hiện tại | Trạng thái |
 |---|---|---|---|
-| Select folder | `repo_intake/ui.py` | Qt Folder picker + source field | Một phần | Giữ đầy đủ case lifecycle |
-| Select ZIP | Repo Intake UI | Qt ZIP picker + source field | Một phần | Giữ quarantine ZIP behavior |
+| Select folder | `onboarding/ui.py` | Qt Folder picker + source field | Một phần | Giữ đầy đủ case lifecycle |
+| Select ZIP | Onboarding UI | Qt ZIP picker + source field | Một phần | Giữ quarantine ZIP behavior |
 | Quarantine/intake | `core/review/workflow.py` | Qt submit gọi `ReviewWorkflow.submit` | Một phần | Kiểm thử folder/ZIP thật |
-| Dossier/profile/resource inventory | Repo Intake UI | Qt profile form + JSON report | Một phần | Giữ toàn bộ validation/missing fields |
-| Adapter plan/scaffold | Repo Intake UI | Qt plan + Build Scaffold gọi workflow | Một phần | Hiển thị kết quả scaffold đầy đủ |
-| Contract tests | Repo Intake UI | Qt Contract Test gọi workflow | Một phần | Hiển thị từng contract result |
-| Approval/transport | Repo Intake UI | Qt Approve gọi workflow approval | Một phần | Bổ sung transport approved UI |
-| Repo Intake menu | `_menu_repo_intake_content` | Chưa port | Thiếu |
+| Dossier/profile/resource inventory | Onboarding UI | Qt profile form + JSON report | Một phần | Giữ toàn bộ validation/missing fields |
+| Adapter plan/scaffold | Onboarding UI | Qt plan + Build Scaffold gọi workflow | Một phần | Hiển thị kết quả scaffold đầy đủ |
+| Contract tests | Onboarding UI | Qt Contract Test gọi workflow | Một phần | Hiển thị từng contract result |
+| Approval/transport | Onboarding UI | Qt Approve gọi workflow approval | Một phần | Bổ sung transport approved UI |
+| Onboarding menu | `_menu_onboarding_content` | Chưa port | Thiếu |
 
 ## Tầng 11 — Core/Pipeline/Resource panels
 
@@ -164,11 +164,11 @@
 
 | Hạng mục | Nguồn main | Qt hiện tại | Trạng thái |
 |---|---|---|---|
-| Config load/save | `_load_config`, `_save_config` | Theme dùng `~/.nachance_ai.json`; state lưu/restore Layout, Photo, Repo Intake payload | Một phần | Nạp đầy đủ save_dir và canonical Workshop config |
+| Config load/save | `_load_config`, `_save_config` | Theme dùng `~/.nachance_ai.json`; state lưu/restore Layout, Photo, Onboarding payload | Một phần | Nạp đầy đủ save_dir và canonical Workshop config |
 | Theme persistence | ThemeMixin | Qt đọc/ghi `~/.nachance_ai.json`, live apply child windows | Một phần | Hoàn thiện busy/orientation block và startup isolation test |
 | Layout state persistence | Layout UI/config | Qt state payload lưu và restore numeric config/preset counts | Một phần | Tương thích công thức/custom đầy đủ và file format main |
 | Photo state persistence | Photo UI/config | Qt state payload lưu và restore preset/background/options | Một phần | Restore source/history/output document đầy đủ |
-| Saved `.nachance-state` | `Document.save_state` | Qt state JSON lưu theme, active Workshop, Layout, Photo, Repo Intake | Một phần | Tương thích đầy đủ với Document format của main |
+| Saved `.nachance-state` | `Document.save_state` | Qt state JSON lưu theme, active Workshop, Layout, Photo, Onboarding | Một phần | Tương thích đầy đủ với Document format của main |
 | Watcher changes | `WorkshopWatcher` | Qt khởi động/dừng watcher, UI status flush bằng QTimer | Một phần | Thêm added/removed detail và reload action |
 | Missing Workshop notification | `_show_workshop_change_status` | Chưa port | Thiếu |
 | Worker cancellation | main workers/timers | Qt Cancel buttons request QThread interruption; workers check before/after processing | Một phần | Engine-level cooperative cancellation đầy đủ |
@@ -187,7 +187,7 @@
 | Multi-window lifecycle | open/close/focus/tile test | Native close/focus hierarchy test đã có; tile còn cần kiểm | Một phần | Hoàn tất placement và side-panel ownership |
 | Layout parity | multi-preset/output test | Multi-preset/config/output + preview/cancel path đã có | Một phần | Full menu/orientation/saved-state test |
 | Photo parity | full controls/output test | Controls/options/preview/orientation tests đã có; engine e2e chưa chạy weights | Một phần | Kiểm thử output thật với runtime weights |
-| Repo Intake parity | full intake flow test | Chưa đạt |
+| Onboarding parity | full intake flow test | Chưa đạt |
 
 ## Quy tắc hoàn thành
 

@@ -61,6 +61,9 @@ class WorkshopDescriptor:
     requirements: tuple[Mapping[str, Any], ...] = ()
     resources: tuple[ResourceDescriptor, ...] = ()
     ui: Mapping[str, Any] = field(default_factory=dict)
+    launcher: Mapping[str, Any] = field(default_factory=dict)
+    self_hosted: bool = False
+    legacy_adapter: Mapping[str, Any] = field(default_factory=dict)
     about_path: str = ""
     execution: Mapping[str, Any] = field(default_factory=dict)
     manifest_path: str = ""

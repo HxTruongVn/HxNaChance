@@ -31,6 +31,16 @@
     "dpi": 300,
     "auto_save": false
   },
+  "legacy_adapter": {
+    "enabled": true,
+    "deprecated": true,
+    "module": "workshops.layout.ui",
+    "mixin_class": "LayoutTabMixin",
+    "build_method": "_build_layout_tab",
+    "menu_build_method": "_menu_layout_content",
+    "open_method": "_choose_layout_src",
+    "note": "Legacy host adapter; Layout chưa chuyển sang self-hosted launcher."
+  },
   "about_file": "ABOUT.md",
   "io": {
     "accepts": [

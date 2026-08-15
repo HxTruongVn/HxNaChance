@@ -159,7 +159,7 @@ class WorkshopWindow(ctk.CTkToplevel, WidgetHelpersMixin, SidePanelMixin):
         # Workshop build methods may either mount their root widget themselves
         # (legacy Photo/Layout) or return a root frame for the host to mount.
         # The latter is the preferred contract for new Workshops.  Previously
-        # the returned frame was discarded, which made repo_intake appear
+        # the returned frame was discarded, which made onboarding appear
         # completely blank even though its UI had been constructed.
         if built is not None:
             try:

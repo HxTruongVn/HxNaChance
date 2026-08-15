@@ -1,0 +1,6 @@
+# Optional only: never install this file for Core/bootstrap.
+# Pin exact versions after the approved model bundle is selected and fingerprinted.
+torch
+torchvision
+# Deterministic OpenCV backend is optional as well.
+opencv-python

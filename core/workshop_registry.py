@@ -58,6 +58,9 @@ def descriptor_from_manifest(manifest: dict[str, Any], manifest_path: Path) -> W
         requirements=tuple(value for value in requirements if isinstance(value, dict)),
         resources=_resources(manifest.get("resources")),
         ui=dict(manifest.get("ui") or {}) if isinstance(manifest.get("ui"), dict) else {},
+        launcher=dict(manifest.get("launcher") or {}) if isinstance(manifest.get("launcher"), dict) else {},
+        self_hosted=bool(manifest.get("self_hosted", False)),
+        legacy_adapter=dict(manifest.get("legacy_adapter") or {}) if isinstance(manifest.get("legacy_adapter"), dict) else {},
         about_path=(str((manifest_path.parent / manifest["about_file"]).resolve())
                     if manifest.get("about_file") else ""),
         execution=dict(manifest.get("execution") or {}) if isinstance(manifest.get("execution"), dict) else {},

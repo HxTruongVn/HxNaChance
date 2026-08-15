@@ -43,6 +43,17 @@
     "dpi": 300,
     "auto_save": true
   },
+  "legacy_adapter": {
+    "enabled": true,
+    "deprecated": true,
+    "module": "workshops.photo.ui",
+    "mixin_class": "ProcessTabMixin",
+    "build_method": "_build_process_tab",
+    "menu_build_method": "_menu_photo_content",
+    "open_method": "_run_single",
+    "run_method": "_run_single",
+    "note": "Legacy host adapter; Photo chưa chuyển sang self-hosted launcher."
+  },
   "about_file": "ABOUT.md",
   "io": {
     "produces": [

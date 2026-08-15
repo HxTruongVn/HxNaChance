@@ -14,9 +14,9 @@ Thiếu package, model, binary hoặc file resource của Workshop chỉ làm Wo
 ## DEC-002 — Warehouse là infrastructure dùng chung
 
 **Trạng thái:** Đã chốt  
-**Phạm vi:** Photo, Layout, Repo Intake và Workshop tương lai
+**Phạm vi:** Photo, Layout, Onboarding và Workshop tương lai
 
-Warehouse không thuộc riêng `repo_intake`. `repo_intake` chỉ đăng ký resource claims và hồ sơ provenance. Warehouse sở hữu blob, catalog, checksum, version, license, source và resolution state.
+Warehouse không thuộc riêng `onboarding`. `onboarding` chỉ đăng ký resource claims và hồ sơ provenance. Warehouse sở hữu blob, catalog, checksum, version, license, source và resolution state.
 
 ## DEC-003 — Local Warehouse trước, remote Warehouse sau
 
