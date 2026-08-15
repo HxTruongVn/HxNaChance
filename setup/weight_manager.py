@@ -143,11 +143,13 @@ class CoreWeightManager:
         resource_id: str,
         *,
         expected_sha256: str | None = None,
+        source_workshop: str | None = None,
     ) -> WeightRecord:
         """Hash an already-present Core file and add it to the inventory."""
         return self.intake_file(
             path,
             resource_id=resource_id,
+            source_workshop=source_workshop,
             expected_sha256=expected_sha256,
         )
 
@@ -217,6 +219,78 @@ class CoreWeightManager:
                     shutil.copy2(canonical, target)
                 self.register_existing(target, resource_id, expected_sha256=tested.sha256)
             except (OSError, ValueError, ResourceDownloadError, WeightConflictError):
+                failed.append(resource_id)
+        return failed
+
+    def sync_approved_manifest_resources(
+        self,
+        manifest_path: str | Path,
+        *,
+        workshop_id: str | None = None,
+        approved: bool = False,
+    ) -> list[str]:
+        """Auto-provision resources declared by an approved Workshop manifest.
+
+        Approval is the policy boundary: before approval this method refuses to
+        download anything. After approval, Core may download declared HTTPS
+        sources, verify the declared SHA-256 through ResourceTestGate, promote
+        the canonical blob, and materialize it in the shared ``weights/`` store.
+        """
+        if not approved:
+            raise PermissionError("resource auto-download requires an approved Workshop")
+        from core.resource_contract import normalize_resources
+        from core.workshop_onboarding.downloader import CoreResourceDownloader, ResourceDownloadError
+        from core.workshop_onboarding.resource_gate import ResourceGateState, ResourceTestGate
+
+        manifest_file = Path(manifest_path)
+        if manifest_file.is_dir():
+            candidates = sorted(manifest_file.rglob("manifest.json"))
+            if not candidates:
+                raise FileNotFoundError(f"manifest.json not found under {manifest_file}")
+            manifest_file = candidates[0]
+        manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+        wid = workshop_id or str(manifest.get("workshop_id") or manifest_file.parent.name)
+        raw = manifest.get("resources")
+        descriptors = normalize_resources(raw)
+        if isinstance(raw, dict):
+            raw_by_id = {str(key): (dict(value) if isinstance(value, dict) else {}) for key, value in raw.items()}
+        else:
+            raw_by_id = {str(item.get("id") or item.get("resource_id")): dict(item) for item in (raw or []) if isinstance(item, dict)}
+
+        gate = ResourceTestGate(self.project_root / "data" / "resource_warehouse")
+        downloader = CoreResourceDownloader(gate)
+        failed: list[str] = []
+        for descriptor in descriptors:
+            resource_id = descriptor.resource_id if "::" in descriptor.resource_id else f"{wid}::{descriptor.resource_id}"
+            item = raw_by_id.get(descriptor.resource_id, {})
+            sources = item.get("sources") or item.get("source_urls") or []
+            filename = item.get("filename") or (Path(descriptor.paths[0]).name if descriptor.paths else resource_id.rsplit("::", 1)[-1])
+            target = self.weights_dir / Path(str(filename)).name
+            try:
+                if self.resolve(resource_id) is not None:
+                    continue
+                if target.is_file():
+                    record = gate.intake(target, resource_id, expected_sha256=descriptor.checksum)
+                else:
+                    if not descriptor.checksum:
+                        raise WeightChecksumRequiredError(f"approved resource {resource_id} requires sha256 before download")
+                    result = downloader.download(resource_id, sources, expected_sha256=descriptor.checksum, filename=target.name)
+                    record = result.record
+                if record is None or record.state is ResourceGateState.FAILED:
+                    failed.append(resource_id)
+                    continue
+                tested = gate.test_and_approve(resource_id, lambda path: path.is_file() and path.stat().st_size > 0)
+                if tested.state is not ResourceGateState.APPROVED:
+                    failed.append(resource_id)
+                    continue
+                canonical = Path(tested.source_path)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if target.is_file() and self.sha256_file(target) != tested.sha256:
+                    raise WeightConflictError(f"Core weight conflict for {resource_id}")
+                if not target.exists():
+                    shutil.copy2(canonical, target)
+                self.register_existing(target, resource_id, expected_sha256=tested.sha256, source_workshop=wid)
+            except (OSError, ValueError, KeyError, ResourceDownloadError, WeightConflictError, WeightChecksumRequiredError):
                 failed.append(resource_id)
         return failed
 

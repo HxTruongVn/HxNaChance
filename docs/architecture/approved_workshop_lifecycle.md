@@ -30,3 +30,7 @@ The watcher does not hot-accept changes, execute new code or update the active s
 ## Resource ownership
 
 Transport moves the Workshop package into managed storage. Resource files are not trusted merely because they are present in the package: their Warehouse records, version and SHA-256 must still resolve before execution. A Workshop is enabled only when its approval marker and required resource readiness both pass.
+
+## Approved resource auto-provision policy
+
+Once a Workshop passes contract review and is explicitly approved, approval becomes the policy boundary that permits Core to provision its declared resources automatically. Core may fetch only declared HTTPS sources with a valid SHA-256, stage the bytes through `ResourceTestGate`, promote the verified blob into the shared resource warehouse, and materialize it under the Core-owned `weights/` directory. An unapproved Workshop, a resource without a valid checksum, or a checksum mismatch must not trigger an automatic download. Missing optional resources degrade readiness; they do not require the user to perform a manual download for an approved Workshop.

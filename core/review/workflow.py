@@ -194,7 +194,32 @@ class ReviewWorkflow:
     def approve(self, case: ReviewCase, *, approver: str) -> None:
         if case.state != IntakeState.CONTRACT_TESTED: raise ValueError("approval requires successful contract tests")
         if not approver.strip(): raise ValueError("approver is required")
-        case.transition(IntakeState.APPROVED, reason=f"approved by {approver}"); self._persist_case(case)
+        case.transition(IntakeState.APPROVED, reason=f"approved by {approver}")
+        # Approval is the explicit policy boundary that permits Core to fetch
+        # declared resources. Missing/failed optional resources do not undo the
+        # approval; they are recorded so readiness can remain DEGRADED.
+        try:
+            from setup.weight_manager import CoreWeightManager
+            workshop_id = case.profile.workshop_id if case.profile else None
+            failed = CoreWeightManager(self.scaffold_root.parent).sync_approved_manifest_resources(
+                case.quarantine_path,
+                workshop_id=workshop_id,
+                approved=True,
+            )
+            case.events.append({
+                "at": self._now(),
+                "state": case.state.value,
+                "reason": "approved resource auto-provision completed" if not failed else "approved resource auto-provision degraded",
+                "failed_resources": failed,
+            })
+        except Exception as exc:
+            case.events.append({
+                "at": self._now(),
+                "state": case.state.value,
+                "reason": "approved resource auto-provision failed",
+                "error": str(exc),
+            })
+        self._persist_case(case)
 
     def transport_approved(self, case: ReviewCase, managed_root: str | Path, *, workshop_id: str, version: str, approver: str, resource_ids: list[str] | None = None) -> Path:
         if case.state != IntakeState.APPROVED: raise ValueError("only approved cases can be transported")
