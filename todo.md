@@ -129,5 +129,11 @@
 
 - [x] Kiểm tra diff local của bản sửa startup và tài liệu liên quan.
 - [x] Xác nhận test trước khi commit.
-- [ ] Commit và push bản sửa lên qt/nachance-main-ui.
-- [ ] Xác nhận remote đã chứa commit mới.
+- [x] Commit và push bản sửa lên qt/nachance-main-ui.
+- [x] Xác nhận remote đã chứa commit mới.
+
+- [x] Kiểm tra mô hình revision/state history hiện tại của Photo.
+- [x] Chốt canonical state fingerprint và quy tắc tái sử dụng revision trùng nội dung.
+- [x] Triển khai A→B→A quay lại revision A, không tạo revision C trùng lặp.
+- [x] Bổ sung test duplicate state, A-B-A và undo/redo.
+- [x] Chạy regression sau khi sửa revision deduplication.

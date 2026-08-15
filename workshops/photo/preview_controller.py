@@ -4,7 +4,57 @@ Preview is intentionally separate from the production save pipeline.  It keeps
 an interaction revision and runs expensive PhotoEngine work off the Tk thread.
 The latest revision wins; stale worker results are discarded.
 """
+import hashlib
+import json
 import threading
+from collections.abc import Mapping
+
+
+class PhotoRevisionRegistry:
+    """Assign stable revisions to unique Photo states.
+
+    A revision identifies canonical state content, not the number of UI events.
+    Therefore A -> B -> A resolves to the original revision for A. Preview
+    request generations remain separate so stale worker results can still be
+    discarded safely by the UI.
+    """
+
+    def __init__(self) -> None:
+        self._revisions: dict[str, int] = {}
+        self._next_revision = 1
+
+    @staticmethod
+    def canonical_state(state):
+        def normalize(value):
+            if isinstance(value, Mapping):
+                return {str(key): normalize(value[key]) for key in sorted(value, key=str)}
+            if isinstance(value, (tuple, list)):
+                return [normalize(item) for item in value]
+            if isinstance(value, float):
+                return round(value, 6)
+            return value
+
+        return normalize(state)
+
+    @classmethod
+    def fingerprint(cls, state) -> str:
+        payload = json.dumps(
+            cls.canonical_state(state),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        return hashlib.sha256(payload).hexdigest()
+
+    def resolve(self, state) -> tuple[int, str, bool]:
+        fingerprint = self.fingerprint(state)
+        revision = self._revisions.get(fingerprint)
+        if revision is not None:
+            return revision, fingerprint, False
+        revision = self._next_revision
+        self._next_revision += 1
+        self._revisions[fingerprint] = revision
+        return revision, fingerprint, True
 
 
 class PhotoPreviewController:

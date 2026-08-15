@@ -63,6 +63,7 @@ from workshops.layout.print_layout import (
     build_layout_canvas,
     save_layout,
 )
+from workshops.photo.preview_controller import PhotoRevisionRegistry
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 APP_ICON_PATH = PROJECT_ROOT / "assets" / "icons" / "logo (1).ico"
@@ -129,9 +130,9 @@ class _PhotoWorker(QObject):
 
 
 class _PhotoPreviewWorker(QObject):
-    finished = Signal(int, object, str)
+    finished = Signal(int, int, object, str)
 
-    def __init__(self, engine: Any, source: str, spec: Any, options: dict[str, Any], bg_color: tuple[int, int, int], revision: int) -> None:
+    def __init__(self, engine: Any, source: str, spec: Any, options: dict[str, Any], bg_color: tuple[int, int, int], revision: int, request_generation: int) -> None:
         super().__init__()
         self.engine = engine
         self.source = source
@@ -139,15 +140,16 @@ class _PhotoPreviewWorker(QObject):
         self.options = options
         self.bg_color = bg_color
         self.revision = revision
+        self.request_generation = request_generation
 
     def run(self) -> None:
         try:
             result = self.engine.process(self.source, self.spec, self.bg_color, dict(self.options))
             image = result.get("image") if result.get("success") else None
             error = "" if image is not None else "; ".join(result.get("validation_errors", []))
-            self.finished.emit(self.revision, image, error)
+            self.finished.emit(self.revision, self.request_generation, image, error)
         except Exception as exc:
-            self.finished.emit(self.revision, None, str(exc))
+            self.finished.emit(self.revision, self.request_generation, None, str(exc))
 
 
 class _LayoutWorker(QObject):
@@ -364,6 +366,9 @@ class QtNaChanceWindow(QMainWindow):
         self._layout_thread: QThread | None = None
         self._layout_worker: _LayoutWorker | None = None
         self._photo_engine: Any = None
+        self._photo_revision_registry = PhotoRevisionRegistry()
+        self._photo_current_state_fingerprint: str | None = None
+        self._photo_request_generation = 0
         self._photo_thread: QThread | None = None
         self._photo_worker: _PhotoWorker | None = None
         self._weight_thread: QThread | None = None
@@ -2626,11 +2631,24 @@ class QtNaChanceWindow(QMainWindow):
         except Exception as exc:
             self.photo_status.setText(f"Preview chưa sẵn sàng: {exc}")
             return
-        self._photo_preview_revision = getattr(self, "_photo_preview_revision", 0) + 1
-        revision = self._photo_preview_revision
+        options = self._photo_options_qt()
+        bg_color = self._photo_bg_color_qt()
+        state = {
+            "source": str(Path(source).resolve()),
+            "preset": preset,
+            "options": options,
+            "background": bg_color,
+        }
+        revision, fingerprint, _is_new_state = self._photo_revision_registry.resolve(state)
+        if fingerprint == self._photo_current_state_fingerprint:
+            self.photo_status.setText(f"Preview đã ở trạng thái revision {revision}")
+            return
+        self._photo_current_state_fingerprint = fingerprint
+        self._photo_request_generation += 1
+        request_generation = self._photo_request_generation
         thread = QThread(self)
         worker = _PhotoPreviewWorker(
-            engine, source, spec, self._photo_options_qt(), self._photo_bg_color_qt(), revision
+            engine, source, spec, options, bg_color, revision, request_generation
         )
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
@@ -2647,8 +2665,8 @@ class QtNaChanceWindow(QMainWindow):
             panel.set_status(message)
         thread.start()
 
-    def _photo_preview_finished_qt(self, revision: int, image: Any, error: str) -> None:
-        if revision != getattr(self, "_photo_preview_revision", 0):
+    def _photo_preview_finished_qt(self, revision: int, request_generation: int, image: Any, error: str) -> None:
+        if request_generation != getattr(self, "_photo_request_generation", 0):
             return
         if image is None:
             message = f"Preview lỗi: {error or 'không tạo được ảnh'}"
